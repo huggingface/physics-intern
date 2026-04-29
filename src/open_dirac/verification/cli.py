@@ -9,6 +9,7 @@ The verification package is layered:
 - :mod:`.diagnosis`     — LLM-driven audit of a completed run
 - :mod:`.cli`           — CLI glue (this file)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,6 +17,7 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import yaml
@@ -39,10 +41,13 @@ def build_verify_parser() -> argparse.ArgumentParser:
         prog="open_dirac.verification",
         description="Diagnosis of OpenDirac research workspaces.",
     )
-    parser.add_argument("workspace_dir", type=Path,
-                        help="Path to workspace directory")
-    parser.add_argument("--model", type=str, default=DEFAULTS["verify_model"],
-                        help=f"LLM model (default: {DEFAULTS['verify_model']})")
+    parser.add_argument("workspace_dir", type=Path, help="Path to workspace directory")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=DEFAULTS["verify_model"],
+        help=f"LLM model (default: {DEFAULTS['verify_model']})",
+    )
     return parser
 
 
@@ -88,7 +93,9 @@ def main():
         console.print("[bold]Reference file:[/] loaded")
     if not known_answer and ref_answer_expr:
         known_answer = ref_answer_expr
-        console.print(f"[bold]Known answer (from reference):[/] {known_answer[:100]}...")
+        console.print(
+            f"[bold]Known answer (from reference):[/] {known_answer[:100]}..."
+        )
 
     console.print("\n[bold]Formal answer evaluation...[/]")
     formal_eval = load_or_run_formal_eval(workspace_dir, problem_def, ref_lookup_path)
@@ -96,13 +103,17 @@ def main():
 
     config = Config(model=model, workspace_dir=workspace_dir)
     system, user_content = build_diagnosis_prompt(
-        contents, formal_eval=formal_eval,
-        known_answer=known_answer, reference_content=reference_content,
+        contents,
+        formal_eval=formal_eval,
+        known_answer=known_answer,
+        reference_content=reference_content,
     )
 
     console.print(f"\n[bold]Diagnosis ({model}, streaming)...[/]")
     response = call_diagnosis_llm(system, user_content, config)
-    console.print(f"[dim]({response.input_tokens} in / {response.output_tokens} out, {response.duration:.1f}s)[/]")
+    console.print(
+        f"[dim]({response.input_tokens} in / {response.output_tokens} out, {response.duration:.1f}s)[/]"
+    )
 
     result = parse_diagnosis(response.text, formal_eval=formal_eval)
     render_diagnosis(result)

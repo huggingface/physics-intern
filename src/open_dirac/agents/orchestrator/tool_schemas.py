@@ -231,9 +231,7 @@ ORCHESTRATOR_TOOL_DEFINITIONS: list[dict] = [
                     "assumptions": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": (
-                            "Key assumptions the agent should work under."
-                        ),
+                        "description": ("Key assumptions the agent should work under."),
                     },
                     "relevant_results": {
                         "type": "array",
@@ -315,9 +313,7 @@ ORCHESTRATOR_TOOL_DEFINITIONS: list[dict] = [
                     "assumptions": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": (
-                            "Key assumptions the agent should work under."
-                        ),
+                        "description": ("Key assumptions the agent should work under."),
                     },
                     "relevant_results": {
                         "type": "array",

@@ -4,6 +4,7 @@
 Called by serve.slurm to avoid duplicating model-specific flags in bash.
 Output is eval'd by the shell — all values are shlex-quoted for safety.
 """
+
 import shlex
 import sys
 from pathlib import Path
@@ -17,7 +18,9 @@ def main():
         sys.exit(1)
 
     model = sys.argv[1]
-    models_yaml = Path(__file__).resolve().parent.parent / "src" / "open_dirac" / "models.yaml"
+    models_yaml = (
+        Path(__file__).resolve().parent.parent / "src" / "open_dirac" / "models.yaml"
+    )
 
     serve: dict = {}
     model_id: str = model

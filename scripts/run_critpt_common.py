@@ -29,6 +29,7 @@ from open_dirac.config import DEFAULTS  # noqa: E402
 # Model resolution
 # ---------------------------------------------------------------------------
 
+
 def resolve_critpt_model_string(model_key: str) -> str:
     """Convert OpenDirac model key to CritPt format 'provider/model_id'."""
     if not MODELS_YAML.exists():
@@ -59,6 +60,7 @@ def resolve_model(args, output_dir: Path | None = None) -> str:
 # ---------------------------------------------------------------------------
 # Problem discovery
 # ---------------------------------------------------------------------------
+
 
 def parse_problem_range(range_str: str) -> set[int]:
     """Parse '1-10,15,30-40' into a set of ints."""
@@ -91,11 +93,13 @@ def discover_problems(
         m = pattern.match(p.name)
         if m:
             n = int(m.group(1))
-            problems.append(Problem(
-                n=n,
-                problem_id=f"Challenge_{n}_main",
-                yaml_path=p.resolve(),
-            ))
+            problems.append(
+                Problem(
+                    n=n,
+                    problem_id=f"Challenge_{n}_main",
+                    yaml_path=p.resolve(),
+                )
+            )
     if problem_range:
         wanted = parse_problem_range(problem_range)
         problems = [p for p in problems if p.n in wanted]
@@ -106,6 +110,7 @@ def discover_problems(
 # ---------------------------------------------------------------------------
 # Run result
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RunResult:
@@ -123,6 +128,7 @@ class RunResult:
 # ---------------------------------------------------------------------------
 # Resume logic
 # ---------------------------------------------------------------------------
+
 
 def read_model_from_output_dir(output_dir: Path) -> str | None:
     """Try to recover the model key from a previous run's output directory.
@@ -184,6 +190,7 @@ def find_completed_submissions(output_dir: Path) -> set[int]:
 # Output directory
 # ---------------------------------------------------------------------------
 
+
 def make_output_dir(args, default_base: Path, create: bool = True) -> Path:
     """Return the output directory for submission JSONs; create it unless `create=False`."""
     if args.output_dir:
@@ -200,6 +207,7 @@ def make_output_dir(args, default_base: Path, create: bool = True) -> Path:
 # ---------------------------------------------------------------------------
 # Raw response logging
 # ---------------------------------------------------------------------------
+
 
 def save_raw_response(
     logs_dir: Path | None,
@@ -226,6 +234,7 @@ def save_raw_response(
 # ---------------------------------------------------------------------------
 # Submission JSON writing
 # ---------------------------------------------------------------------------
+
 
 def write_submission_json(
     result: RunResult,
@@ -456,7 +465,9 @@ def write_batch_metadata(
     n_run_failed = sum(1 for r in all_results if not r.success)
 
     this_wall_clock = round((end_time - start_time).total_seconds(), 1)
-    prior_summary = prior.get("summary") if isinstance(prior.get("summary"), dict) else {}
+    prior_summary = (
+        prior.get("summary") if isinstance(prior.get("summary"), dict) else {}
+    )
     prior_cumulative = prior_summary.get(
         "cumulative_wall_clock_s", prior_summary.get("wall_clock_s", 0.0)
     )
@@ -512,14 +523,20 @@ def write_initial_batch_metadata(
     end-of-run write merges per-problem results into it.
     """
     write_batch_metadata(
-        output_dir, critpt_model, [],
-        generation_config, run_config, start_time, start_time,
+        output_dir,
+        critpt_model,
+        [],
+        generation_config,
+        run_config,
+        start_time,
+        start_time,
     )
 
 
 # ---------------------------------------------------------------------------
 # Orchestration helpers
 # ---------------------------------------------------------------------------
+
 
 def setup_signal_handler(loop, tasks: list) -> None:
     """Set up Ctrl+C handler to cancel pending asyncio tasks."""

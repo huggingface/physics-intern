@@ -4,7 +4,6 @@ import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 
 from .config import Config
@@ -36,7 +35,8 @@ def _get_provider(config: Config) -> LLMProvider:
     key = (config.provider, config.api_key)
     if key not in _provider_cache:
         _provider_cache[key] = create_provider(
-            config.provider, api_key=config.api_key,
+            config.provider,
+            api_key=config.api_key,
             timeout=config.api_timeout,
             **config.reasoning,
         )
@@ -60,23 +60,32 @@ class ParseFailureError(Exception):
         )
 
 
-def _call_provider_with_retry(provider: LLMProvider, config: Config,
-                               workspace_dir: str | Path = "",
-                               iteration: int = 0,
-                               **call_kwargs) -> ProviderResponse:
+def _call_provider_with_retry(
+    provider: LLMProvider,
+    config: Config,
+    workspace_dir: str | Path = "",
+    iteration: int = 0,
+    **call_kwargs,
+) -> ProviderResponse:
     """Retry provider.call() on transient errors with workspace-aware logging.
 
     Thin wrapper around ``providers.retry.call_with_retry`` that plumbs console
     and workspace observability. Retry policy itself lives in providers/retry.py.
     """
+
     def _on_retry(exc: Exception, attempt: int, max_retries: int) -> None:
         console.print(
             f"[yellow]Transient API error (attempt {attempt + 1}/"
             f"{max_retries}): {exc}[/yellow]"
         )
         if workspace_dir:
-            log_scaffold_event(workspace_dir, iteration, CC.CALL_RELIABILITY, "api_retry",
-                               f"attempt={attempt + 1}/{max_retries}, {type(exc).__name__}")
+            log_scaffold_event(
+                workspace_dir,
+                iteration,
+                CC.CALL_RELIABILITY,
+                "api_retry",
+                f"attempt={attempt + 1}/{max_retries}, {type(exc).__name__}",
+            )
 
     return call_with_retry(
         provider,
@@ -100,7 +109,8 @@ CONTINUATION_PROMPT = (
 
 
 def _merge_responses(
-    first: ProviderResponse, cont: ProviderResponse,
+    first: ProviderResponse,
+    cont: ProviderResponse,
 ) -> ProviderResponse:
     """Merge a first (truncated) response with a continuation response.
 
@@ -119,7 +129,8 @@ def _merge_responses(
         answer_tokens=first.answer_tokens + cont.answer_tokens,
         tool_calls=cont.tool_calls,
         raw_content=cont.raw_content,
-        reasoning_content=(first.reasoning_content or "") + (cont.reasoning_content or ""),
+        reasoning_content=(first.reasoning_content or "")
+        + (cont.reasoning_content or ""),
     )
 
 
@@ -176,13 +187,13 @@ def continue_on_max_tokens(
     #      NOT strip an unclosed block, so we detect it explicitly here.
     raw_text = first_response.text or ""
     visible = strip_think_tags(raw_text)
-    truncated_mid_think = (
-        "<think>" in raw_text and "</think>" not in raw_text
-    )
+    truncated_mid_think = "<think>" in raw_text and "</think>" not in raw_text
     if not visible.strip() or truncated_mid_think:
         if workspace_dir:
             log_scaffold_event(
-                workspace_dir, iteration, CC.LOOP_CONTROL,
+                workspace_dir,
+                iteration,
+                CC.LOOP_CONTROL,
                 "max_tokens_reasoning_starved",
                 f"agent={agent_name}, output_tokens={first_response.output_tokens}",
             )
@@ -208,7 +219,9 @@ def continue_on_max_tokens(
         ]
         if workspace_dir:
             log_scaffold_event(
-                workspace_dir, iteration, CC.LOOP_CONTROL,
+                workspace_dir,
+                iteration,
+                CC.LOOP_CONTROL,
                 "max_tokens_continuation",
                 f"agent={agent_name}, attempt={attempt}/{max_retries}",
             )
@@ -217,15 +230,19 @@ def continue_on_max_tokens(
             f"(attempt {attempt}/{max_retries})[/yellow]"
         )
         call_kwargs = dict(
-            model=model, max_tokens=max_tokens,
-            system=system, messages=provider.prepare_messages(cont_messages),
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=provider.prepare_messages(cont_messages),
         )
         if tools:
             call_kwargs["tools"] = tools
         try:
             cont_response = _call_provider_with_retry(
-                provider, config,
-                workspace_dir=workspace_dir, iteration=iteration,
+                provider,
+                config,
+                workspace_dir=workspace_dir,
+                iteration=iteration,
                 **call_kwargs,
             )
         except Exception as exc:
@@ -244,7 +261,9 @@ def continue_on_max_tokens(
     # All retries exhausted; merged still has stop_reason="max_tokens".
     if workspace_dir:
         log_scaffold_event(
-            workspace_dir, iteration, CC.LOOP_CONTROL,
+            workspace_dir,
+            iteration,
+            CC.LOOP_CONTROL,
             "max_tokens_retries_exhausted",
             f"agent={agent_name}, attempts={max_retries}, "
             f"output_tokens={merged.output_tokens}",
@@ -255,6 +274,7 @@ def continue_on_max_tokens(
 @dataclass
 class LLMResponse:
     """Response from an LLM call."""
+
     text: str
     input_tokens: int
     output_tokens: int
@@ -262,13 +282,16 @@ class LLMResponse:
     duration: float
     reasoning_tokens: int = 0
     answer_tokens: int = 0
-    reasoning_content: str = ""  # Parsed thinking trace (from <think> tags or separate field)
+    reasoning_content: str = (
+        ""  # Parsed thinking trace (from <think> tags or separate field)
+    )
     log_path: str = ""  # Path to conversation log file (set by call_llm)
 
 
 @dataclass
 class AgentResult:
     """Result from a multi-round tool-use agent loop."""
+
     text: str
     tool_calls: list[ToolCall] = field(default_factory=list)
     total_input_tokens: int = 0
@@ -282,8 +305,13 @@ class AgentResult:
     total_answer_tokens: int = 0
 
 
-def call_llm(system: str, user_content: str, config: Config,
-             agent_name: str = "", iteration: int = 0) -> LLMResponse:
+def call_llm(
+    system: str,
+    user_content: str,
+    config: Config,
+    agent_name: str = "",
+    iteration: int = 0,
+) -> LLMResponse:
     """Call the LLM with retry on transient errors."""
     if not user_content or not user_content.strip():
         raise ValueError(
@@ -299,7 +327,8 @@ def call_llm(system: str, user_content: str, config: Config,
     initial_messages = [{"role": "user", "content": user_content}]
     start = time.time()
     resp = _call_provider_with_retry(
-        provider, config,
+        provider,
+        config,
         workspace_dir=config.workspace_dir,
         iteration=iteration,
         model=config.model_id,
@@ -310,10 +339,15 @@ def call_llm(system: str, user_content: str, config: Config,
     # If the response was truncated, attempt continuation(s) in-place.
     if resp.stop_reason == "max_tokens":
         resp = continue_on_max_tokens(
-            provider, resp, config,
-            model=config.model_id, max_tokens=config.max_tokens,
-            system=system, messages=initial_messages,
-            workspace_dir=config.workspace_dir, iteration=iteration,
+            provider,
+            resp,
+            config,
+            model=config.model_id,
+            max_tokens=config.max_tokens,
+            system=system,
+            messages=initial_messages,
+            workspace_dir=config.workspace_dir,
+            iteration=iteration,
             agent_name=agent_name,
         )
     duration = time.time() - start
@@ -331,26 +365,43 @@ def call_llm(system: str, user_content: str, config: Config,
 
     if config.workspace_dir:
         log_llm_call(
-            config.workspace_dir, agent_name, iteration, config.model,
-            llm_response.input_tokens, llm_response.output_tokens,
-            llm_response.stop_reason, round(llm_response.duration, 2),
-            len(system), len(user_content), len(llm_response.text),
+            config.workspace_dir,
+            agent_name,
+            iteration,
+            config.model,
+            llm_response.input_tokens,
+            llm_response.output_tokens,
+            llm_response.stop_reason,
+            round(llm_response.duration, 2),
+            len(system),
+            len(user_content),
+            len(llm_response.text),
             reasoning_tokens=llm_response.reasoning_tokens,
             answer_tokens=llm_response.answer_tokens,
         )
 
     # Overwrite preliminary log with full version (system + user + response)
     llm_response.log_path = _write_conversation_log(
-        config, llm_response, system, user_content, agent_name, iteration,
+        config,
+        llm_response,
+        system,
+        user_content,
+        agent_name,
+        iteration,
         log_path=log_path,
     )
 
     return llm_response
 
 
-def call_llm_continuation(system: str, messages: list[dict], config: Config,
-                          agent_name: str = "", iteration: int = 0,
-                          append_to_log: str = "") -> LLMResponse:
+def call_llm_continuation(
+    system: str,
+    messages: list[dict],
+    config: Config,
+    agent_name: str = "",
+    iteration: int = 0,
+    append_to_log: str = "",
+) -> LLMResponse:
     """Continue a multi-turn conversation.
 
     Like :func:`call_llm` but accepts a full ``messages`` list (e.g.
@@ -371,7 +422,8 @@ def call_llm_continuation(system: str, messages: list[dict], config: Config,
 
     start = time.time()
     resp = _call_provider_with_retry(
-        provider, config,
+        provider,
+        config,
         workspace_dir=config.workspace_dir,
         iteration=iteration,
         model=config.model_id,
@@ -381,10 +433,15 @@ def call_llm_continuation(system: str, messages: list[dict], config: Config,
     )
     if resp.stop_reason == "max_tokens":
         resp = continue_on_max_tokens(
-            provider, resp, config,
-            model=config.model_id, max_tokens=config.max_tokens,
-            system=system, messages=list(messages),
-            workspace_dir=config.workspace_dir, iteration=iteration,
+            provider,
+            resp,
+            config,
+            model=config.model_id,
+            max_tokens=config.max_tokens,
+            system=system,
+            messages=list(messages),
+            workspace_dir=config.workspace_dir,
+            iteration=iteration,
             agent_name=agent_name,
         )
     duration = time.time() - start
@@ -406,25 +463,37 @@ def call_llm_continuation(system: str, messages: list[dict], config: Config,
             "",
         )
         log_llm_call(
-            config.workspace_dir, agent_name, iteration, config.model,
-            llm_response.input_tokens, llm_response.output_tokens,
-            llm_response.stop_reason, _round_num(llm_response.duration, 2),
-            len(system), len(last_user) if isinstance(last_user, str) else 0,
+            config.workspace_dir,
+            agent_name,
+            iteration,
+            config.model,
+            llm_response.input_tokens,
+            llm_response.output_tokens,
+            llm_response.stop_reason,
+            _round_num(llm_response.duration, 2),
+            len(system),
+            len(last_user) if isinstance(last_user, str) else 0,
             len(llm_response.text),
             reasoning_tokens=llm_response.reasoning_tokens,
             answer_tokens=llm_response.answer_tokens,
         )
 
     # Append the retry turn to the original log file, or create a new one
-    _append_retry_to_log(config, llm_response, messages, agent_name,
-                         iteration, append_to_log)
+    _append_retry_to_log(
+        config, llm_response, messages, agent_name, iteration, append_to_log
+    )
 
     return llm_response
 
 
-def _append_retry_to_log(config: Config, resp: LLMResponse,
-                         messages: list[dict], agent_name: str,
-                         iteration: int, append_to_log: str):
+def _append_retry_to_log(
+    config: Config,
+    resp: LLMResponse,
+    messages: list[dict],
+    agent_name: str,
+    iteration: int,
+    append_to_log: str,
+):
     """Append the retry exchange (correction message + response) to a log file.
 
     If *append_to_log* points to an existing file, appends only the new
@@ -447,16 +516,18 @@ def _append_retry_to_log(config: Config, resp: LLMResponse,
         f'tokens_out="{resp.output_tokens}"'
     )
     if resp.reasoning_tokens and resp.reasoning_tokens > 0:
-        resp_attrs += f' reasoning="{resp.reasoning_tokens}" answer="{resp.answer_tokens}"'
+        resp_attrs += (
+            f' reasoning="{resp.reasoning_tokens}" answer="{resp.answer_tokens}"'
+        )
     resp_attrs += f' duration="{resp.duration:.1f}s" stop="{resp.stop_reason}"'
 
     retry_section = (
         f'\n\n<RETRY_MESSAGE chars="{len(correction)}">\n'
-        f'{correction}\n'
-        f'</RETRY_MESSAGE>\n\n'
-        f'<LLM_RESPONSE {resp_attrs}>\n'
-        f'{resp.text}\n'
-        f'</LLM_RESPONSE>\n'
+        f"{correction}\n"
+        f"</RETRY_MESSAGE>\n\n"
+        f"<LLM_RESPONSE {resp_attrs}>\n"
+        f"{resp.text}\n"
+        f"</LLM_RESPONSE>\n"
     )
 
     # Try to append to existing log file
@@ -484,14 +555,10 @@ def _append_retry_to_log(config: Config, resp: LLMResponse,
             content = str(content)
         tag = "USER_MESSAGE" if role == "USER" else "ASSISTANT_RESPONSE"
         parts.append(f'<{tag} chars="{len(content)}">\n{content}\n</{tag}>')
-    parts.append(
-        f'<LLM_RESPONSE {resp_attrs}>\n{resp.text}\n</LLM_RESPONSE>'
-    )
+    parts.append(f"<LLM_RESPONSE {resp_attrs}>\n{resp.text}\n</LLM_RESPONSE>")
 
     try:
-        Path(config.logs_dir, filename).write_text(
-            "\n\n".join(parts) + "\n"
-        )
+        Path(config.logs_dir, filename).write_text("\n\n".join(parts) + "\n")
     except OSError:
         pass
 
@@ -505,7 +572,8 @@ def run_agent_loop(
     max_rounds: int = 10,
     agent_name: str = "",
     iteration: int = 0,
-    on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None] | None = None,
+    on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None]
+    | None = None,
 ) -> AgentResult:
     """Run a tool-use agent loop until end_turn, max_rounds, or max_tokens."""
     provider = _get_provider(config)
@@ -520,7 +588,9 @@ def run_agent_loop(
         _log_seq = _call_seq.get(iteration, 0) + 1
         _call_seq[iteration] = _log_seq
         _log_agent = agent_name or "unknown"
-        _log_filepath = Path(config.logs_dir, f"iter{iteration:03d}_{_log_seq:02d}_{_log_agent}.md")
+        _log_filepath = Path(
+            config.logs_dir, f"iter{iteration:03d}_{_log_seq:02d}_{_log_agent}.md"
+        )
 
     def _flush_log() -> None:
         """Rewrite the log file with current accumulated state."""
@@ -543,14 +613,14 @@ def run_agent_loop(
     token_alert_fired = False
     overall_start = time.time()
 
-    tool_call_failure = False
     empty_end_turn_count = 0
     ready_conclude_recovery_count = 0
     text_end_turn_recovery_count = 0
     loop_exit_reason = "max_rounds"  # default; overridden on early exits
     # Resolve exit tool name(s) for context-aware messages
     _exit_tool_names: frozenset[str] = getattr(
-        tool_executor, "exit_tool_names",
+        tool_executor,
+        "exit_tool_names",
         frozenset({getattr(tool_executor, "exit_tool_name", "submit_review")}),
     )
     if len(_exit_tool_names) == 1:
@@ -571,7 +641,8 @@ def run_agent_loop(
         _flush_log()
         try:
             resp = _call_provider_with_retry(
-                provider, config,
+                provider,
+                config,
                 workspace_dir=config.workspace_dir,
                 iteration=iteration,
                 model=config.model_id,
@@ -585,11 +656,15 @@ def run_agent_loop(
                 f"[yellow]Context too long (round {round_num}): {exc} "
                 f"— falling back to text-only response[/yellow]"
             )
-            tool_call_failure = True
             loop_exit_reason = "context_too_long"
             if config.workspace_dir:
-                log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY, "context_too_long_fallback",
-                                   f"round={round_num}, input_tokens={exc.input_tokens}")
+                log_scaffold_event(
+                    config.workspace_dir,
+                    iteration,
+                    CC.CALL_RELIABILITY,
+                    "context_too_long_fallback",
+                    f"round={round_num}, input_tokens={exc.input_tokens}",
+                )
             break
         except Exception as exc:
             if is_tool_call_failure(exc):
@@ -598,11 +673,15 @@ def run_agent_loop(
                     f"(round {round_num}): {exc} — falling back to "
                     f"text-only response[/yellow]"
                 )
-                tool_call_failure = True
                 loop_exit_reason = "tool_call_failure"
                 if config.workspace_dir:
-                    log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY, "tool_call_failure_fallback",
-                                       f"round={round_num}")
+                    log_scaffold_event(
+                        config.workspace_dir,
+                        iteration,
+                        CC.CALL_RELIABILITY,
+                        "tool_call_failure_fallback",
+                        f"round={round_num}",
+                    )
                 break
             if is_provider_side_400(exc):
                 console.print(
@@ -610,11 +689,15 @@ def run_agent_loop(
                     f"(round {round_num}): {exc} — falling back to "
                     f"text-only response[/yellow]"
                 )
-                tool_call_failure = True
                 loop_exit_reason = "provider_side_400"
                 if config.workspace_dir:
-                    log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY, "provider_side_400_fallback",
-                                       f"round={round_num}")
+                    log_scaffold_event(
+                        config.workspace_dir,
+                        iteration,
+                        CC.CALL_RELIABILITY,
+                        "provider_side_400_fallback",
+                        f"round={round_num}",
+                    )
                 break
             raise
         # If the round was truncated, try to continue in place before
@@ -623,22 +706,34 @@ def run_agent_loop(
         # proceeds normally with the merged response.
         if resp.stop_reason == "max_tokens":
             resp = continue_on_max_tokens(
-                provider, resp, config,
-                model=config.model_id, max_tokens=config.max_tokens,
-                system=system, messages=messages,
+                provider,
+                resp,
+                config,
+                model=config.model_id,
+                max_tokens=config.max_tokens,
+                system=system,
+                messages=messages,
                 tools=active_tools,
-                workspace_dir=config.workspace_dir, iteration=iteration,
+                workspace_dir=config.workspace_dir,
+                iteration=iteration,
                 agent_name=agent_name,
             )
         duration = time.time() - start
 
-        round_log.append({
-            "kind": "llm_response", "round": round_num,
-            "text": resp.text, "tool_calls": resp.tool_calls,
-            "input_tokens": resp.input_tokens, "output_tokens": resp.output_tokens,
-            "reasoning_tokens": resp.reasoning_tokens, "answer_tokens": resp.answer_tokens,
-            "stop_reason": resp.stop_reason, "duration": duration,
-        })
+        round_log.append(
+            {
+                "kind": "llm_response",
+                "round": round_num,
+                "text": resp.text,
+                "tool_calls": resp.tool_calls,
+                "input_tokens": resp.input_tokens,
+                "output_tokens": resp.output_tokens,
+                "reasoning_tokens": resp.reasoning_tokens,
+                "answer_tokens": resp.answer_tokens,
+                "stop_reason": resp.stop_reason,
+                "duration": duration,
+            }
+        )
 
         total_input += resp.input_tokens
         total_output += resp.output_tokens
@@ -660,12 +755,20 @@ def run_agent_loop(
         )
         if config.workspace_dir:
             log_llm_call(
-                config.workspace_dir, agent_name, iteration, config.model,
-                round_resp.input_tokens, round_resp.output_tokens,
-                round_resp.stop_reason, _round_num(round_resp.duration, 2),
-                len(system), len(user_content), len(round_resp.text),
+                config.workspace_dir,
+                agent_name,
+                iteration,
+                config.model,
+                round_resp.input_tokens,
+                round_resp.output_tokens,
+                round_resp.stop_reason,
+                _round_num(round_resp.duration, 2),
+                len(system),
+                len(user_content),
+                len(round_resp.text),
                 reasoning_tokens=round_resp.reasoning_tokens,
-                answer_tokens=round_resp.answer_tokens, round=round_num,
+                answer_tokens=round_resp.answer_tokens,
+                round=round_num,
             )
 
         # end_turn: done (unless empty text after tool calls — attempt recovery)
@@ -681,14 +784,22 @@ def run_agent_loop(
                 )
                 messages.append(provider.format_assistant_message(resp.raw_content))
                 messages.append({"role": "user", "content": _recovery_msg})
-                round_log.append({
-                    "kind": "scaffold_injection", "round": round_num,
-                    "label": "empty_end_turn_recovery", "content": _recovery_msg,
-                })
+                round_log.append(
+                    {
+                        "kind": "scaffold_injection",
+                        "round": round_num,
+                        "label": "empty_end_turn_recovery",
+                        "content": _recovery_msg,
+                    }
+                )
                 if config.workspace_dir:
-                    log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY,
-                                       "empty_end_turn_recovery",
-                                       f"round={round_num}, count={empty_end_turn_count}")
+                    log_scaffold_event(
+                        config.workspace_dir,
+                        iteration,
+                        CC.CALL_RELIABILITY,
+                        "empty_end_turn_recovery",
+                        f"round={round_num}, count={empty_end_turn_count}",
+                    )
                 continue
             empty_end_turn_count = 0  # non-empty turn resets counter
 
@@ -703,20 +814,32 @@ def run_agent_loop(
                     )
                     messages.append(provider.format_assistant_message(resp.raw_content))
                     messages.append({"role": "user", "content": _recovery_msg})
-                    round_log.append({
-                        "kind": "scaffold_injection", "round": round_num,
-                        "label": "ready_conclude_recovery", "content": _recovery_msg,
-                    })
+                    round_log.append(
+                        {
+                            "kind": "scaffold_injection",
+                            "round": round_num,
+                            "label": "ready_conclude_recovery",
+                            "content": _recovery_msg,
+                        }
+                    )
                     if config.workspace_dir:
-                        log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY,
-                                           "ready_conclude_recovery", f"round={round_num}")
+                        log_scaffold_event(
+                            config.workspace_dir,
+                            iteration,
+                            CC.CALL_RELIABILITY,
+                            "ready_conclude_recovery",
+                            f"round={round_num}",
+                        )
                     continue
                 # Second time: fall through to normal end_turn return
 
             # Text end_turn recovery: model wrote findings as text without calling exit tool
-            if (round_text.strip() and all_tool_calls
-                    and not getattr(tool_executor, "stop_after_round", False)
-                    and not getattr(tool_executor, "ready_to_conclude_signaled", False)):
+            if (
+                round_text.strip()
+                and all_tool_calls
+                and not getattr(tool_executor, "stop_after_round", False)
+                and not getattr(tool_executor, "ready_to_conclude_signaled", False)
+            ):
                 text_end_turn_recovery_count += 1
                 if text_end_turn_recovery_count == 1:
                     _recovery_msg = (
@@ -726,13 +849,22 @@ def run_agent_loop(
                     )
                     messages.append(provider.format_assistant_message(resp.raw_content))
                     messages.append({"role": "user", "content": _recovery_msg})
-                    round_log.append({
-                        "kind": "scaffold_injection", "round": round_num,
-                        "label": "text_end_turn_recovery", "content": _recovery_msg,
-                    })
+                    round_log.append(
+                        {
+                            "kind": "scaffold_injection",
+                            "round": round_num,
+                            "label": "text_end_turn_recovery",
+                            "content": _recovery_msg,
+                        }
+                    )
                     if config.workspace_dir:
-                        log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY,
-                                           "text_end_turn_recovery", f"round={round_num}")
+                        log_scaffold_event(
+                            config.workspace_dir,
+                            iteration,
+                            CC.CALL_RELIABILITY,
+                            "text_end_turn_recovery",
+                            f"round={round_num}",
+                        )
                     continue
                 # Second time: fall through to normal end_turn return
 
@@ -750,9 +882,16 @@ def run_agent_loop(
                 total_answer_tokens=total_answer,
             )
             _write_agent_conversation_log(
-                config, system, user_content, agent_name,
-                iteration, round_log, result, tools=tools,
-                _filepath=_log_filepath)
+                config,
+                system,
+                user_content,
+                agent_name,
+                iteration,
+                round_log,
+                result,
+                tools=tools,
+                _filepath=_log_filepath,
+            )
             return result
 
         # max_tokens: truncated
@@ -771,9 +910,16 @@ def run_agent_loop(
                 total_answer_tokens=total_answer,
             )
             _write_agent_conversation_log(
-                config, system, user_content, agent_name,
-                iteration, round_log, result, tools=tools,
-                _filepath=_log_filepath)
+                config,
+                system,
+                user_content,
+                agent_name,
+                iteration,
+                round_log,
+                result,
+                tools=tools,
+                _filepath=_log_filepath,
+            )
             return result
 
         # tool_use: execute tools and continue
@@ -787,18 +933,25 @@ def run_agent_loop(
             for tc_info in resp.tool_calls:
                 tc = tool_executor.execute(tc_info["name"], tc_info["input"])
                 all_tool_calls.append(tc)
-                round_log.append({
-                    "kind": "tool_result", "round": round_num,
-                    "tool_name": tc.tool_name, "tool_input": tc.tool_input,
-                    "output": tc.output, "is_error": tc.is_error,
-                    "duration": tc.duration,
-                })
-                tool_results.append({
-                    "tool_call_id": tc_info["id"],
-                    "name": tc_info["name"],
-                    "output": tc.output,
-                    "is_error": tc.is_error,
-                })
+                round_log.append(
+                    {
+                        "kind": "tool_result",
+                        "round": round_num,
+                        "tool_name": tc.tool_name,
+                        "tool_input": tc.tool_input,
+                        "output": tc.output,
+                        "is_error": tc.is_error,
+                        "duration": tc.duration,
+                    }
+                )
+                tool_results.append(
+                    {
+                        "tool_call_id": tc_info["id"],
+                        "name": tc_info["name"],
+                        "output": tc.output,
+                        "is_error": tc.is_error,
+                    }
+                )
 
             messages.extend(provider.build_tool_result_messages(tool_results))
 
@@ -807,28 +960,49 @@ def run_agent_loop(
                 injection = tool_executor.end_round()
                 if injection:
                     messages.append({"role": "user", "content": injection})
-                    round_log.append({
-                        "kind": "scaffold_injection", "round": round_num,
-                        "label": "state_injection", "content": injection,
-                    })
+                    round_log.append(
+                        {
+                            "kind": "scaffold_injection",
+                            "round": round_num,
+                            "label": "state_injection",
+                            "content": injection,
+                        }
+                    )
 
             if config.workspace_dir:
-                for tc in all_tool_calls[-len(tool_results):]:
+                for tc in all_tool_calls[-len(tool_results) :]:
                     if tc.output.startswith("TIMEOUT:"):
-                        log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY, "tool_timeout",
-                                           f"round={round_num}")
+                        log_scaffold_event(
+                            config.workspace_dir,
+                            iteration,
+                            CC.CALL_RELIABILITY,
+                            "tool_timeout",
+                            f"round={round_num}",
+                        )
                     elif "[... truncated" in tc.output or "[...truncated" in tc.output:
-                        log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY, "tool_output_truncation",
-                                           f"round={round_num}")
+                        log_scaffold_event(
+                            config.workspace_dir,
+                            iteration,
+                            CC.CALL_RELIABILITY,
+                            "tool_output_truncation",
+                            f"round={round_num}",
+                        )
 
             # Notify caller about round progress
-            round_tool_calls = [tc for tc in all_tool_calls[-len(tool_results):]]
+            round_tool_calls = [tc for tc in all_tool_calls[-len(tool_results) :]]
             if on_round:
-                on_round(round_num, resp.stop_reason, round_tool_calls,
-                         total_input, total_output,
-                         resp.input_tokens, resp.output_tokens, round_duration=duration,
-                         round_reasoning=resp.reasoning_tokens,
-                         round_answer=resp.answer_tokens)
+                on_round(
+                    round_num,
+                    resp.stop_reason,
+                    round_tool_calls,
+                    total_input,
+                    total_output,
+                    resp.input_tokens,
+                    resp.output_tokens,
+                    round_duration=duration,
+                    round_reasoning=resp.reasoning_tokens,
+                    round_answer=resp.answer_tokens,
+                )
 
             # Executor-signaled early stop (e.g., orchestrator dispatch tools)
             if getattr(tool_executor, "stop_after_round", False):
@@ -846,24 +1020,37 @@ def run_agent_loop(
                     token_alert_fired=token_alert_fired,
                 )
                 _write_agent_conversation_log(
-                    config, system, user_content, agent_name,
-                    iteration, round_log, result, tools=tools,
-                    _filepath=_log_filepath)
+                    config,
+                    system,
+                    user_content,
+                    agent_name,
+                    iteration,
+                    round_log,
+                    result,
+                    tools=tools,
+                    _filepath=_log_filepath,
+                )
                 return result
 
             # Track consecutive execute_python for progress check
-            round_has_exec = any(tc.tool_name == "execute_python"
-                                 for tc in all_tool_calls[-len(tool_results):])
-            round_has_progress = any(tc.tool_name == "report_progress"
-                                     for tc in all_tool_calls[-len(tool_results):])
+            round_has_exec = any(
+                tc.tool_name == "execute_python"
+                for tc in all_tool_calls[-len(tool_results) :]
+            )
+            round_has_progress = any(
+                tc.tool_name == "report_progress"
+                for tc in all_tool_calls[-len(tool_results) :]
+            )
             if round_has_progress:
                 consecutive_exec_python = 0
             elif round_has_exec:
                 consecutive_exec_python += 1
 
             # Progress check: after N consecutive execute_python rounds, require report_progress
-            if (consecutive_exec_python >= config.progress_check_interval
-                    and consecutive_exec_python % config.progress_check_interval == 0):
+            if (
+                consecutive_exec_python >= config.progress_check_interval
+                and consecutive_exec_python % config.progress_check_interval == 0
+            ):
                 _progress_msg = (
                     "PROGRESS CHECK: You have run {n} consecutive computations without "
                     "reporting your progress. Before your next execute_python call, "
@@ -877,14 +1064,22 @@ def run_agent_loop(
                 # Expose report_progress tool for the next round
                 if hasattr(tool_executor, "_progress_check_pending"):
                     tool_executor._progress_check_pending = True
-                round_log.append({
-                    "kind": "scaffold_injection", "round": round_num,
-                    "label": "progress_check", "content": _progress_msg,
-                })
+                round_log.append(
+                    {
+                        "kind": "scaffold_injection",
+                        "round": round_num,
+                        "label": "progress_check",
+                        "content": _progress_msg,
+                    }
+                )
                 if config.workspace_dir:
-                    log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY,
-                                       "progress_check",
-                                       f"consecutive_exec={consecutive_exec_python}, round={round_num}")
+                    log_scaffold_event(
+                        config.workspace_dir,
+                        iteration,
+                        CC.CALL_RELIABILITY,
+                        "progress_check",
+                        f"consecutive_exec={consecutive_exec_python}, round={round_num}",
+                    )
 
             # Final warning near end of loop
             if round_num == max_rounds - 2 and max_rounds >= 5:
@@ -894,10 +1089,14 @@ def run_agent_loop(
                     f"Call {_exit_tool_msg} now."
                 )
                 messages.append({"role": "user", "content": _final_warn_msg})
-                round_log.append({
-                    "kind": "scaffold_injection", "round": round_num,
-                    "label": "final_warning", "content": _final_warn_msg,
-                })
+                round_log.append(
+                    {
+                        "kind": "scaffold_injection",
+                        "round": round_num,
+                        "label": "final_warning",
+                        "content": _final_warn_msg,
+                    }
+                )
 
             # CRITICAL penultimate-round instruction
             if round_num == max_rounds - 1 and max_rounds >= 4:
@@ -907,10 +1106,14 @@ def run_agent_loop(
                     "output as text in this response."
                 )
                 messages.append({"role": "user", "content": _crit_msg})
-                round_log.append({
-                    "kind": "scaffold_injection", "round": round_num,
-                    "label": "critical_warning", "content": _crit_msg,
-                })
+                round_log.append(
+                    {
+                        "kind": "scaffold_injection",
+                        "round": round_num,
+                        "label": "critical_warning",
+                        "content": _crit_msg,
+                    }
+                )
 
             # Progressive log: flush after each round that continues the loop
             _flush_log()
@@ -926,15 +1129,24 @@ def run_agent_loop(
     reason = _reasons_human.get(loop_exit_reason, _reasons_human["max_rounds"])
 
     if config.workspace_dir:
-        log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY, "forced_final_call", loop_exit_reason)
+        log_scaffold_event(
+            config.workspace_dir,
+            iteration,
+            CC.CALL_RELIABILITY,
+            "forced_final_call",
+            loop_exit_reason,
+        )
 
     # Always include the exit tool unless a provider-side failure prevents tool use
-    _forced_with_exit_tool = (
-        loop_exit_reason not in ("tool_call_failure", "provider_side_400")
+    _forced_with_exit_tool = loop_exit_reason not in (
+        "tool_call_failure",
+        "provider_side_400",
     )
     _exit_tool_defs = None
     if _forced_with_exit_tool:
-        _exit_tool_defs = [t for t in tools if t["function"]["name"] in _exit_tool_names]
+        _exit_tool_defs = [
+            t for t in tools if t["function"]["name"] in _exit_tool_names
+        ]
         if not _exit_tool_defs:
             _forced_with_exit_tool = False
 
@@ -954,8 +1166,14 @@ def run_agent_loop(
     messages.append({"role": "user", "content": forced_msg})
 
     # Log the injection in conversation log
-    round_log.append({"kind": "scaffold_injection", "round": round_num + 1,
-                       "label": "forced_final_message", "content": forced_msg})
+    round_log.append(
+        {
+            "kind": "scaffold_injection",
+            "round": round_num + 1,
+            "label": "forced_final_message",
+            "content": forced_msg,
+        }
+    )
 
     # Clear executor state so forced dispatch isn't rejected by the dispatch gate
     if hasattr(tool_executor, "begin_round"):
@@ -970,7 +1188,7 @@ def run_agent_loop(
         _forced_call_kwargs = dict(
             model=config.model_id,
             max_tokens=config.max_tokens,
-            system=system,       # UNCHANGED system prompt
+            system=system,  # UNCHANGED system prompt
             messages=provider.prepare_messages(messages),
         )
         if _forced_with_exit_tool:
@@ -979,7 +1197,8 @@ def run_agent_loop(
         try:
             start = time.time()
             final_resp = _call_provider_with_retry(
-                provider, config,
+                provider,
+                config,
                 workspace_dir=config.workspace_dir,
                 iteration=iteration,
                 **_forced_call_kwargs,
@@ -998,13 +1217,17 @@ def run_agent_loop(
                     if tc_info["name"] in _exit_tool_names:
                         tc = tool_executor.execute(tc_info["name"], tc_info["input"])
                         all_tool_calls.append(tc)
-                        round_log.append({
-                            "kind": "tool_result",
-                            "round": round_num + 1 + _forced_attempt,
-                            "tool_name": tc.tool_name, "tool_input": tc.tool_input,
-                            "output": tc.output, "is_error": tc.is_error,
-                            "duration": tc.duration,
-                        })
+                        round_log.append(
+                            {
+                                "kind": "tool_result",
+                                "round": round_num + 1 + _forced_attempt,
+                                "tool_name": tc.tool_name,
+                                "tool_input": tc.tool_input,
+                                "output": tc.output,
+                                "is_error": tc.is_error,
+                                "duration": tc.duration,
+                            }
+                        )
 
             # Exit tool called — done
             if getattr(tool_executor, "stop_after_round", False):
@@ -1012,22 +1235,30 @@ def run_agent_loop(
 
             # Retry if exit tool not called and retries remain
             if _forced_with_exit_tool and _forced_attempt < _forced_max_retries:
-                messages.append(provider.format_assistant_message(final_resp.raw_content))
+                messages.append(
+                    provider.format_assistant_message(final_resp.raw_content)
+                )
                 _retry_msg = (
                     f"You did not call {_exit_tool_msg}. "
                     f"You MUST call {_exit_tool_msg} with your findings to complete your task."
                 )
                 messages.append({"role": "user", "content": _retry_msg})
-                round_log.append({
-                    "kind": "scaffold_injection",
-                    "round": round_num + 1 + _forced_attempt,
-                    "label": "forced_exit_tool_retry",
-                    "content": _retry_msg,
-                })
+                round_log.append(
+                    {
+                        "kind": "scaffold_injection",
+                        "round": round_num + 1 + _forced_attempt,
+                        "label": "forced_exit_tool_retry",
+                        "content": _retry_msg,
+                    }
+                )
                 if config.workspace_dir:
-                    log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY,
-                                       "forced_exit_tool_retry",
-                                       f"attempt={_forced_attempt + 1}")
+                    log_scaffold_event(
+                        config.workspace_dir,
+                        iteration,
+                        CC.CALL_RELIABILITY,
+                        "forced_exit_tool_retry",
+                        f"attempt={_forced_attempt + 1}",
+                    )
                 continue
             break  # No retries configured or all retries exhausted
         except Exception as exc:
@@ -1035,9 +1266,13 @@ def run_agent_loop(
                 f"[yellow]Forced final call failed: {type(exc).__name__}: {exc}[/yellow]"
             )
             if config.workspace_dir:
-                log_scaffold_event(config.workspace_dir, iteration, CC.CALL_RELIABILITY,
-                                   "forced_final_call_failed",
-                                   f"{type(exc).__name__}: {str(exc)[:200]}")
+                log_scaffold_event(
+                    config.workspace_dir,
+                    iteration,
+                    CC.CALL_RELIABILITY,
+                    "forced_final_call_failed",
+                    f"{type(exc).__name__}: {str(exc)[:200]}",
+                )
             break
 
     # Token accumulation AFTER retry loop (correct for both success and failure)
@@ -1049,16 +1284,31 @@ def run_agent_loop(
     # Exit tool successfully called during forced final
     if _forced_with_exit_tool and getattr(tool_executor, "stop_after_round", False):
         if on_round:
-            on_round(round_num + 1, "executor_stop", [], total_input, total_output,
-                     final_in, final_out, round_duration=final_dur,
-                     round_reasoning=final_reasoning, round_answer=final_answer)
-        round_log.append({
-            "kind": "forced_final_call", "round": round_num + 1,
-            "reason": "forced_exit_tool", "text": final_text,
-            "input_tokens": final_in, "output_tokens": final_out,
-            "reasoning_tokens": final_reasoning, "answer_tokens": final_answer,
-            "duration": final_dur,
-        })
+            on_round(
+                round_num + 1,
+                "executor_stop",
+                [],
+                total_input,
+                total_output,
+                final_in,
+                final_out,
+                round_duration=final_dur,
+                round_reasoning=final_reasoning,
+                round_answer=final_answer,
+            )
+        round_log.append(
+            {
+                "kind": "forced_final_call",
+                "round": round_num + 1,
+                "reason": "forced_exit_tool",
+                "text": final_text,
+                "input_tokens": final_in,
+                "output_tokens": final_out,
+                "reasoning_tokens": final_reasoning,
+                "answer_tokens": final_answer,
+                "duration": final_dur,
+            }
+        )
         result = AgentResult(
             text=final_text,
             tool_calls=all_tool_calls,
@@ -1073,31 +1323,62 @@ def run_agent_loop(
             total_answer_tokens=total_answer,
         )
         _write_agent_conversation_log(
-            config, system, user_content, agent_name,
-            iteration, round_log, result, tools=tools,
-            _filepath=_log_filepath)
+            config,
+            system,
+            user_content,
+            agent_name,
+            iteration,
+            round_log,
+            result,
+            tools=tools,
+            _filepath=_log_filepath,
+        )
         return result
 
     if on_round:
-        on_round(round_num + 1, "forced_partial", [], total_input, total_output,
-                 final_in, final_out, round_duration=final_dur,
-                 round_reasoning=final_reasoning, round_answer=final_answer)
+        on_round(
+            round_num + 1,
+            "forced_partial",
+            [],
+            total_input,
+            total_output,
+            final_in,
+            final_out,
+            round_duration=final_dur,
+            round_reasoning=final_reasoning,
+            round_answer=final_answer,
+        )
 
-    round_log.append({
-        "kind": "forced_final_call", "round": round_num + 1,
-        "reason": loop_exit_reason, "text": final_text,
-        "input_tokens": final_in, "output_tokens": final_out,
-        "reasoning_tokens": final_reasoning, "answer_tokens": final_answer,
-        "duration": final_dur,
-    })
+    round_log.append(
+        {
+            "kind": "forced_final_call",
+            "round": round_num + 1,
+            "reason": loop_exit_reason,
+            "text": final_text,
+            "input_tokens": final_in,
+            "output_tokens": final_out,
+            "reasoning_tokens": final_reasoning,
+            "answer_tokens": final_answer,
+            "duration": final_dur,
+        }
+    )
 
     if config.workspace_dir:
         log_llm_call(
-            config.workspace_dir, agent_name, iteration, config.model,
-            final_in, final_out, "forced_partial",
-            _round_num(final_dur, 2), len(system), len(user_content),
-            len(final_text), reasoning_tokens=final_reasoning,
-            answer_tokens=final_answer, round=round_num + 1,
+            config.workspace_dir,
+            agent_name,
+            iteration,
+            config.model,
+            final_in,
+            final_out,
+            "forced_partial",
+            _round_num(final_dur, 2),
+            len(system),
+            len(user_content),
+            len(final_text),
+            reasoning_tokens=final_reasoning,
+            answer_tokens=final_answer,
+            round=round_num + 1,
         )
 
     # Return result — empty text is an honest failure
@@ -1115,9 +1396,16 @@ def run_agent_loop(
         total_answer_tokens=total_answer,
     )
     _write_agent_conversation_log(
-        config, system, user_content, agent_name,
-        iteration, round_log, result, tools=tools,
-        _filepath=_log_filepath)
+        config,
+        system,
+        user_content,
+        agent_name,
+        iteration,
+        round_log,
+        result,
+        tools=tools,
+        _filepath=_log_filepath,
+    )
     return result
 
 
@@ -1134,8 +1422,9 @@ def _allocate_log_path(config: Config, agent_name: str, iteration: int) -> Path 
     return Path(config.logs_dir, f"iter{iteration:03d}_{seq:02d}_{agent}.md")
 
 
-def _write_preliminary_log(log_path: Path | None, system: str,
-                           user_content: str) -> None:
+def _write_preliminary_log(
+    log_path: Path | None, system: str, user_content: str
+) -> None:
     """Write system prompt + user message to *log_path* before the API call.
 
     If the call later succeeds, the file is overwritten with the full log
@@ -1151,7 +1440,7 @@ def _write_preliminary_log(log_path: Path | None, system: str,
         f'<USER_MESSAGE chars="{len(user_content)}">\n'
         f"{user_content}\n"
         f"</USER_MESSAGE>\n\n"
-        f"<LLM_RESPONSE status=\"pending\">\n"
+        f'<LLM_RESPONSE status="pending">\n'
         f"(API call in progress)\n"
         f"</LLM_RESPONSE>\n"
     )
@@ -1161,10 +1450,15 @@ def _write_preliminary_log(log_path: Path | None, system: str,
         pass
 
 
-def _write_conversation_log(config: Config, resp: LLMResponse,
-                            system: str, user_content: str,
-                            agent_name: str, iteration: int,
-                            log_path: Path | None = None) -> str:
+def _write_conversation_log(
+    config: Config,
+    resp: LLMResponse,
+    system: str,
+    user_content: str,
+    agent_name: str,
+    iteration: int,
+    log_path: Path | None = None,
+) -> str:
     """Write a per-call Markdown file with full prompts and response.
 
     If *log_path* is provided (pre-allocated), the file is overwritten
@@ -1177,10 +1471,12 @@ def _write_conversation_log(config: Config, resp: LLMResponse,
     if log_path is None:
         return ""
 
-    resp_attrs = f"chars=\"{len(resp.text)}\" tokens_in=\"{resp.input_tokens}\" tokens_out=\"{resp.output_tokens}\""
+    resp_attrs = f'chars="{len(resp.text)}" tokens_in="{resp.input_tokens}" tokens_out="{resp.output_tokens}"'
     if resp.reasoning_tokens and resp.reasoning_tokens > 0:
-        resp_attrs += f" reasoning=\"{resp.reasoning_tokens}\" answer=\"{resp.answer_tokens}\""
-    resp_attrs += f" duration=\"{resp.duration:.1f}s\" stop=\"{resp.stop_reason}\""
+        resp_attrs += (
+            f' reasoning="{resp.reasoning_tokens}" answer="{resp.answer_tokens}"'
+        )
+    resp_attrs += f' duration="{resp.duration:.1f}s" stop="{resp.stop_reason}"'
 
     content = f"""<SYSTEM_PROMPT chars="{len(system)}">
 {system}
@@ -1203,7 +1499,11 @@ def _write_conversation_log(config: Config, resp: LLMResponse,
 
 def _render_tool_input(name: str, input_data) -> str:
     """Render tool input for conversation log display."""
-    if name == "execute_python" and isinstance(input_data, dict) and "code" in input_data:
+    if (
+        name == "execute_python"
+        and isinstance(input_data, dict)
+        and "code" in input_data
+    ):
         purpose = input_data.get("purpose", "")
         purpose_line = f"**Purpose:** {purpose}\n\n" if purpose else ""
         return f"{purpose_line}~~~python\n{input_data['code']}\n~~~"
@@ -1238,7 +1538,8 @@ def _render_tools_block(tools: list[dict]) -> str:
 
 
 def _render_agent_conversation_log(
-    system: str, user_content: str,
+    system: str,
+    user_content: str,
     round_log: list[dict],
     tools: list[dict] | None = None,
 ) -> str:
@@ -1246,7 +1547,7 @@ def _render_agent_conversation_log(
     lines: list[str] = []
 
     # System prompt
-    lines.append(f"<SYSTEM_PROMPT chars=\"{len(system)}\">")
+    lines.append(f'<SYSTEM_PROMPT chars="{len(system)}">')
     lines.append(system)
     lines.append("</SYSTEM_PROMPT>\n")
 
@@ -1255,7 +1556,7 @@ def _render_agent_conversation_log(
         lines.append(_render_tools_block(tools))
 
     # User content
-    lines.append(f"<USER_MESSAGE chars=\"{len(user_content)}\">")
+    lines.append(f'<USER_MESSAGE chars="{len(user_content)}">')
     lines.append(user_content)
     lines.append("</USER_MESSAGE>\n")
 
@@ -1267,12 +1568,14 @@ def _render_agent_conversation_log(
         if kind == "llm_response":
             if round_open:
                 lines.append("</ROUND>\n")
-            lines.append(f"<ROUND n=\"{entry['round']}\">")
+            lines.append(f'<ROUND n="{entry["round"]}">')
             round_open = True
-            attrs = f"tokens_in=\"{entry['input_tokens']}\" tokens_out=\"{entry['output_tokens']}\""
+            attrs = f'tokens_in="{entry["input_tokens"]}" tokens_out="{entry["output_tokens"]}"'
             if entry.get("reasoning_tokens", 0) > 0:
-                attrs += f" reasoning=\"{entry['reasoning_tokens']}\" answer=\"{entry['answer_tokens']}\""
-            attrs += f" duration=\"{entry['duration']:.1f}s\" stop=\"{entry['stop_reason']}\""
+                attrs += f' reasoning="{entry["reasoning_tokens"]}" answer="{entry["answer_tokens"]}"'
+            attrs += (
+                f' duration="{entry["duration"]:.1f}s" stop="{entry["stop_reason"]}"'
+            )
             lines.append(f"\n<LLM_RESPONSE {attrs}>")
             text = entry.get("text", "")
             if text and text.strip():
@@ -1284,14 +1587,18 @@ def _render_agent_conversation_log(
                 for tc_info in entry["tool_calls"]:
                     tc_name = tc_info.get("name", "unknown")
                     tc_input = tc_info.get("input", {})
-                    lines.append(f"<TOOL_CALL name=\"{tc_name}\">")
+                    lines.append(f'<TOOL_CALL name="{tc_name}">')
                     lines.append(_render_tool_input(tc_name, tc_input))
                     lines.append("</TOOL_CALL>\n")
 
         elif kind == "tool_result":
             status = "error" if entry.get("is_error") else "success"
-            dur_attr = f" duration=\"{entry['duration']:.1f}s\"" if entry.get("duration") else ""
-            lines.append(f"<TOOL_RESULT name=\"{entry['tool_name']}\"{dur_attr} status=\"{status}\">")
+            dur_attr = (
+                f' duration="{entry["duration"]:.1f}s"' if entry.get("duration") else ""
+            )
+            lines.append(
+                f'<TOOL_RESULT name="{entry["tool_name"]}"{dur_attr} status="{status}">'
+            )
             lines.append(f"```\n{entry['output']}\n```")
             lines.append("</TOOL_RESULT>\n")
 
@@ -1299,12 +1606,12 @@ def _render_agent_conversation_log(
             if round_open:
                 lines.append("</ROUND>\n")
                 round_open = False
-            lines.append(f"<USER_MESSAGE label=\"scaffold: {entry['label']}\">")
+            lines.append(f'<USER_MESSAGE label="scaffold: {entry["label"]}">')
             lines.append(entry.get("content", ""))
             lines.append("</USER_MESSAGE>\n")
 
         elif kind == "checkpoint_response":
-            attrs = f"tokens_in=\"{entry['input_tokens']}\" tokens_out=\"{entry['output_tokens']}\""
+            attrs = f'tokens_in="{entry["input_tokens"]}" tokens_out="{entry["output_tokens"]}"'
             lines.append(f"\n<CHECKPOINT_RESPONSE {attrs}>")
             text = entry.get("text", "")
             if text and text.strip():
@@ -1318,11 +1625,11 @@ def _render_agent_conversation_log(
                 lines.append("</ROUND>\n")
                 round_open = False
             reason = entry.get("reason", "unknown")
-            attrs = f"reason=\"{reason}\" tokens_in=\"{entry['input_tokens']}\" tokens_out=\"{entry['output_tokens']}\""
+            attrs = f'reason="{reason}" tokens_in="{entry["input_tokens"]}" tokens_out="{entry["output_tokens"]}"'
             if entry.get("reasoning_tokens", 0) > 0:
-                attrs += f" reasoning=\"{entry['reasoning_tokens']}\" answer=\"{entry['answer_tokens']}\""
+                attrs += f' reasoning="{entry["reasoning_tokens"]}" answer="{entry["answer_tokens"]}"'
             if entry.get("duration"):
-                attrs += f" duration=\"{entry['duration']:.1f}s\""
+                attrs += f' duration="{entry["duration"]:.1f}s"'
             lines.append(f"<FORCED_FINAL_CALL {attrs}>")
             text = entry.get("text", "")
             if text and text.strip():
@@ -1338,9 +1645,13 @@ def _render_agent_conversation_log(
 
 
 def _write_agent_conversation_log(
-    config: Config, system: str, user_content: str,
-    agent_name: str, iteration: int,
-    round_log: list[dict], result: AgentResult,
+    config: Config,
+    system: str,
+    user_content: str,
+    agent_name: str,
+    iteration: int,
+    round_log: list[dict],
+    result: AgentResult,
     tools: list[dict] | None = None,
     _filepath: Path | None = None,
 ):

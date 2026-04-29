@@ -37,6 +37,7 @@ DEFAULT_WORKSPACE_BASE = PROJECT_ROOT / "workspaces"
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RunResult:
     run_index: int
@@ -52,6 +53,7 @@ class RunResult:
 # ---------------------------------------------------------------------------
 # Workspace result parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_workspace_results(workspace_dir: Path) -> tuple[str, bool, dict | None]:
     """Read results from a completed workspace.
@@ -115,9 +117,12 @@ async def run_one(
 ) -> RunResult:
     """Run a single open_dirac subprocess, streaming iteration progress."""
     cmd = [
-        "uv", "run", "open_dirac",
+        "uv",
+        "run",
+        "open_dirac",
         str(problem_path),
-        "--workspace-dir", str(workspace_dir),
+        "--workspace-dir",
+        str(workspace_dir),
     ]
     if model_key:
         cmd.extend(["--model", model_key])
@@ -234,6 +239,7 @@ async def run_one(
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
+
 async def run_multiple(args: argparse.Namespace) -> int:
     """Run N open_dirac instances and report results."""
     n = args.runs
@@ -271,10 +277,15 @@ async def run_multiple(args: argparse.Namespace) -> int:
     async def worker(run_index: int) -> RunResult:
         nonlocal completed
         result = await run_one(
-            run_index, args.problem, args.model,
-            args.max_iterations, args.config,
+            run_index,
+            args.problem,
+            args.model,
+            args.max_iterations,
+            args.config,
             workspace_dirs[run_index],
-            args.timeout, semaphore, print_lock,
+            args.timeout,
+            semaphore,
+            print_lock,
         )
         async with lock:
             completed += 1
@@ -380,28 +391,48 @@ async def run_multiple(args: argparse.Namespace) -> int:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run open_dirac N times on a single problem with concurrency.",
     )
     parser.add_argument("problem", type=Path, help="Path to problem YAML file")
-    parser.add_argument("--model", type=str, default=None,
-                        help=f"Model key from models.yaml (default: {DEFAULTS['model']})")
-    parser.add_argument("--max-iterations", type=int, default=None,
-                        help="Max iterations per run")
-    parser.add_argument("--config", type=Path, default=None,
-                        help="Config YAML file to pass through")
-    parser.add_argument("--runs", type=int, required=True,
-                        help="Number of independent runs")
-    parser.add_argument("--concurrency", type=int, default=10,
-                        help="Max parallel runs (default: 10)")
-    parser.add_argument("--timeout", type=int, default=3600,
-                        help="Per-run timeout in seconds (default: 3600)")
-    parser.add_argument("--workspace-base", type=Path, default=DEFAULT_WORKSPACE_BASE,
-                        help="Base directory for workspaces")
-    parser.add_argument("--output-dir", type=Path,
-                        default=PROJECT_ROOT / "results" / "multiple",
-                        help="Output directory for results JSON")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
+    )
+    parser.add_argument(
+        "--max-iterations", type=int, default=None, help="Max iterations per run"
+    )
+    parser.add_argument(
+        "--config", type=Path, default=None, help="Config YAML file to pass through"
+    )
+    parser.add_argument(
+        "--runs", type=int, required=True, help="Number of independent runs"
+    )
+    parser.add_argument(
+        "--concurrency", type=int, default=10, help="Max parallel runs (default: 10)"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=3600,
+        help="Per-run timeout in seconds (default: 3600)",
+    )
+    parser.add_argument(
+        "--workspace-base",
+        type=Path,
+        default=DEFAULT_WORKSPACE_BASE,
+        help="Base directory for workspaces",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "multiple",
+        help="Output directory for results JSON",
+    )
     args = parser.parse_args()
 
     if args.runs < 1:

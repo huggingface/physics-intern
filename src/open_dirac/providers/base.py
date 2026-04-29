@@ -4,7 +4,7 @@ import json
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -13,6 +13,7 @@ class ProviderResponse:
 
     Token invariant: output_tokens = reasoning_tokens + answer_tokens
     """
+
     text: str
     input_tokens: int
     output_tokens: int
@@ -34,7 +35,7 @@ def estimate_reasoning_tokens(content: str) -> int:
         return 0
 
     # Try standard <think>...</think> format first
-    match = re.search(r'<think>(.*?)</think>', content, re.DOTALL)
+    match = re.search(r"<think>(.*?)</think>", content, re.DOTALL)
     if match:
         thinking_text = match.group(1)
     elif "</think>" in content:
@@ -66,7 +67,9 @@ def estimate_answer_tokens(text: str, tool_calls: list[dict] | None = None) -> i
 
 
 def split_reasoning_tokens(
-    output_tokens: int, visible_text: str, tool_calls: list[dict] | None = None,
+    output_tokens: int,
+    visible_text: str,
+    tool_calls: list[dict] | None = None,
 ) -> tuple[int, int]:
     """Return (reasoning_tokens, answer_tokens) from total output and visible content.
 
@@ -80,7 +83,8 @@ def split_reasoning_tokens(
 
 
 def transform_earlier_assistant_turns(
-    messages: list[dict], transform: Callable[[dict], dict],
+    messages: list[dict],
+    transform: Callable[[dict], dict],
 ) -> list[dict]:
     """Apply ``transform`` to assistant messages before the final assistant one.
 
@@ -96,7 +100,9 @@ def transform_earlier_assistant_turns(
     if last_asst_idx < 0:
         return messages
     return [
-        transform(msg) if (msg.get("role") == "assistant" and i < last_asst_idx) else msg
+        transform(msg)
+        if (msg.get("role") == "assistant" and i < last_asst_idx)
+        else msg
         for i, msg in enumerate(messages)
     ]
 
@@ -112,7 +118,7 @@ def strip_think_tags(text: str) -> str:
     if not text:
         return ""
     # Standard format: remove all <think>...</think> blocks
-    stripped = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    stripped = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
     if stripped != text:
         return stripped.strip()
     # Bare </think>: everything before it is reasoning
@@ -125,8 +131,14 @@ class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
     @abstractmethod
-    def call(self, model: str, max_tokens: int, system: str,
-             messages: list[dict], tools: list[dict] | None = None) -> ProviderResponse:
+    def call(
+        self,
+        model: str,
+        max_tokens: int,
+        system: str,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+    ) -> ProviderResponse:
         """Make one API call, return normalized response.
 
         Tools are in OpenAI canonical format:

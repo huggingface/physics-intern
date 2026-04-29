@@ -25,13 +25,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from run_critpt_common import (
-    PROJECT_ROOT, DEFAULT_PROBLEMS_DIR, DEFAULTS,
-    Problem, RunResult,
-    resolve_critpt_model_string, discover_problems,
-    load_resume_config, find_completed_submissions,
-    resolve_model, make_output_dir,
-    write_submission_json, write_batch_metadata, write_initial_batch_metadata,
-    save_raw_response, setup_signal_handler, print_final_summary,
+    PROJECT_ROOT,
+    DEFAULT_PROBLEMS_DIR,
+    DEFAULTS,
+    Problem,
+    RunResult,
+    resolve_critpt_model_string,
+    discover_problems,
+    load_resume_config,
+    find_completed_submissions,
+    resolve_model,
+    make_output_dir,
+    write_submission_json,
+    write_batch_metadata,
+    write_initial_batch_metadata,
+    save_raw_response,
+    setup_signal_handler,
+    print_final_summary,
 )
 from open_dirac.verification.evaluate import extract_answer_code  # noqa: E402
 
@@ -42,43 +52,81 @@ DEFAULT_RESULTS_BASE = PROJECT_ROOT / "results" / "critpt_rsa"
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Run CritPt benchmark problems through RSA in parallel.",
     )
-    p.add_argument("--resume", type=Path, default=None,
-                   help="Resume from an existing output directory (recovers all params)")
-    p.add_argument("--model", default=None,
-                   help=f"Model key from models.yaml (default: {DEFAULTS['model']})")
-    p.add_argument("-N", type=int, default=None,
-                   help="RSA population size (default: 6)")
-    p.add_argument("-K", type=int, default=None,
-                   help="RSA aggregation subset size (default: 2)")
-    p.add_argument("-T", type=int, default=None,
-                   help="RSA number of rounds (default: 4)")
-    p.add_argument("--concurrency", type=int, default=3,
-                   help="Max parallel problems (default: 3)")
-    p.add_argument("--timeout", type=int, default=1800,
-                   help="Per-problem timeout in seconds (default: 1800)")
-    p.add_argument("--output-dir", type=Path, default=None,
-                   help="Output directory for submission JSONs")
-    p.add_argument("--problems-dir", type=Path, default=DEFAULT_PROBLEMS_DIR,
-                   help="Directory of problem YAMLs")
-    p.add_argument("--problems", type=str, default=None,
-                   help='Subset of problems, e.g. "1-10" or "1,5,30-40"')
-    p.add_argument("--force", action="store_true",
-                   help="Re-run problems even if submission JSON already exists")
-    p.add_argument("--no-sibling-history", action="store_true",
-                   help="Do not fold prior attempts from sibling output dirs "
-                        "into batch_metadata.json")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Show what would be run without executing")
+    p.add_argument(
+        "--resume",
+        type=Path,
+        default=None,
+        help="Resume from an existing output directory (recovers all params)",
+    )
+    p.add_argument(
+        "--model",
+        default=None,
+        help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
+    )
+    p.add_argument(
+        "-N", type=int, default=None, help="RSA population size (default: 6)"
+    )
+    p.add_argument(
+        "-K", type=int, default=None, help="RSA aggregation subset size (default: 2)"
+    )
+    p.add_argument(
+        "-T", type=int, default=None, help="RSA number of rounds (default: 4)"
+    )
+    p.add_argument(
+        "--concurrency", type=int, default=3, help="Max parallel problems (default: 3)"
+    )
+    p.add_argument(
+        "--timeout",
+        type=int,
+        default=1800,
+        help="Per-problem timeout in seconds (default: 1800)",
+    )
+    p.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory for submission JSONs",
+    )
+    p.add_argument(
+        "--problems-dir",
+        type=Path,
+        default=DEFAULT_PROBLEMS_DIR,
+        help="Directory of problem YAMLs",
+    )
+    p.add_argument(
+        "--problems",
+        type=str,
+        default=None,
+        help='Subset of problems, e.g. "1-10" or "1,5,30-40"',
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-run problems even if submission JSON already exists",
+    )
+    p.add_argument(
+        "--no-sibling-history",
+        action="store_true",
+        help="Do not fold prior attempts from sibling output dirs "
+        "into batch_metadata.json",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be run without executing",
+    )
     return p
 
 
 # ---------------------------------------------------------------------------
 # Stderr stats parser (RSA format)
 # ---------------------------------------------------------------------------
+
 
 def _parse_stderr_stats(stderr: str) -> dict | None:
     """Best-effort extraction of token/cost stats from RSA stderr."""
@@ -114,6 +162,7 @@ def _parse_stderr_stats(stderr: str) -> dict | None:
 # Worker: run one problem
 # ---------------------------------------------------------------------------
 
+
 async def run_one_problem(
     problem: Problem,
     model_key: str,
@@ -127,12 +176,20 @@ async def run_one_problem(
     """Run a single CritPt problem via RSA subprocess."""
     async with semaphore:
         cmd = [
-            "uv", "run", "python", "-m", "open_dirac.rsa",
+            "uv",
+            "run",
+            "python",
+            "-m",
+            "open_dirac.rsa",
             str(problem.yaml_path),
-            "--model", model_key,
-            "-N", str(rsa_N),
-            "-K", str(rsa_K),
-            "-T", str(rsa_T),
+            "--model",
+            model_key,
+            "-N",
+            str(rsa_N),
+            "-K",
+            str(rsa_K),
+            "-T",
+            str(rsa_T),
         ]
 
         start = time.monotonic()
@@ -145,7 +202,8 @@ async def run_one_problem(
                 start_new_session=True,
             )
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout,
+                proc.communicate(),
+                timeout=timeout,
             )
             elapsed = time.monotonic() - start
 
@@ -216,6 +274,7 @@ async def run_one_problem(
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
+
 async def run_batch(args: argparse.Namespace) -> int:
     """Main batch orchestrator. Returns exit code."""
     # Handle --resume: restore params from saved batch_metadata.json
@@ -271,10 +330,12 @@ async def run_batch(args: argparse.Namespace) -> int:
 
     # Print plan
     print(f"Model:       {args.model} ({critpt_model})", file=sys.stderr)
-    print(f"RSA params:  N={N}, K={K}, T={T} ({N * T} calls/problem)",
-          file=sys.stderr)
-    print(f"Problems:    {len(problems) + n_skip} total, "
-          f"{n_skip} skipped, {len(problems)} to run", file=sys.stderr)
+    print(f"RSA params:  N={N}, K={K}, T={T} ({N * T} calls/problem)", file=sys.stderr)
+    print(
+        f"Problems:    {len(problems) + n_skip} total, "
+        f"{n_skip} skipped, {len(problems)} to run",
+        file=sys.stderr,
+    )
     print(f"Concurrency: {args.concurrency} problems", file=sys.stderr)
     print(f"Timeout:     {args.timeout}s per problem", file=sys.stderr)
     print(f"Output:      {output_dir}", file=sys.stderr)
@@ -310,7 +371,11 @@ async def run_batch(args: argparse.Namespace) -> int:
     semaphore = asyncio.Semaphore(args.concurrency)
     start_time = datetime.now(timezone.utc)
     write_initial_batch_metadata(
-        output_dir, critpt_model, generation_config, run_config, start_time,
+        output_dir,
+        critpt_model,
+        generation_config,
+        run_config,
+        start_time,
     )
     total = len(problems)
     completed_count = 0
@@ -323,9 +388,14 @@ async def run_batch(args: argparse.Namespace) -> int:
         nonlocal completed_count, succeeded, failed
 
         result = await run_one_problem(
-            problem, args.model,
-            N, K, T,
-            args.timeout, semaphore, logs_dir,
+            problem,
+            args.model,
+            N,
+            K,
+            T,
+            args.timeout,
+            semaphore,
+            logs_dir,
         )
 
         if result.success:
@@ -362,24 +432,39 @@ async def run_batch(args: argparse.Namespace) -> int:
         if isinstance(r, Exception) and not isinstance(r, asyncio.CancelledError):
             p = problems[i]
             async with lock:
-                all_results.append(RunResult(
-                    problem_n=p.n, problem_id=p.problem_id,
-                    success=False, answer_code=None,
-                    error=str(r), duration_s=0,
-                ))
+                all_results.append(
+                    RunResult(
+                        problem_n=p.n,
+                        problem_id=p.problem_id,
+                        success=False,
+                        answer_code=None,
+                        error=str(r),
+                        duration_s=0,
+                    )
+                )
                 failed += 1
                 completed_count += 1
 
     end_time = datetime.now(timezone.utc)
 
     write_batch_metadata(
-        output_dir, critpt_model, all_results,
-        generation_config, run_config, start_time, end_time,
+        output_dir,
+        critpt_model,
+        all_results,
+        generation_config,
+        run_config,
+        start_time,
+        end_time,
         include_sibling_history=not args.resume and not args.no_sibling_history,
     )
     print_final_summary(
-        all_results, total, succeeded, failed,
-        start_time, end_time, output_dir,
+        all_results,
+        total,
+        succeeded,
+        failed,
+        start_time,
+        end_time,
+        output_dir,
     )
 
     return 0 if failed == 0 else 1

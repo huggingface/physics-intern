@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import TYPE_CHECKING
 
 from open_dirac.console import console
@@ -99,7 +98,11 @@ class CriticAgent(BaseAgent):
         self.research_state: ResearchState | None = None
 
     def build_context(self, task: Task, iteration: int) -> str:
-        return render_critic_context(self.research_state, iteration) if self.research_state else ""
+        return (
+            render_critic_context(self.research_state, iteration)
+            if self.research_state
+            else ""
+        )
 
     def process_response(self, response: LLMResponse, task: Task, iteration: int):
         """Parse structured JSON from one-shot response text."""
@@ -110,14 +113,19 @@ class CriticAgent(BaseAgent):
             # Parse failure — treat as clean review
             self._no_critiques_filed = True
             log_scaffold_event(
-                self.workspace.root, iteration, CC.OUTPUT_NORMALIZATION,
-                "critic_json_parse_failure", f"text_length={len(text)}",
+                self.workspace.root,
+                iteration,
+                CC.OUTPUT_NORMALIZATION,
+                "critic_json_parse_failure",
+                f"text_length={len(text)}",
             )
             if self.research_state:
-                self.research_state.critic_clean_reviews.append({
-                    "iteration": iteration,
-                    "summary": "Parse failure — no critiques extracted.",
-                })
+                self.research_state.critic_clean_reviews.append(
+                    {
+                        "iteration": iteration,
+                        "summary": "Parse failure — no critiques extracted.",
+                    }
+                )
             return
 
         critiques_data = parsed.get("critiques", [])
@@ -127,14 +135,19 @@ class CriticAgent(BaseAgent):
             # Clean review — no issues found
             self._no_critiques_filed = True
             log_scaffold_event(
-                self.workspace.root, iteration, CC.LOOP_CONTROL,
-                "no_critiques_filed", f"summary={summary}",
+                self.workspace.root,
+                iteration,
+                CC.LOOP_CONTROL,
+                "no_critiques_filed",
+                f"summary={summary}",
             )
             if self.research_state:
-                self.research_state.critic_clean_reviews.append({
-                    "iteration": iteration,
-                    "summary": summary,
-                })
+                self.research_state.critic_clean_reviews.append(
+                    {
+                        "iteration": iteration,
+                        "summary": summary,
+                    }
+                )
             return
 
         # Critiques present — assign IDs and store
@@ -172,9 +185,13 @@ class CriticAgent(BaseAgent):
             sev_label = sev.value
             target_str = target_id or "general"
             arg_short = argument[:80]
-            console.print(f"  [yellow]{crit.id}[/] [{sev_label}] targeting {target_str}: {arg_short}")
+            console.print(
+                f"  [yellow]{crit.id}[/] [{sev_label}] targeting {target_str}: {arg_short}"
+            )
             log_scaffold_event(
-                self.workspace.root, iteration, CC.STATE_INVARIANTS,
+                self.workspace.root,
+                iteration,
+                CC.STATE_INVARIANTS,
                 "file_critique",
                 f"{crit.id} [{sev_label}] → {target_str}: {argument[:120]}",
             )

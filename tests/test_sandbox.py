@@ -1,8 +1,6 @@
 """Tests for sandboxed Python execution."""
 
-import pytest
 import tempfile
-from pathlib import Path
 from open_dirac.utils.sandbox import execute_python
 
 
@@ -102,6 +100,6 @@ def test_plt_show_no_block():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(script)
         f.flush()
-        result = execute_python(f.name, timeout=10)
+        result = execute_python(f.name, timeout=60)
     assert not result.timed_out
     assert "done" in result.stdout

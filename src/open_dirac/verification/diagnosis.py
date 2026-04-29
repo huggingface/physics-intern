@@ -4,6 +4,7 @@ Builds a structured prompt from :class:`WorkspaceContents`, calls the LLM,
 parses the XML-tagged response, renders it to the console, and appends the
 result to ``VERIFICATION.md``.
 """
+
 from __future__ import annotations
 
 import re
@@ -33,6 +34,7 @@ CLASSIFICATION_COLORS = {
 @dataclass
 class DiagnosisEvent:
     """A single event in a failure chain or correction chain."""
+
     event_id: str
     chain_type: str  # "correction_chain" / "failure_chain"
     classification: str  # CAUGHT / UNCAUGHT / PARTIAL
@@ -46,6 +48,7 @@ class DiagnosisEvent:
 @dataclass
 class DiagnosisResult:
     """Result of the unified diagnosis pass."""
+
     formal_outcome: str = ""  # CORRECT / INCORRECT / INCONCLUSIVE / SKIPPED
     diagnosis_mode: str = ""  # success_analysis / failure_analysis
     summary: str = ""
@@ -60,6 +63,7 @@ class DiagnosisResult:
 # LLM call
 # ---------------------------------------------------------------------------
 
+
 def call_diagnosis_llm(system: str, user_content: str, config: Config) -> LLMResponse:
     """Call the configured LLM for the diagnosis pass via the provider layer.
 
@@ -69,7 +73,8 @@ def call_diagnosis_llm(system: str, user_content: str, config: Config) -> LLMRes
     provider = _get_provider(config)
     start = time.time()
     resp = _call_provider_with_retry(
-        provider, config,
+        provider,
+        config,
         workspace_dir=config.workspace_dir,
         model=config.model_id,
         max_tokens=config.max_tokens,
@@ -92,6 +97,7 @@ def call_diagnosis_llm(system: str, user_content: str, config: Config) -> LLMRes
 # ---------------------------------------------------------------------------
 # Prompt assembly
 # ---------------------------------------------------------------------------
+
 
 def _formal_eval_outcome(formal_eval: FormalEvalResult | None) -> str:
     """Return a string label for the formal evaluation outcome."""
@@ -180,8 +186,10 @@ def build_diagnosis_prompt(
     if contents.terminated_cleanly:
         sections.append("## Termination Status\nThe research run terminated cleanly.\n")
     else:
-        sections.append("## Termination Status\n⚠ The research run did NOT terminate cleanly. "
-                        "Results may be incomplete.\n")
+        sections.append(
+            "## Termination Status\n⚠ The research run did NOT terminate cleanly. "
+            "Results may be incomplete.\n"
+        )
 
     for label, text in [
         ("RESEARCH_STATE.md", contents.research_state),
@@ -195,7 +203,9 @@ def build_diagnosis_prompt(
             sections.append(f"## {label}\n\n(File not found or empty.)\n")
 
     if contents.background_survey:
-        sections.append(f"## Background Survey (Surveyor Output)\n\n```markdown\n{contents.background_survey}\n```\n")
+        sections.append(
+            f"## Background Survey (Surveyor Output)\n\n```markdown\n{contents.background_survey}\n```\n"
+        )
 
     if contents.metrics_md:
         sections.append(f"## METRICS.md\n\n```markdown\n{contents.metrics_md}\n```\n")
@@ -216,8 +226,13 @@ def build_diagnosis_prompt(
             if ex is None:
                 sections.append(f"### {name}\n(Not executed.)\n")
                 continue
-            status = "TIMED OUT" if ex.timed_out else (
-                "SUCCESS" if ex.returncode == 0 else f"FAILED (rc={ex.returncode})")
+            status = (
+                "TIMED OUT"
+                if ex.timed_out
+                else (
+                    "SUCCESS" if ex.returncode == 0 else f"FAILED (rc={ex.returncode})"
+                )
+            )
             sections.append(f"### {name} — {status}\n")
             if ex.stdout.strip():
                 sections.append(f"**stdout:**\n```\n{ex.stdout.strip()}\n```\n")
@@ -231,6 +246,7 @@ def build_diagnosis_prompt(
 # ---------------------------------------------------------------------------
 # Response parsing
 # ---------------------------------------------------------------------------
+
 
 def _extract_tag(text: str, tag: str) -> str:
     """Extract content between <tag>...</tag>. Returns '' if not found."""
@@ -271,22 +287,28 @@ def _parse_chain_events(chains_text: str) -> list[DiagnosisEvent]:
         description = description.strip()
 
         classification = m.group(2)
-        chain_type = "correction_chain" if classification == "CAUGHT" else "failure_chain"
+        chain_type = (
+            "correction_chain" if classification == "CAUGHT" else "failure_chain"
+        )
 
-        events.append(DiagnosisEvent(
-            event_id=m.group(1),
-            chain_type=chain_type,
-            classification=classification,
-            agents_involved=agents,
-            iterations=m.group(3).strip(),
-            description=description,
-            root_cause=root_cause,
-            evidence_ids=evidence_ids,
-        ))
+        events.append(
+            DiagnosisEvent(
+                event_id=m.group(1),
+                chain_type=chain_type,
+                classification=classification,
+                agents_involved=agents,
+                iterations=m.group(3).strip(),
+                description=description,
+                root_cause=root_cause,
+                evidence_ids=evidence_ids,
+            )
+        )
     return events
 
 
-def parse_diagnosis(response_text: str, formal_eval: FormalEvalResult | None = None) -> DiagnosisResult:
+def parse_diagnosis(
+    response_text: str, formal_eval: FormalEvalResult | None = None
+) -> DiagnosisResult:
     """Parse XML-tagged sections from the diagnosis LLM response."""
     outcome = _formal_eval_outcome(formal_eval)
     mode = "success_analysis" if outcome == "CORRECT" else "failure_analysis"
@@ -329,6 +351,7 @@ def parse_diagnosis(response_text: str, formal_eval: FormalEvalResult | None = N
 # ---------------------------------------------------------------------------
 # Console rendering
 # ---------------------------------------------------------------------------
+
 
 def render_diagnosis(result: DiagnosisResult) -> None:
     """Print the diagnosis result to the console using Rich."""
@@ -381,6 +404,7 @@ def render_diagnosis(result: DiagnosisResult) -> None:
 # ---------------------------------------------------------------------------
 # Report writing
 # ---------------------------------------------------------------------------
+
 
 def write_diagnosis_report(result: DiagnosisResult, workspace_dir: str) -> None:
     """Append diagnosis sections to VERIFICATION.md (created by engine's formal eval)."""

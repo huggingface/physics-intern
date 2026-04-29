@@ -1,4 +1,5 @@
 """Workspace loading and reference-file lookup for the verification subsystem."""
+
 from __future__ import annotations
 
 import glob
@@ -20,6 +21,7 @@ _CODE_FENCE_RE = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
 @dataclass
 class WorkspaceContents:
     """Loaded workspace files and metadata."""
+
     workspace_dir: str
     research_state: str = ""
     critique_log: str = ""
@@ -37,6 +39,7 @@ class WorkspaceContents:
 @dataclass
 class RerunResult:
     """Result of re-running a computation script."""
+
     script_path: str
     execution: ExecutionResult | None = None
 
@@ -90,6 +93,7 @@ def load_workspace(workspace_dir: str) -> WorkspaceContents:
     if state_path.exists():
         try:
             from ..research_state import ResearchState
+
             state = ResearchState.from_json(state_path.read_text())
             if state.survey_background:
                 contents.background_survey = render_background_survey(state)

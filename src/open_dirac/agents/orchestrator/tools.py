@@ -25,18 +25,25 @@ if TYPE_CHECKING:
 # Tool executor
 # ---------------------------------------------------------------------------
 
+
 class OrchestratorToolExecutor:
     """Dispatches state-mutation tool calls for the orchestrator."""
 
     TOOL_DEFINITIONS: ClassVar[list[dict]] = ORCHESTRATOR_TOOL_DEFINITIONS
 
-    exit_tool_names: ClassVar[frozenset[str]] = frozenset({
-        "add_hypothesis", "dispatch_researcher", "dispatch_computer",
-        "request_termination",
-    })
+    exit_tool_names: ClassVar[frozenset[str]] = frozenset(
+        {
+            "add_hypothesis",
+            "dispatch_researcher",
+            "dispatch_computer",
+            "request_termination",
+        }
+    )
 
     def __init__(
-        self, workspace: WorkspaceManager, iteration: int,
+        self,
+        workspace: WorkspaceManager,
+        iteration: int,
         research_state: ResearchState | None = None,
         *,
         min_er_for_completion: int = 3,
@@ -107,7 +114,9 @@ class OrchestratorToolExecutor:
                         if h.review:
                             parts.append(h.review.verdict.upper())
                         else:
-                            parts.append(f"has {len(h.evidence)} evidence, PENDING REVIEW")
+                            parts.append(
+                                f"has {len(h.evidence)} evidence, PENDING REVIEW"
+                            )
                     else:
                         parts.append("no evidence")
                     wh_items.append(f"{parts[0]} ({', '.join(parts[1:])})")
@@ -116,7 +125,9 @@ class OrchestratorToolExecutor:
             if open_rqs:
                 rq_items = []
                 for rq in open_rqs:
-                    rq_items.append(f"{rq.id} ({f'{len(rq.evidence)} evidence' if rq.evidence else 'no evidence'})")
+                    rq_items.append(
+                        f"{rq.id} ({f'{len(rq.evidence)} evidence' if rq.evidence else 'no evidence'})"
+                    )
                 lines.append(f"  Open RQs: {', '.join(rq_items)}")
 
             # Conditional guidance
@@ -130,10 +141,15 @@ class OrchestratorToolExecutor:
         return "\n".join(lines)
 
     def _build_guidance(
-        self, state, ers: list, whs: list, open_rqs: list,
+        self,
+        state,
+        ers: list,
+        whs: list,
+        open_rqs: list,
     ) -> list[str]:
         """Build conditional guidance lines for the state injection."""
-        from open_dirac.research_state import HypothesisStatus, Verdict
+        from open_dirac.research_state import Verdict
+
         guidance: list[str] = []
 
         er_count = len(ers)
@@ -189,10 +205,14 @@ class OrchestratorToolExecutor:
         # Per-RQ with evidence
         for rq in open_rqs:
             if rq.evidence:
-                guidance.append(f"{rq.id} has evidence — formulate a WH (add_hypothesis with from_rq).")
+                guidance.append(
+                    f"{rq.id} has evidence — formulate a WH (add_hypothesis with from_rq)."
+                )
 
         # Default closing
-        guidance.append("When ready, call a dispatch tool (dispatch_researcher, dispatch_computer, or request_termination) — or add_hypothesis to formulate a WH (auto-triggers review).")
+        guidance.append(
+            "When ready, call a dispatch tool (dispatch_researcher, dispatch_computer, or request_termination) — or add_hypothesis to formulate a WH (auto-triggers review)."
+        )
         return guidance
 
     def execute(self, tool_name: str, tool_input: dict) -> ToolCall:
@@ -213,14 +233,17 @@ class OrchestratorToolExecutor:
         handler = handlers.get(tool_name)
         if not handler:
             return ToolCall(
-                tool_name=tool_name, tool_input=tool_input,
-                output=f"Unknown tool: {tool_name}", is_error=True,
+                tool_name=tool_name,
+                tool_input=tool_input,
+                output=f"Unknown tool: {tool_name}",
+                is_error=True,
                 duration=time.time() - start,
             )
         # Block a second exit tool from overwriting the first dispatch
         if tool_name in self.exit_tool_names and self.stop_after_round:
             return ToolCall(
-                tool_name=tool_name, tool_input=tool_input,
+                tool_name=tool_name,
+                tool_input=tool_input,
                 output=(
                     f"Error: an exit tool has already been called this round "
                     f"(task_data={self.task_data}). Only one exit tool per "
@@ -231,20 +254,28 @@ class OrchestratorToolExecutor:
             )
         try:
             output = handler(tool_input)
-            is_error = False
+            is_error = isinstance(output, str) and output.startswith("Error:")
         except Exception as e:
             output = f"Error: {type(e).__name__}: {e}"
             is_error = True
         return ToolCall(
-            tool_name=tool_name, tool_input=tool_input,
-            output=output, is_error=is_error,
+            tool_name=tool_name,
+            tool_input=tool_input,
+            output=output,
+            is_error=is_error,
             duration=time.time() - start,
         )
 
     # -- Mutation handlers --
 
     def _add_hypothesis(self, args: dict) -> str:
-        from open_dirac.research_state import CritiqueStatus, Hypothesis, HypothesisStatus, RQStatus, Severity
+        from open_dirac.research_state import (
+            CritiqueStatus,
+            Hypothesis,
+            HypothesisStatus,
+            RQStatus,
+            Severity,
+        )
 
         state = self.research_state
         if not state:
@@ -258,8 +289,11 @@ class OrchestratorToolExecutor:
                 f"Error: already {len(whs)} working hypotheses ({ids}). "
                 "Review, promote, or abandon existing WHs before creating new ones."
             )
-        blocking = [c for c in state.critiques.values()
-                    if c.status == CritiqueStatus.ACTIVE and c.severity == Severity.HIGH]
+        blocking = [
+            c
+            for c in state.critiques.values()
+            if c.status == CritiqueStatus.ACTIVE and c.severity == Severity.HIGH
+        ]
         if blocking:
             return (
                 f"Error: blocked — {len(blocking)} pending strategic review(s). "
@@ -306,6 +340,7 @@ class OrchestratorToolExecutor:
 
         # Copy evidence from RQ
         from copy import deepcopy
+
         rq = state.research_questions[from_rq]
         evidence = deepcopy(rq.evidence) if rq.evidence else []
 
@@ -325,10 +360,15 @@ class OrchestratorToolExecutor:
         if depends_on:
             detail += f" (depends_on: {', '.join(depends_on)})"
         log_scaffold_event(
-            self.workspace.root, self.iteration, CC.STATE_INVARIANTS,
-            "add_hypothesis", detail,
+            self.workspace.root,
+            self.iteration,
+            CC.STATE_INVARIANTS,
+            "add_hypothesis",
+            detail,
         )
-        console.print(f"  [bold cyan]{from_rq}[/] → [bold yellow]+{new_id}[/] {statement[:80]}")
+        console.print(
+            f"  [bold cyan]{from_rq}[/] → [bold yellow]+{new_id}[/] {statement[:80]}"
+        )
 
         # Auto-dispatch reviewer for the new WH
         self.task_data = {"task_type": "review", "target_claim": new_id}
@@ -355,7 +395,8 @@ class OrchestratorToolExecutor:
 
         # Check for dependents — warn but don't block
         dependents = [
-            h2.id for h2 in state.hypotheses.values()
+            h2.id
+            for h2 in state.hypotheses.values()
             if h2.id != hid
             and h2.status != HypothesisStatus.ABANDONED
             and hid in h2.depends_on
@@ -370,13 +411,15 @@ class OrchestratorToolExecutor:
         h.status = HypothesisStatus.ABANDONED
         h.iteration_modified = self.iteration
 
-        state.failed_approaches.append(FailedApproach(
-            description=f"Abandoned {hid} — {title}",
-            reason=reason,
-            related_entities=[hid],
-            derivation_excerpt=(h.derivation[:300] if h.derivation else ""),
-            iteration=self.iteration,
-        ))
+        state.failed_approaches.append(
+            FailedApproach(
+                description=f"Abandoned {hid} — {title}",
+                reason=reason,
+                related_entities=[hid],
+                derivation_excerpt=(h.derivation[:300] if h.derivation else ""),
+                iteration=self.iteration,
+            )
+        )
 
         self.mutations_applied = True
 
@@ -384,8 +427,11 @@ class OrchestratorToolExecutor:
         if dependents:
             detail += f" (dependents affected: {', '.join(dependents)})"
         log_scaffold_event(
-            self.workspace.root, self.iteration, CC.STATE_INVARIANTS,
-            "abandon_hypothesis", detail,
+            self.workspace.root,
+            self.iteration,
+            CC.STATE_INVARIANTS,
+            "abandon_hypothesis",
+            detail,
         )
         console.print(f"  [bold red]✗ {hid}[/] abandoned: {reason[:80]}")
 
@@ -409,7 +455,9 @@ class OrchestratorToolExecutor:
         if not new:
             return "Error: convention content cannot be empty"
 
-        state.conventions = (state.conventions.rstrip() + "\n\n" + new) if state.conventions else new
+        state.conventions = (
+            (state.conventions.rstrip() + "\n\n" + new) if state.conventions else new
+        )
 
         self.mutations_applied = True
         self._round_mutations.append("Appended conventions")
@@ -425,15 +473,20 @@ class OrchestratorToolExecutor:
         if not text.strip():
             return "Error: note text cannot be empty"
 
-        state.research_notes.append({
-            "text": text.strip(),
-            "iteration": self.iteration,
-        })
+        state.research_notes.append(
+            {
+                "text": text.strip(),
+                "iteration": self.iteration,
+            }
+        )
         self.mutations_applied = True
         self._round_mutations.append("Appended research note")
         log_scaffold_event(
-            self.workspace.root, self.iteration, CC.STATE_INVARIANTS,
-            "append_note", text[:120],
+            self.workspace.root,
+            self.iteration,
+            CC.STATE_INVARIANTS,
+            "append_note",
+            text[:120],
         )
         console.print(f"  [dim]Note:[/] {text[:80]}")
         return "Note appended."
@@ -447,8 +500,11 @@ class OrchestratorToolExecutor:
 
         # Cap: block if too many open RQs or unresolved HIGH critiques
         open_rqs = state.open_research_questions()
-        blocking = [c for c in state.critiques.values()
-                    if c.status == CritiqueStatus.ACTIVE and c.severity == Severity.HIGH]
+        blocking = [
+            c
+            for c in state.critiques.values()
+            if c.status == CritiqueStatus.ACTIVE and c.severity == Severity.HIGH
+        ]
         if len(open_rqs) >= self._max_open_rqs:
             ids = ", ".join(rq.id for rq in open_rqs)
             return (
@@ -479,8 +535,11 @@ class OrchestratorToolExecutor:
         self.mutations_applied = True
         self._round_mutations.append(f"Added {rq_id}")
         log_scaffold_event(
-            self.workspace.root, self.iteration, CC.STATE_INVARIANTS,
-            "add_research_question", f"{rq_id}: {question[:120]}",
+            self.workspace.root,
+            self.iteration,
+            CC.STATE_INVARIANTS,
+            "add_research_question",
+            f"{rq_id}: {question[:120]}",
         )
         console.print(f"  [bold cyan]+{rq_id}[/] {question[:80]}")
         return f"Added {rq_id} — {question}."
@@ -500,7 +559,9 @@ class OrchestratorToolExecutor:
 
         rq = state.research_questions[rq_id]
         if rq.status == RQStatus.RESOLVED:
-            return f"Error: {rq_id} is already resolved (promoted to WH). Cannot abandon."
+            return (
+                f"Error: {rq_id} is already resolved (promoted to WH). Cannot abandon."
+            )
         if rq.status == RQStatus.ABANDONED:
             return f"{rq_id} is already abandoned (iteration {rq.iteration_resolved})."
         rq.status = RQStatus.ABANDONED
@@ -509,8 +570,11 @@ class OrchestratorToolExecutor:
         self.mutations_applied = True
         self._round_mutations.append(f"Abandoned {rq_id}")
         log_scaffold_event(
-            self.workspace.root, self.iteration, CC.STATE_INVARIANTS,
-            "abandon_research_question", f"{rq_id}: {reason}",
+            self.workspace.root,
+            self.iteration,
+            CC.STATE_INVARIANTS,
+            "abandon_research_question",
+            f"{rq_id}: {reason}",
         )
         console.print(f"  [dim]{rq_id}[/] abandoned — {reason[:60]}")
         return f"Abandoned {rq_id}."
@@ -566,6 +630,7 @@ class OrchestratorToolExecutor:
         Returns error string or None if valid.
         """
         import re
+
         state = self.research_state
         assert state is not None
 
@@ -585,6 +650,7 @@ class OrchestratorToolExecutor:
             rq = state.research_questions.get(target_claim)
             if rq:
                 from open_dirac.research_state import RQStatus
+
                 if rq.status != RQStatus.OPEN:
                     return (
                         f"Error: {target_claim} is {rq.status.value} and cannot receive "
@@ -611,7 +677,9 @@ class OrchestratorToolExecutor:
         listing = "; ".join(entity_list) if entity_list else "none"
 
         log_scaffold_event(
-            self.workspace.root, self.iteration, CC.LOOP_CONTROL,
+            self.workspace.root,
+            self.iteration,
+            CC.LOOP_CONTROL,
             "target_claim_validation_reject",
             f"Invalid target_claim {target_claim}. Valid entities: {listing}",
         )
@@ -667,7 +735,7 @@ class OrchestratorToolExecutor:
                 return (
                     f"Error: dispatch blocked — {target} has been refuted "
                     f"{h.refuted_count} time(s) (limit={self._max_refuted_retries}). "
-                    f"You must abandon it: call abandon_hypothesis(id=\"{target}\", reason=\"...\")."
+                    f'You must abandon it: call abandon_hypothesis(id="{target}", reason="...").'
                 )
 
         # Rules 2 & 3 apply only to RQ targets
@@ -675,7 +743,10 @@ class OrchestratorToolExecutor:
             # Rule 2: dangling WHs block RQ dispatch
             dangling = []
             for h in state.working_hypotheses():
-                if h.review and h.review.verdict in (Verdict.REFUTED, Verdict.INCONCLUSIVE):
+                if h.review and h.review.verdict in (
+                    Verdict.REFUTED,
+                    Verdict.INCONCLUSIVE,
+                ):
                     dangling.append(f"{h.id} ({h.review.verdict})")
             if dangling:
                 listing = ", ".join(dangling)
@@ -689,9 +760,7 @@ class OrchestratorToolExecutor:
             other_with_evidence = []
             for rq in state.open_research_questions():
                 if rq.id != target and rq.evidence:
-                    other_with_evidence.append(
-                        f"{rq.id} ({len(rq.evidence)} evidence)"
-                    )
+                    other_with_evidence.append(f"{rq.id} ({len(rq.evidence)} evidence)")
             if other_with_evidence:
                 listing = ", ".join(other_with_evidence)
                 return (

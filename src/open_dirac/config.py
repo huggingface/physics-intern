@@ -14,6 +14,7 @@ import yaml
 # Package defaults — single source of truth is config.default.yaml
 # ---------------------------------------------------------------------------
 
+
 def _load_package_defaults() -> dict:
     """Load defaults from the config.default.yaml shipped with the package."""
     path = Path(__file__).parent / "config.default.yaml"
@@ -36,9 +37,10 @@ class Config:
     ``max_output_tokens`` field of the model's entry in ``models.yaml``.
     ``__post_init__`` populates it from there.
     """
+
     model: str = DEFAULTS["model"]
     verify_model: str = DEFAULTS["verify_model"]
-    max_tokens: int = 0   # resolved from models.yaml in __post_init__
+    max_tokens: int = 0  # resolved from models.yaml in __post_init__
     max_iterations: int = DEFAULTS["max_iterations"]
     critic_every_n: int = DEFAULTS["critic_every_n"]
     sympy_timeout_seconds: int = DEFAULTS["sympy_timeout_seconds"]
@@ -68,8 +70,8 @@ class Config:
     workspace_dir: str = ""
     logs_dir: str = ""
     api_key: str = ""
-    model_id: str = ""        # Resolved API model ID (from models.yaml)
-    input_cost: float = 0.0   # USD per million input tokens (from models.yaml)
+    model_id: str = ""  # Resolved API model ID (from models.yaml)
+    input_cost: float = 0.0  # USD per million input tokens (from models.yaml)
     output_cost: float = 0.0  # USD per million output tokens (from models.yaml)
     reasoning: dict = field(default_factory=dict)  # provider-specific reasoning params
 
@@ -148,29 +150,44 @@ class Config:
 
 # Fields settable via config.yaml (workspace_dir, logs_dir, api_key excluded)
 # max_tokens is intentionally excluded — it is derived from models.yaml only.
-_YAML_CONFIG_FIELDS = frozenset({
-    "model", "verify_model", "max_iterations", "critic_every_n",
-    "sympy_timeout_seconds",
-    "max_tool_rounds", "progress_check_interval",
-    "computation_token_alert", "tool_output_limit", "stall_threshold", "stall_recompute_limit",
-    "min_er_for_completion", "api_retry_max", "api_retry_initial_delay",
-    "api_retry_max_delay", "api_timeout",
-    "budget_synthesis_margin",
-    "orchestrator_comp_log_tail",
-    "prior_failure_excerpt_chars",
-    "max_open_rqs",
-    "rq_evidence_cap",
-    "max_refuted_retries",
-    "auto_expire_iterations",
-    "parse_retries",
-    "max_tokens_retries",
-    "pipeline_retry_max",
-    "provider",
-})
+_YAML_CONFIG_FIELDS = frozenset(
+    {
+        "model",
+        "verify_model",
+        "max_iterations",
+        "critic_every_n",
+        "sympy_timeout_seconds",
+        "max_tool_rounds",
+        "progress_check_interval",
+        "computation_token_alert",
+        "tool_output_limit",
+        "stall_threshold",
+        "stall_recompute_limit",
+        "min_er_for_completion",
+        "api_retry_max",
+        "api_retry_initial_delay",
+        "api_retry_max_delay",
+        "api_timeout",
+        "budget_synthesis_margin",
+        "orchestrator_comp_log_tail",
+        "prior_failure_excerpt_chars",
+        "max_open_rqs",
+        "rq_evidence_cap",
+        "max_refuted_retries",
+        "auto_expire_iterations",
+        "parse_retries",
+        "max_tokens_retries",
+        "pipeline_retry_max",
+        "provider",
+    }
+)
 
 # Fields persisted to config.json for resume (superset of _YAML_CONFIG_FIELDS)
 _PERSIST_FIELDS = _YAML_CONFIG_FIELDS | {
-    "model_id", "input_cost", "output_cost", "reasoning",
+    "model_id",
+    "input_cost",
+    "output_cost",
+    "reasoning",
     "max_termination_retries",
 }
 
@@ -189,9 +206,18 @@ def _resolve_model(model_key: str) -> dict | None:
         if not entry or not isinstance(entry, dict):
             return None
         reasoning = {}
-        for key in ("reasoning_budget", "reasoning_effort", "thinking_level",
-                     "thinking", "effort", "reasoning_format",
-                     "hf_provider", "timeout", "base_url", "tool_mode"):
+        for key in (
+            "reasoning_budget",
+            "reasoning_effort",
+            "thinking_level",
+            "thinking",
+            "effort",
+            "reasoning_format",
+            "hf_provider",
+            "timeout",
+            "base_url",
+            "tool_mode",
+        ):
             if key in entry:
                 reasoning[key] = entry[key]
         result = {
@@ -235,7 +261,9 @@ def build_config(args: Namespace) -> Config:
     # Layer 2: CLI args override (only non-None values).
     # max_tokens is intentionally absent — derived from models.yaml.
     cli_fields = {
-        "model", "max_iterations", "workspace_dir",
+        "model",
+        "max_iterations",
+        "workspace_dir",
     }
     for field_name in cli_fields:
         cli_name = field_name.replace("-", "_")

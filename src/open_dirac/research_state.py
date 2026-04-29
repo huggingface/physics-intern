@@ -18,6 +18,7 @@ from typing import Any
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class HypothesisStatus(StrEnum):
     WORKING = "working"
     ESTABLISHED = "established"
@@ -53,25 +54,27 @@ class RQStatus(StrEnum):
 # Entity dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Evidence:
     """Evidence produced by a researcher or computer agent."""
-    id: str = ""             # EV-NNN, assigned by _store_evidence
-    type: str = ""           # "research" or "compute"
-    reasoning: str = ""      # Researcher's analytical work
-    approach: str = ""       # Computer's document_approach output
+
+    id: str = ""  # EV-NNN, assigned by _store_evidence
+    type: str = ""  # "research" or "compute"
+    reasoning: str = ""  # Researcher's analytical work
+    approach: str = ""  # Computer's document_approach output
     scripts: list[str] = field(default_factory=list)
     script_purposes: dict[str, str] = field(default_factory=dict)
-    output: str = ""         # Code execution output summary
+    output: str = ""  # Code execution output summary
     method: str = ""
     result: str = ""
-    description: str = ""    # What was computed (computer submit_result)
-    notes: str = ""          # Additional notes (computer submit_result)
-    confidence: str = ""     # exact/approximate/partial
-    summary: str = ""        # One-sentence summary for banners
+    description: str = ""  # What was computed (computer submit_result)
+    notes: str = ""  # Additional notes (computer submit_result)
+    confidence: str = ""  # exact/approximate/partial
+    summary: str = ""  # One-sentence summary for banners
     iteration: int | None = None
     derivation_file: str = ""  # Filename in derivations/ (researcher only)
-    refuted: bool = False      # Marked True when review verdict is REFUTED
+    refuted: bool = False  # Marked True when review verdict is REFUTED
 
     def __post_init__(self):
         # LLMs may return non-string values (e.g. int) for these fields
@@ -84,7 +87,8 @@ class Evidence:
 @dataclass
 class ReviewResult:
     """Review result produced by the reviewer agent."""
-    verdict: str = ""        # VERIFIED/REFUTED/INCONCLUSIVE
+
+    verdict: str = ""  # VERIFIED/REFUTED/INCONCLUSIVE
     summary: str = ""
     details: str = ""
     iteration: int | None = None
@@ -123,8 +127,9 @@ class Critique:
 @dataclass
 class SanityCheck:
     """A testable constraint for candidate answers."""
-    id: str              # SC-001, SC-002, ...
-    predicate: str       # Testable condition (pass/fail statement)
+
+    id: str  # SC-001, SC-002, ...
+    predicate: str  # Testable condition (pass/fail statement)
     rationale: str = ""  # Why this check should hold
 
 
@@ -140,16 +145,18 @@ class FailedApproach:
 @dataclass
 class ResearchQuestion:
     """Open-ended research question (not a falsifiable claim)."""
-    id: str                                         # RQ-NNN
+
+    id: str  # RQ-NNN
     question: str = ""
-    context: str = ""                               # why this question matters
+    context: str = ""  # why this question matters
     resolved_to: list[str] = field(default_factory=list)  # WH-NNN IDs
     status: RQStatus = RQStatus.OPEN
     iteration_created: int = 0
     iteration_resolved: int | None = None
-    resolution_reason: str = ""                     # why / how it was resolved
-    evidence: list[Evidence] = field(default_factory=list)  # evidence from researcher/computer
-
+    resolution_reason: str = ""  # why / how it was resolved
+    evidence: list[Evidence] = field(
+        default_factory=list
+    )  # evidence from researcher/computer
 
 
 # ---------------------------------------------------------------------------
@@ -177,14 +184,16 @@ class ResearchState:
     research_notes: list[dict] = field(default_factory=list)
     status: str = "in_progress"
     title: str = ""
-    sanity_checks: list[SanityCheck] = field(default_factory=list)  # seeded by surveyor, editable by planner
+    sanity_checks: list[SanityCheck] = field(
+        default_factory=list
+    )  # seeded by surveyor, editable by planner
     # Survey-produced fields (seeded by surveyor, immutable after)
-    survey_background: str = ""   # §1: background context
-    key_insights: str = ""        # §2: key insights
-    survey_methods: str = ""      # §3: known methods and techniques
-    known_pitfalls: str = ""      # §4: known pitfalls
+    survey_background: str = ""  # §1: background context
+    key_insights: str = ""  # §2: key insights
+    survey_methods: str = ""  # §3: known methods and techniques
+    known_pitfalls: str = ""  # §4: known pitfalls
     expected_answer_structure: str = ""  # §7: expected form/complexity of the answer
-    problem_summary: str = ""     # §8: one-sentence problem summary
+    problem_summary: str = ""  # §8: one-sentence problem summary
 
     # --- Query methods ---
 
@@ -202,29 +211,44 @@ class ResearchState:
     def active_critiques_for(self, target_id: str) -> list[Critique]:
         """Active critiques mentioning *target_id*."""
         return [
-            c for c in self.critiques.values()
+            c
+            for c in self.critiques.values()
             if target_id in c.targets and c.status == CritiqueStatus.ACTIVE
         ]
 
     def established_hypotheses(self) -> list[Hypothesis]:
-        return [h for h in self.hypotheses.values() if h.status == HypothesisStatus.ESTABLISHED]
+        return [
+            h
+            for h in self.hypotheses.values()
+            if h.status == HypothesisStatus.ESTABLISHED
+        ]
 
     def working_hypotheses(self) -> list[Hypothesis]:
-        return [h for h in self.hypotheses.values() if h.status == HypothesisStatus.WORKING]
+        return [
+            h for h in self.hypotheses.values() if h.status == HypothesisStatus.WORKING
+        ]
 
     def abandoned_hypotheses(self) -> list[Hypothesis]:
-        return [h for h in self.hypotheses.values() if h.status == HypothesisStatus.ABANDONED]
+        return [
+            h
+            for h in self.hypotheses.values()
+            if h.status == HypothesisStatus.ABANDONED
+        ]
 
     def failures_for_hypothesis(self, hypothesis_id: str) -> list[FailedApproach]:
         """Failed approaches mentioning *hypothesis_id*."""
         return [
-            fa for fa in self.failed_approaches
-            if hypothesis_id in fa.description or hypothesis_id in " ".join(fa.related_entities)
+            fa
+            for fa in self.failed_approaches
+            if hypothesis_id in fa.description
+            or hypothesis_id in " ".join(fa.related_entities)
         ]
 
     def open_research_questions(self) -> list[ResearchQuestion]:
         """All open research questions."""
-        return [rq for rq in self.research_questions.values() if rq.status == RQStatus.OPEN]
+        return [
+            rq for rq in self.research_questions.values() if rq.status == RQStatus.OPEN
+        ]
 
     def next_entity_num(self) -> int:
         """Max existing entity number across hypotheses and RQs, + 1.
@@ -263,7 +287,8 @@ class ResearchState:
             return []
         deps = self.hypotheses[hypothesis_id].depends_on
         return [
-            d for d in deps
+            d
+            for d in deps
             if d not in self.hypotheses
             or self.hypotheses[d].status != HypothesisStatus.ESTABLISHED
         ]
@@ -283,7 +308,11 @@ class ResearchState:
     def next_evidence_num(self) -> int:
         """Max existing EV number across all entities + 1."""
         nums: list[int] = []
-        for collection in (self.hypotheses.values(), self.research_questions.values(), self.critiques.values()):
+        for collection in (
+            self.hypotheses.values(),
+            self.research_questions.values(),
+            self.critiques.values(),
+        ):
             for entity in collection:
                 for ev in entity.evidence:
                     if ev.id and ev.id.startswith("EV-"):
@@ -323,6 +352,7 @@ class ResearchState:
             status=data.get("status", "in_progress"),
             title=data.get("title", ""),
         )
+
         def _parse_evidence_list(raw: list[dict] | None) -> list[Evidence]:
             if not raw:
                 return []
@@ -401,20 +431,24 @@ class ResearchState:
                 evidence=rq_evidence,
             )
         for fdata in data.get("failed_approaches", []):
-            state.failed_approaches.append(FailedApproach(
-                description=fdata.get("description", ""),
-                reason=fdata.get("reason", ""),
-                related_entities=fdata.get("related_entities", []),
-                iteration=fdata.get("iteration", 0),
-                derivation_excerpt=fdata.get("derivation_excerpt", ""),
-            ))
+            state.failed_approaches.append(
+                FailedApproach(
+                    description=fdata.get("description", ""),
+                    reason=fdata.get("reason", ""),
+                    related_entities=fdata.get("related_entities", []),
+                    iteration=fdata.get("iteration", 0),
+                    derivation_excerpt=fdata.get("derivation_excerpt", ""),
+                )
+            )
         state.critic_clean_reviews = data.get("critic_clean_reviews", [])
         for c in data.get("sanity_checks", []):
-            state.sanity_checks.append(SanityCheck(
-                id=c["id"],
-                predicate=c["predicate"],
-                rationale=c.get("rationale", ""),
-            ))
+            state.sanity_checks.append(
+                SanityCheck(
+                    id=c["id"],
+                    predicate=c["predicate"],
+                    rationale=c.get("rationale", ""),
+                )
+            )
         state.survey_background = data.get("survey_background", "")
         state.key_insights = data.get("key_insights", "")
         state.survey_methods = data.get("survey_methods", "")

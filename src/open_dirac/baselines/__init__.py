@@ -1,4 +1,5 @@
 """Shared primitives for the one-shot and RSA baseline runners."""
+
 from .call import run_baseline_call
 from .cli import (
     add_common_args,

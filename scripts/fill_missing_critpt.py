@@ -80,12 +80,20 @@ def main():
     parser = argparse.ArgumentParser(
         description="Fill missing CritPt submissions with empty template answers.",
     )
-    parser.add_argument("output_dir", type=Path,
-                        help="Results directory containing submission JSONs")
-    parser.add_argument("--problems-dir", type=Path, default=DEFAULT_PROBLEMS_DIR,
-                        help="Directory of problem YAMLs")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be created without writing files")
+    parser.add_argument(
+        "output_dir", type=Path, help="Results directory containing submission JSONs"
+    )
+    parser.add_argument(
+        "--problems-dir",
+        type=Path,
+        default=DEFAULT_PROBLEMS_DIR,
+        help="Directory of problem YAMLs",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be created without writing files",
+    )
     args = parser.parse_args()
 
     if not args.output_dir.is_dir():

@@ -35,6 +35,7 @@ console = Console(stderr=True)
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProblemMetrics:
     problem_id: str
@@ -66,6 +67,7 @@ class AgentStats:
 # Workspace discovery
 # ---------------------------------------------------------------------------
 
+
 def find_existing_workspace(
     problem_id: str,
     model_key: str,
@@ -88,6 +90,7 @@ def find_existing_workspace(
 # ---------------------------------------------------------------------------
 # METRICS.md parsing
 # ---------------------------------------------------------------------------
+
 
 def load_problem_metrics(problem_id: str, workspace: Path) -> ProblemMetrics | None:
     """Load metrics from a workspace's METRICS.md."""
@@ -147,11 +150,21 @@ def load_problem_metrics(problem_id: str, workspace: Path) -> ProblemMetrics | N
 # Statistics helpers
 # ---------------------------------------------------------------------------
 
+
 def compute_stats(values: list[int | float]) -> dict:
     """Compute summary statistics for a list of values."""
     if not values:
-        return {"n": 0, "total": 0, "mean": 0, "median": 0, "min": 0,
-                "max": 0, "std": 0, "p25": 0, "p75": 0}
+        return {
+            "n": 0,
+            "total": 0,
+            "mean": 0,
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "std": 0,
+            "p25": 0,
+            "p75": 0,
+        }
     sorted_vals = sorted(values)
     n = len(sorted_vals)
     total = sum(sorted_vals)
@@ -188,6 +201,7 @@ def fmt_tokens(n: int | float) -> str:
 # Display
 # ---------------------------------------------------------------------------
 
+
 def print_summary(
     all_metrics: list[ProblemMetrics],
     model: str,
@@ -207,10 +221,14 @@ def print_summary(
     console.print(f"[bold]Batch Analysis: {results_dir.name}[/bold]")
     console.print(f"Model: {model}")
     console.print(f"Problems: {n}")
-    console.print(f"Total tokens: {fmt_tokens(total_all)} "
-                   f"(input: {fmt_tokens(total_input)}, output: {fmt_tokens(total_output)})")
-    console.print(f"  reasoning: {fmt_tokens(total_reasoning)}, "
-                   f"answer: {fmt_tokens(total_answer)}")
+    console.print(
+        f"Total tokens: {fmt_tokens(total_all)} "
+        f"(input: {fmt_tokens(total_input)}, output: {fmt_tokens(total_output)})"
+    )
+    console.print(
+        f"  reasoning: {fmt_tokens(total_reasoning)}, "
+        f"answer: {fmt_tokens(total_answer)}"
+    )
     console.print()
 
     # Distribution table
@@ -234,12 +252,21 @@ def print_summary(
     for name, values in metrics_map.items():
         s = compute_stats(values)
         is_tokens = "tokens" in name.lower()
-        fmt = fmt_tokens if is_tokens else lambda x: f"{x:,.0f}" if isinstance(x, float) else f"{x:,}"
+        fmt = (
+            fmt_tokens
+            if is_tokens
+            else lambda x: f"{x:,.0f}" if isinstance(x, float) else f"{x:,}"
+        )
         table.add_row(
             name,
-            fmt(s["total"]), fmt(s["mean"]), fmt(s["median"]),
-            fmt(s["min"]), fmt(s["max"]), fmt(s["std"]),
-            fmt(s["p25"]), fmt(s["p75"]),
+            fmt(s["total"]),
+            fmt(s["mean"]),
+            fmt(s["median"]),
+            fmt(s["min"]),
+            fmt(s["max"]),
+            fmt(s["std"]),
+            fmt(s["p25"]),
+            fmt(s["p75"]),
         )
 
     console.print(table)
@@ -269,7 +296,9 @@ def print_summary(
         agent_table.add_column("% output", justify="right")
 
         total_out = sum(a.output_tokens for a in agent_totals.values())
-        for name in sorted(agent_totals, key=lambda k: agent_totals[k].output_tokens, reverse=True):
+        for name in sorted(
+            agent_totals, key=lambda k: agent_totals[k].output_tokens, reverse=True
+        ):
             a = agent_totals[name]
             pct = (a.output_tokens / total_out * 100) if total_out else 0
             hours = a.duration_s / 3600
@@ -287,7 +316,9 @@ def print_summary(
         console.print()
 
     # Top/bottom 5 by total tokens
-    sorted_by_tokens = sorted(all_metrics, key=lambda m: m.total_input_tokens + m.total_output_tokens)
+    sorted_by_tokens = sorted(
+        all_metrics, key=lambda m: m.total_input_tokens + m.total_output_tokens
+    )
     extremes_table = Table(title="Extremes by total tokens (input + output)")
     extremes_table.add_column("Problem", style="bold")
     extremes_table.add_column("Total tokens", justify="right")
@@ -338,8 +369,11 @@ def build_json_output(
         for agent_name, stats in m.agent_stats.items():
             if agent_name not in agent_totals:
                 agent_totals[agent_name] = {
-                    "calls": 0, "input_tokens": 0, "output_tokens": 0,
-                    "tool_calls": 0, "duration_s": 0.0,
+                    "calls": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "tool_calls": 0,
+                    "duration_s": 0.0,
                 }
             t = agent_totals[agent_name]
             t["calls"] += stats.calls
@@ -377,16 +411,23 @@ def build_json_output(
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Analyze token usage across a CritPt batch run.",
     )
-    parser.add_argument("results_dir", type=Path,
-                        help="Path to batch results directory")
-    parser.add_argument("--workspace-base", type=Path, default=DEFAULT_WORKSPACE_BASE,
-                        help="Base directory for workspaces")
-    parser.add_argument("--json", action="store_true",
-                        help="Output JSON summary to stdout")
+    parser.add_argument(
+        "results_dir", type=Path, help="Path to batch results directory"
+    )
+    parser.add_argument(
+        "--workspace-base",
+        type=Path,
+        default=DEFAULT_WORKSPACE_BASE,
+        help="Base directory for workspaces",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Output JSON summary to stdout"
+    )
     args = parser.parse_args()
 
     results_dir = args.results_dir.resolve()
@@ -419,8 +460,10 @@ def main() -> int:
             missing.append(pid)
 
     if missing:
-        console.print(f"[yellow]Warning: missing metrics for {len(missing)} problems: "
-                       f"{', '.join(missing[:5])}{'...' if len(missing) > 5 else ''}[/yellow]")
+        console.print(
+            f"[yellow]Warning: missing metrics for {len(missing)} problems: "
+            f"{', '.join(missing[:5])}{'...' if len(missing) > 5 else ''}[/yellow]"
+        )
 
     if not all_metrics:
         console.print("[red]Error: no metrics found[/red]")
@@ -429,7 +472,9 @@ def main() -> int:
     console.print(f"Loaded metrics for {len(all_metrics)}/{len(problem_ids)} problems")
 
     if args.json:
-        output = build_json_output(all_metrics, metadata.get("model", model_key), results_dir)
+        output = build_json_output(
+            all_metrics, metadata.get("model", model_key), results_dir
+        )
         print(json.dumps(output, indent=2, ensure_ascii=False))
     else:
         print_summary(all_metrics, metadata.get("model", model_key), results_dir)

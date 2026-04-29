@@ -14,13 +14,15 @@ from open_dirac.state_transitions import (
 
 
 class TestNormalizeReferences:
-
     def test_updates_stale_depends_on_wh_to_er(self):
         """depends_on referencing WH-002 should be updated when hypothesis is ER-002."""
         state = ResearchState()
-        state.hypotheses["ER-002"] = Hypothesis(id="ER-002", status=HypothesisStatus.ESTABLISHED)
+        state.hypotheses["ER-002"] = Hypothesis(
+            id="ER-002", status=HypothesisStatus.ESTABLISHED
+        )
         state.hypotheses["WH-003"] = Hypothesis(
-            id="WH-003", depends_on=["WH-002"],
+            id="WH-003",
+            depends_on=["WH-002"],
         )
         normalize_references(state)
         assert state.hypotheses["WH-003"].depends_on == ["ER-002"]
@@ -28,9 +30,12 @@ class TestNormalizeReferences:
     def test_updates_stale_depends_on_er_to_wh(self):
         """depends_on referencing ER-001 should be updated when hypothesis was demoted to WH-001."""
         state = ResearchState()
-        state.hypotheses["WH-001"] = Hypothesis(id="WH-001", status=HypothesisStatus.WORKING)
+        state.hypotheses["WH-001"] = Hypothesis(
+            id="WH-001", status=HypothesisStatus.WORKING
+        )
         state.hypotheses["WH-003"] = Hypothesis(
-            id="WH-003", depends_on=["ER-001"],
+            id="WH-003",
+            depends_on=["ER-001"],
         )
         normalize_references(state)
         assert state.hypotheses["WH-003"].depends_on == ["WH-001"]
@@ -38,9 +43,12 @@ class TestNormalizeReferences:
     def test_idempotent(self):
         """Calling normalize_references twice produces the same result."""
         state = ResearchState()
-        state.hypotheses["ER-002"] = Hypothesis(id="ER-002", status=HypothesisStatus.ESTABLISHED)
+        state.hypotheses["ER-002"] = Hypothesis(
+            id="ER-002", status=HypothesisStatus.ESTABLISHED
+        )
         state.hypotheses["WH-003"] = Hypothesis(
-            id="WH-003", depends_on=["WH-002"],
+            id="WH-003",
+            depends_on=["WH-002"],
         )
         normalize_references(state)
         deps_after_first = list(state.hypotheses["WH-003"].depends_on)
@@ -52,7 +60,8 @@ class TestNormalizeReferences:
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", depends_on=["WH-099"],
+            id="WH-002",
+            depends_on=["WH-099"],
         )
         normalize_references(state)
         assert state.hypotheses["WH-002"].depends_on == ["WH-099"]
@@ -65,10 +74,12 @@ class TestNormalizeReferencesDependsOn:
         """When WH-001 is promoted to ER-001, depends_on entries are remapped."""
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", depends_on=["WH-001"],
+            id="WH-002",
+            depends_on=["WH-001"],
         )
         normalize_references(state)
         assert state.hypotheses["WH-002"].depends_on == ["ER-001"]
@@ -77,32 +88,35 @@ class TestNormalizeReferencesDependsOn:
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", depends_on=["WH-001"],
+            id="WH-002",
+            depends_on=["WH-001"],
         )
         normalize_references(state)
         assert state.hypotheses["WH-002"].depends_on == ["WH-001"]
 
 
 class TestNormalizeReferencesResolvedTo:
-
     def test_resolved_to_remapped(self):
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="test", resolved_to=["WH-001"],
+            id="RQ-001",
+            question="test",
+            resolved_to=["WH-001"],
         )
         normalize_references(state)
         assert state.research_questions["RQ-001"].resolved_to == ["ER-001"]
 
 
 class TestDemoteHypothesis:
-
     def test_demotes_er_to_wh(self):
         state = ResearchState()
         state.hypotheses["ER-002"] = Hypothesis(
-            id="ER-002", statement="Energy conserved",
+            id="ER-002",
+            statement="Energy conserved",
             status=HypothesisStatus.ESTABLISHED,
         )
         new_id = demote_hypothesis(state, "ER-002")
@@ -115,10 +129,12 @@ class TestDemoteHypothesis:
     def test_fixes_depends_on_references(self):
         state = ResearchState()
         state.hypotheses["ER-002"] = Hypothesis(
-            id="ER-002", status=HypothesisStatus.ESTABLISHED,
+            id="ER-002",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.hypotheses["WH-003"] = Hypothesis(
-            id="WH-003", depends_on=["ER-002"],
+            id="WH-003",
+            depends_on=["ER-002"],
         )
         demote_hypothesis(state, "ER-002")
         assert state.hypotheses["WH-003"].depends_on == ["WH-002"]
@@ -126,7 +142,8 @@ class TestDemoteHypothesis:
     def test_returns_none_for_wh(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
         )
         assert demote_hypothesis(state, "WH-001") is None
         # WH-001 should be unchanged
@@ -140,10 +157,12 @@ class TestDemoteHypothesis:
     def test_preserves_other_hypotheses(self):
         state = ResearchState()
         state.hypotheses["ER-002"] = Hypothesis(
-            id="ER-002", status=HypothesisStatus.ESTABLISHED,
+            id="ER-002",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
         )
         demote_hypothesis(state, "ER-002")
         assert "WH-001" in state.hypotheses
@@ -151,11 +170,11 @@ class TestDemoteHypothesis:
 
 
 class TestPromoteHypothesis:
-
     def test_promotes_wh_to_er(self):
         state = ResearchState()
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", statement="Energy conserved",
+            id="WH-002",
+            statement="Energy conserved",
             status=HypothesisStatus.WORKING,
         )
         new_id = promote_hypothesis(state, "WH-002", iteration=7)
@@ -168,7 +187,9 @@ class TestPromoteHypothesis:
     def test_stamps_iteration_modified(self):
         state = ResearchState()
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING, iteration_modified=1,
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
+            iteration_modified=1,
         )
         promote_hypothesis(state, "WH-002", iteration=42)
         assert state.hypotheses["ER-002"].iteration_modified == 42
@@ -176,7 +197,8 @@ class TestPromoteHypothesis:
     def test_returns_none_for_er(self):
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         assert promote_hypothesis(state, "ER-001", iteration=1) is None
         assert "ER-001" in state.hypotheses
@@ -189,10 +211,13 @@ class TestPromoteHypothesis:
     def test_fixes_depends_on_references(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING, depends_on=["WH-001"],
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
+            depends_on=["WH-001"],
         )
         promote_hypothesis(state, "WH-001", iteration=5)
         assert state.hypotheses["WH-002"].depends_on == ["ER-001"]

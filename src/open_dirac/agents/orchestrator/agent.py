@@ -5,14 +5,13 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from open_dirac.llm import AgentResult, LLMResponse, run_agent_loop
+from open_dirac.research_state import ResearchState
 from open_dirac.rendering import (
     render_background_survey_xml,
     render_research_context_xml,
 )
 from open_dirac.task import Task, TaskType, TASK_TYPE_AGENT_MAP
 from open_dirac.tool_call import ToolCall
-from open_dirac.utils.categories import CompensationCategory as CC
-from open_dirac.workspace import log_scaffold_event
 
 from ..base import BaseAgent
 from .context import render_orchestrator_slim_state
@@ -45,7 +44,11 @@ class OrchestratorAgent(BaseAgent):
                 parts.append(f"<background-survey>\n{survey_ctx}\n</background-survey>")
 
         # 3. Conventions reminder
-        if iteration >= 3 and self.research_state and not self.research_state.conventions:
+        if (
+            iteration >= 3
+            and self.research_state
+            and not self.research_state.conventions
+        ):
             parts.append(
                 ">>> REMINDER: The '# Conventions' section is still empty. "
                 "Consider populating it with the unit system, sign conventions, "
@@ -53,25 +56,42 @@ class OrchestratorAgent(BaseAgent):
             )
 
         # 4. Research state — conventions, strategy, entities, research notes, dispatch history
-        state_text = render_orchestrator_slim_state(
-            self.research_state, max_open_rqs=self.config.max_open_rqs,
-        ) if self.research_state else ""
+        state_text = (
+            render_orchestrator_slim_state(
+                self.research_state,
+                max_open_rqs=self.config.max_open_rqs,
+            )
+            if self.research_state
+            else ""
+        )
         rs_inner_parts: list[str] = []
         if state_text:
             rs_inner_parts.append(state_text)
         if self.research_state and self.research_state.research_notes:
             cutoff = max(iteration - 4, 0)
-            recent = [n for n in self.research_state.research_notes if n.get("iteration", 0) >= cutoff]
+            recent = [
+                n
+                for n in self.research_state.research_notes
+                if n.get("iteration", 0) >= cutoff
+            ]
             if recent:
                 note_lines = []
                 for note in recent:
-                    note_lines.append(f"- [iter {note.get('iteration', '?')}] {note.get('text', '')}")
-                rs_inner_parts.append("<research-notes>\n" + "\n".join(note_lines) + "\n</research-notes>")
+                    note_lines.append(
+                        f"- [iter {note.get('iteration', '?')}] {note.get('text', '')}"
+                    )
+                rs_inner_parts.append(
+                    "<research-notes>\n" + "\n".join(note_lines) + "\n</research-notes>"
+                )
         if self.dispatch_history_text:
             rs_inner_parts.append(self.dispatch_history_text)
             self.dispatch_history_text = ""
         if rs_inner_parts:
-            parts.append("<research-state>\n" + "\n\n".join(rs_inner_parts) + "\n</research-state>")
+            parts.append(
+                "<research-state>\n"
+                + "\n\n".join(rs_inner_parts)
+                + "\n</research-state>"
+            )
 
         # 5. Inter-iteration banners (evidence results, verified hypotheses, etc.)
         if self.context_suffix:
@@ -84,11 +104,13 @@ class OrchestratorAgent(BaseAgent):
         context: str,
         task: Task,
         iteration: int,
-        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None] | None = None,
+        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None]
+        | None = None,
     ) -> AgentResult:
         """Run the orchestrator with state-mutation tools."""
         self._tool_executor = OrchestratorToolExecutor(
-            workspace=self.workspace, iteration=iteration,
+            workspace=self.workspace,
+            iteration=iteration,
             research_state=self.research_state,
             min_er_for_completion=self.config.min_er_for_completion,
             max_iterations=self.config.max_iterations,
@@ -124,7 +146,9 @@ class OrchestratorAgent(BaseAgent):
         )
         return result
 
-    def process_response(self, response: LLMResponse | AgentResult, task: Task, iteration: int):
+    def process_response(
+        self, response: LLMResponse | AgentResult, task: Task, iteration: int
+    ):
         """Process orchestrator output — state already mutated by tool executor."""
         if not self._tool_executor:
             return
@@ -133,11 +157,14 @@ class OrchestratorAgent(BaseAgent):
         # state mutations occurred.  Without this, verify agents read a stale
         # file and target the wrong hypothesis.
         if self._tool_executor.task_data:
-            task_obj = self._task_from_tool_data(self._tool_executor.task_data, iteration)
+            task_obj = self._task_from_tool_data(
+                self._tool_executor.task_data, iteration
+            )
             self.workspace.write_file("CURRENT_TASK.md", task_obj.to_markdown())
 
     def _task_from_tool_data(self, data: dict, iteration: int) -> Task:
         """Build a Task from dispatch tool arguments."""
+
         def _str(val: object, default: str = "") -> str:
             """Coerce to str — LLMs sometimes return a list instead of a string."""
             if val is None:

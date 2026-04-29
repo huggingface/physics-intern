@@ -62,7 +62,9 @@ def on_round_progress(
     if tps:
         detail += f", {tps}"
     if stop_reason == "forced_partial":
-        console.print(f"  round {round_num}: forced final call ({detail})", style="dim magenta")
+        console.print(
+            f"  round {round_num}: forced final call ({detail})", style="dim magenta"
+        )
         return
     n_tools = len(tool_calls)
     errors = sum(1 for tc in tool_calls if tc.is_error)
@@ -109,8 +111,10 @@ def print_final_report(
     console.print(f"Total input tokens: {metrics.total_input_tokens:,}")
     console.print(f"Total output tokens: {metrics.total_output_tokens:,}")
     if config.input_cost or config.output_cost:
-        cost = (metrics.total_input_tokens * config.input_cost
-                + metrics.total_output_tokens * config.output_cost) / 1_000_000
+        cost = (
+            metrics.total_input_tokens * config.input_cost
+            + metrics.total_output_tokens * config.output_cost
+        ) / 1_000_000
         console.print(f"Estimated cost: ${cost:.2f}")
     console.print(f"Workspace: {workspace_root.resolve()}")
     if metrics.alerts:

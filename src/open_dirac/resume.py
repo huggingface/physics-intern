@@ -30,9 +30,11 @@ def reconstruct_loop_state(research_state: ResearchState) -> LoopState:
 
     # claim_failure_count: hypotheses with non-VERIFIED review that are still WORKING
     for h in research_state.hypotheses.values():
-        if (h.review
-                and h.review.verdict in (Verdict.REFUTED, "INCONCLUSIVE")
-                and h.status == "working"):
+        if (
+            h.review
+            and h.review.verdict in (Verdict.REFUTED, "INCONCLUSIVE")
+            and h.status == "working"
+        ):
             state.claim_failure_count[h.id] = 1
 
     # last_content_iteration: max iteration from evidence/review across entities

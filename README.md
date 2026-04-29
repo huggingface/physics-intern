@@ -18,7 +18,7 @@ Supports multiple LLM providers (Anthropic, OpenAI, Google Gemini, HuggingFace) 
 
 ```bash
 # Install (requires Python 3.12+ and uv)
-uv sync --extra dev
+uv sync --extra testing
 
 # For non-Anthropic providers, install the relevant extra:
 uv sync --extra openai          # OpenAI
@@ -31,6 +31,17 @@ uv sync --extra local
 
 # Run a research problem (requires model API key in .env or env var)
 uv run open_dirac problems/critpt/quantum_error_correction_main.yaml --model gemini-3-flash-preview
+```
+
+### Continuous Integration
+
+On pull requests and pushes to `main`/`master`, GitHub Actions runs Ruff (lint + format check) and pytest (Python 3.12 and 3.13). For the same checks locally:
+
+```bash
+uv sync --extra quality --extra testing
+uv run ruff check tests src scripts serve
+uv run ruff format --check tests src scripts serve
+uv run python -m pytest ./tests/
 ```
 
 ### Environment Variables

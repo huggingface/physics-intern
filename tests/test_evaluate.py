@@ -1,5 +1,5 @@
 """Tests for open_dirac.verification.evaluate — answer evaluation module."""
-import pytest
+
 import sympy as sp
 
 from open_dirac.verification.evaluate import (
@@ -13,6 +13,7 @@ from open_dirac.verification.evaluate import (
 
 
 # ── extract_answer_code ────────────────────────────────────────────────────
+
 
 class TestExtractAnswerCode:
     def test_single_block(self):
@@ -45,6 +46,7 @@ class TestExtractAnswerCode:
 
 # ── _classify_answer_type ──────────────────────────────────────────────────
 
+
 class TestClassifyAnswerType:
     def test_float(self):
         assert _classify_answer_type(1057.8) == "numerical"
@@ -59,10 +61,14 @@ class TestClassifyAnswerType:
         assert _classify_answer_type("hbar * c / (8 * sp.pi * G)") == "symbolic"
 
     def test_assignment_string(self):
-        assert _classify_answer_type("T_H = hbar * c**3 / (8 * sp.pi * G * M * k_B)") == "symbolic"
+        assert (
+            _classify_answer_type("T_H = hbar * c**3 / (8 * sp.pi * G * M * k_B)")
+            == "symbolic"
+        )
 
 
 # ── _parse_template_preamble ──────────────────────────────────────────────
+
 
 class TestParseTemplatePreamble:
     def test_with_params(self):
@@ -82,16 +88,14 @@ class TestParseTemplatePreamble:
         assert "def answer" not in preamble
 
     def test_no_params(self):
-        template = (
-            "def answer():\n"
-            "    return 1057.8\n"
-        )
+        template = "def answer():\n    return 1057.8\n"
         preamble, params = _parse_template_preamble(template)
         assert params == []
         assert preamble.strip() == ""
 
 
 # ── _compare_numerical ────────────────────────────────────────────────────
+
 
 class TestCompareNumerical:
     def test_exact_match(self):
@@ -116,6 +120,7 @@ class TestCompareNumerical:
 
 
 # ── _compare_symbolic ─────────────────────────────────────────────────────
+
 
 class TestCompareSymbolic:
     def _make_namespace(self):
@@ -170,7 +175,7 @@ class TestCompareSymbolic:
         exec("import sympy as sp", ns)
         exec("x = sp.Symbol('x')", ns)
         x = ns["x"]
-        candidate = sp.sin(x)**2 + sp.cos(x)**2
+        candidate = sp.sin(x) ** 2 + sp.cos(x) ** 2
         answer_str = "1"
         result = _compare_symbolic(candidate, answer_str, ns)
         assert result["correct"] is True
@@ -193,6 +198,7 @@ class TestCompareSymbolic:
 
 
 # ── evaluate_response (full pipeline) ─────────────────────────────────────
+
 
 class TestEvaluateResponse:
     def test_correct_hawking(self):
@@ -249,9 +255,7 @@ class TestEvaluateResponse:
         problem_def = {
             "answer": 1057.8,
             "answer_template": (
-                "def answer():\n"
-                "    lamb_shift_MHz = ...\n"
-                "    return lamb_shift_MHz\n"
+                "def answer():\n    lamb_shift_MHz = ...\n    return lamb_shift_MHz\n"
             ),
         }
         response = (
@@ -281,7 +285,10 @@ class TestEvaluateResponse:
         assert result["method"] == "no_answer"
 
     def test_no_code_in_response(self):
-        problem_def = {"answer": "x + 1", "answer_template": "def answer():\n    return ...\n"}
+        problem_def = {
+            "answer": "x + 1",
+            "answer_template": "def answer():\n    return ...\n",
+        }
         result = evaluate_response("Just text, no code block.", problem_def)
         assert result["correct"] is None
         assert result["method"] == "no_code"
@@ -368,6 +375,8 @@ class TestEvaluateResponse:
         assert result["method"] == "candidate_call_error"
 
     def test_empty_answer_string(self):
-        result = evaluate_response("anything", {"answer": "  \n", "answer_template": ""})
+        result = evaluate_response(
+            "anything", {"answer": "  \n", "answer_template": ""}
+        )
         assert result["correct"] is None
         assert result["method"] == "no_answer"

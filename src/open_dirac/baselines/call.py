@@ -6,6 +6,7 @@ log channel by default), applies ``llm.continue_on_max_tokens`` when the
 response is truncated, and computes USD cost from the model-registry
 entries on the ``Config``. Returns a structured dict.
 """
+
 from __future__ import annotations
 
 import sys
@@ -31,6 +32,7 @@ def run_baseline_call(
         tokens: {"input", "output", "reasoning", "answer"}
         duration_s, cost_usd, stop_reason, response_text
     """
+
     def _on_retry(exc: Exception, attempt: int, max_retries: int) -> None:
         print(
             f"  Transient error (attempt {attempt + 1}/{max_retries}): {exc}",
@@ -52,10 +54,15 @@ def run_baseline_call(
     )
     if resp.stop_reason == "max_tokens":
         resp = continue_on_max_tokens(
-            provider, resp, config,
-            model=config.model_id, max_tokens=config.max_tokens,
-            system=system, messages=initial_messages,
-            workspace_dir=config.workspace_dir, agent_name=agent_name,
+            provider,
+            resp,
+            config,
+            model=config.model_id,
+            max_tokens=config.max_tokens,
+            system=system,
+            messages=initial_messages,
+            workspace_dir=config.workspace_dir,
+            agent_name=agent_name,
         )
     duration = time.time() - start
 

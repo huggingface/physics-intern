@@ -14,6 +14,7 @@ Usage:
     uv run python -m open_dirac.rsa problems/critpt/quantum_error_correction_main.yaml -N 6 -K 2 -T 4
     uv run python -m open_dirac.rsa problems/critpt/quantum_error_correction_main.yaml --model gpt-5.4-high
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,9 +25,9 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from ..baselines import (
@@ -80,6 +81,7 @@ verification.
 # ---------------------------------------------------------------------------
 # Prompt construction
 # ---------------------------------------------------------------------------
+
 
 def build_aggregation_message(
     problem_text: str,
@@ -187,6 +189,7 @@ def _majority_vote(
 # RSA core algorithm
 # ---------------------------------------------------------------------------
 
+
 def _run_rsa_round(
     provider: LLMProvider,
     config: Config,
@@ -210,11 +213,15 @@ def _run_rsa_round(
         subset_indices = random.sample(range(N), min(K, N))
         subset = [clean_population[i] for i in subset_indices]
         agg_message = build_aggregation_message(
-            problem_text, answer_template, subset,
+            problem_text,
+            answer_template,
+            subset,
         )
         return run_baseline_call(
-            provider, config,
-            system=AGGREGATION_SYSTEM_PROMPT, user_message=agg_message,
+            provider,
+            config,
+            system=AGGREGATION_SYSTEM_PROMPT,
+            user_message=agg_message,
             agent_name="rsa",
         )
 
@@ -264,15 +271,20 @@ def run_rsa(
             total_cost += r["cost_usd"]
 
     # --- Round 0: generate initial population ---
-    print(f"Round 0/{T-1}: generating {N} initial candidates...",
-          file=sys.stderr, flush=True)
+    print(
+        f"Round 0/{T - 1}: generating {N} initial candidates...",
+        file=sys.stderr,
+        flush=True,
+    )
 
     init_results: list[dict] = [None] * N  # type: ignore[list-item]
 
     def _generate_one(slot: int) -> dict:
         return run_baseline_call(
-            provider, config,
-            system=SYSTEM_PROMPT, user_message=user_message,
+            provider,
+            config,
+            system=SYSTEM_PROMPT,
+            user_message=user_message,
             agent_name="rsa",
         )
 
@@ -289,48 +301,65 @@ def run_rsa(
     keys_0 = [_extract_answer_key(r) for r in population]
     n_unique_0 = len(set(k for k in keys_0 if k))
     round_cost = sum(r["cost_usd"] for r in init_results)
-    rounds_log.append({
-        "round": 0,
-        "type": "init",
-        "n_unique_answers": n_unique_0,
-        "cost_usd": round(round_cost, 6),
-    })
-    print(f"  {n_unique_0} unique answers, ${round_cost:.4f}",
-          file=sys.stderr, flush=True)
+    rounds_log.append(
+        {
+            "round": 0,
+            "type": "init",
+            "n_unique_answers": n_unique_0,
+            "cost_usd": round(round_cost, 6),
+        }
+    )
+    print(
+        f"  {n_unique_0} unique answers, ${round_cost:.4f}", file=sys.stderr, flush=True
+    )
 
     # --- Rounds 1..T-1: aggregation ---
     for t in range(1, T):
-        print(f"Round {t}/{T-1}: aggregating (K={K})...",
-              file=sys.stderr, flush=True)
+        print(f"Round {t}/{T - 1}: aggregating (K={K})...", file=sys.stderr, flush=True)
 
         population, call_results = _run_rsa_round(
-            provider, config, problem_text, answer_template,
-            population, K, max_workers,
+            provider,
+            config,
+            problem_text,
+            answer_template,
+            population,
+            K,
+            max_workers,
         )
         _accumulate(call_results)
 
         keys_t = [_extract_answer_key(r) for r in population]
         n_unique_t = len(set(k for k in keys_t if k))
         round_cost = sum(r["cost_usd"] for r in call_results)
-        rounds_log.append({
-            "round": t,
-            "type": "aggregation",
-            "n_unique_answers": n_unique_t,
-            "cost_usd": round(round_cost, 6),
-        })
-        print(f"  {n_unique_t} unique answers, ${round_cost:.4f}",
-              file=sys.stderr, flush=True)
+        rounds_log.append(
+            {
+                "round": t,
+                "type": "aggregation",
+                "n_unique_answers": n_unique_t,
+                "cost_usd": round(round_cost, 6),
+            }
+        )
+        print(
+            f"  {n_unique_t} unique answers, ${round_cost:.4f}",
+            file=sys.stderr,
+            flush=True,
+        )
 
     # --- Majority vote ---
     winning_response, vote_count, n_valid = _majority_vote(population)
     total_duration = time.time() - start_time
 
-    print(f"Majority vote: {vote_count}/{n_valid} agree "
-          f"(total: {total_duration:.1f}s, ${total_cost:.4f})",
-          file=sys.stderr, flush=True)
-    print(f"Tokens: input={total_tokens['input']}, "
-          f"output={total_tokens['output']}",
-          file=sys.stderr, flush=True)
+    print(
+        f"Majority vote: {vote_count}/{n_valid} agree "
+        f"(total: {total_duration:.1f}s, ${total_cost:.4f})",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(
+        f"Tokens: input={total_tokens['input']}, output={total_tokens['output']}",
+        file=sys.stderr,
+        flush=True,
+    )
 
     return {
         "N": N,
@@ -355,6 +384,7 @@ def run_rsa(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="open_dirac.rsa",
@@ -362,19 +392,27 @@ def main() -> None:
     )
     add_common_args(parser)
     parser.add_argument(
-        "-N", type=int, default=6,
+        "-N",
+        type=int,
+        default=6,
         help="Population size (default: 6)",
     )
     parser.add_argument(
-        "-K", type=int, default=2,
+        "-K",
+        type=int,
+        default=2,
         help="Aggregation subset size (default: 2)",
     )
     parser.add_argument(
-        "-T", type=int, default=4,
+        "-T",
+        type=int,
+        default=4,
         help="Number of rounds (default: 4)",
     )
     parser.add_argument(
-        "--concurrency", type=int, default=None,
+        "--concurrency",
+        type=int,
+        default=None,
         help="Max parallel LLM calls within a round (default: N)",
     )
     args = parser.parse_args()
@@ -394,7 +432,11 @@ def main() -> None:
 
     # --- Workspace (lightweight, no git — same shape as one-shot) ---
     workspace_root = setup_workspace(
-        args, config, problem_def, problem_text, "rsa",
+        args,
+        config,
+        problem_def,
+        problem_text,
+        "rsa",
     )
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -409,9 +451,15 @@ def main() -> None:
 
     # --- Run RSA ---
     result = run_rsa(
-        provider, config, user_message,
-        problem_text, answer_template,
-        N=N, K=K, T=T, max_workers=max_workers,
+        provider,
+        config,
+        user_message,
+        problem_text,
+        answer_template,
+        N=N,
+        K=K,
+        T=T,
+        max_workers=max_workers,
     )
 
     # --- Persist winning answer to workspace ---
@@ -422,7 +470,9 @@ def main() -> None:
     # --- Formal evaluation (writes VERIFICATION.md with frontmatter) ---
     try:
         ev = run_formal_evaluation(
-            str(workspace_root), problem_def, problem_path=args.problem,
+            str(workspace_root),
+            problem_def,
+            problem_path=args.problem,
         )
         render_formal_evaluation(ev)
         write_formal_eval_report(ev, str(workspace_root))

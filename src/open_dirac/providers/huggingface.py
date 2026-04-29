@@ -33,9 +33,14 @@ class HuggingFaceProvider(LLMProvider):
     # ``._openai_compat`` directly.
     _strip_tool_messages = staticmethod(strip_tool_messages)
 
-    def __init__(self, api_key: str = "", hf_provider: str | None = None,
-                 timeout: float | None = None, reasoning_format: str = "",
-                 **kwargs):
+    def __init__(
+        self,
+        api_key: str = "",
+        hf_provider: str | None = None,
+        timeout: float | None = None,
+        reasoning_format: str = "",
+        **kwargs,
+    ):
         try:
             from huggingface_hub import InferenceClient
         except ImportError:
@@ -141,7 +146,7 @@ class HuggingFaceProvider(LLMProvider):
         arg_match = re.search(r'"arguments"\s*:\s*', failed)
         if not arg_match:
             return None
-        raw_args = failed[arg_match.end():]
+        raw_args = failed[arg_match.end() :]
         # Strip a single trailing } that closes the outer tool-call object
         raw_args = raw_args.rstrip()
         if raw_args.endswith("}"):
@@ -184,16 +189,24 @@ class HuggingFaceProvider(LLMProvider):
             input_tokens=0,
             output_tokens=0,
             stop_reason="tool_use",
-            tool_calls=[{
-                "id": "repaired_0",
-                "name": tool_name,
-                "input": parsed_args,
-            }],
+            tool_calls=[
+                {
+                    "id": "repaired_0",
+                    "name": tool_name,
+                    "input": parsed_args,
+                }
+            ],
             raw_content=raw_content,
         )
 
-    def call(self, model: str, max_tokens: int, system: str,
-             messages: list[dict], tools: list[dict] | None = None) -> ProviderResponse:
+    def call(
+        self,
+        model: str,
+        max_tokens: int,
+        system: str,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+    ) -> ProviderResponse:
         # HF uses OpenAI-compatible chat completions with system as first message
         hf_messages = [{"role": "system", "content": system}] + messages
 
@@ -265,8 +278,7 @@ class HuggingFaceProvider(LLMProvider):
                         if tc_delta.function.name:
                             tc_acc[idx]["name"] = tc_delta.function.name
                         if tc_delta.function.arguments:
-                            tc_acc[idx]["arg_parts"].append(
-                                tc_delta.function.arguments)
+                            tc_acc[idx]["arg_parts"].append(tc_delta.function.arguments)
 
         text = "".join(text_parts)
 
@@ -294,15 +306,16 @@ class HuggingFaceProvider(LLMProvider):
                         parsed_args = {"code": args_str}
                     else:
                         parsed_args = {"raw": args_str}
-                tool_calls.append({
-                    "id": tc_id,
-                    "name": tc["name"],
-                    "input": parsed_args,
-                })
+                tool_calls.append(
+                    {
+                        "id": tc_id,
+                        "name": tc["name"],
+                        "input": parsed_args,
+                    }
+                )
                 raw_tool_calls.append(build_raw_tool_call(tc_id, tc["name"], args_str))
 
-        stop_reason = _STOP_REASON_MAP.get(finish_reason,
-                                            finish_reason or "end_turn")
+        stop_reason = _STOP_REASON_MAP.get(finish_reason, finish_reason or "end_turn")
 
         # Synthetic raw_content (SimpleNamespace, same shape as non-streaming)
         raw_content = SimpleNamespace(
@@ -325,19 +338,21 @@ class HuggingFaceProvider(LLMProvider):
         if fmt == "separate_field":
             # Models like Kimi, GPT-OSS: completion_tokens includes reasoning.
             reasoning_tokens, answer_tokens = split_reasoning_tokens(
-                output_tokens, text, tool_calls)
+                output_tokens, text, tool_calls
+            )
         elif fmt == "think_tags":
             # Models like DeepSeek, Qwen: reasoning in <think>...</think> tags.
             # Extract reasoning content from tags, estimate answer from visible text.
             if not reasoning_content and "</think>" in text:
-                match = re.search(r'<think>(.*?)</think>', text, re.DOTALL)
+                match = re.search(r"<think>(.*?)</think>", text, re.DOTALL)
                 if match:
                     reasoning_content = match.group(1)
                 elif "</think>" in text:
                     reasoning_content = text.split("</think>", 1)[0]
             visible_text = strip_think_tags(text)
             reasoning_tokens, answer_tokens = split_reasoning_tokens(
-                output_tokens, visible_text, tool_calls)
+                output_tokens, visible_text, tool_calls
+            )
 
         return ProviderResponse(
             text=text,
@@ -373,9 +388,11 @@ class HuggingFaceProvider(LLMProvider):
         """HF: separate role='tool' messages (OpenAI-compatible)."""
         messages = []
         for tr in tool_results:
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tr["tool_call_id"],
-                "content": tr["output"],
-            })
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tr["tool_call_id"],
+                    "content": tr["output"],
+                }
+            )
         return messages

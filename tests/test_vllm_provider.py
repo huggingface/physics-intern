@@ -1,7 +1,5 @@
 """Tests for vLLM provider — XML tool-call parsing, dual-mode handling, prompt rendering."""
 
-import json
-import pytest
 from types import SimpleNamespace
 
 from open_dirac.providers.vllm import VLLMProvider
@@ -10,6 +8,7 @@ from open_dirac.providers.vllm import VLLMProvider
 # ---------------------------------------------------------------------------
 # XML tool-call parsing
 # ---------------------------------------------------------------------------
+
 
 class TestParseXmlToolCalls:
     """Tests for VLLMProvider._parse_xml_tool_calls()."""
@@ -65,14 +64,14 @@ class TestParseXmlToolCalls:
 
     def test_json_values_parsed(self):
         text = (
-            '<tool_call>\n'
-            '<function=configure>\n'
-            '<parameter=enabled>true</parameter>\n'
-            '<parameter=count>5</parameter>\n'
-            '<parameter=ratio>3.14</parameter>\n'
-            '<parameter=label>hello world</parameter>\n'
-            '</function>\n'
-            '</tool_call>'
+            "<tool_call>\n"
+            "<function=configure>\n"
+            "<parameter=enabled>true</parameter>\n"
+            "<parameter=count>5</parameter>\n"
+            "<parameter=ratio>3.14</parameter>\n"
+            "<parameter=label>hello world</parameter>\n"
+            "</function>\n"
+            "</tool_call>"
         )
         calls = VLLMProvider._parse_xml_tool_calls(text)
         assert calls[0]["input"]["enabled"] is True
@@ -109,8 +108,8 @@ class TestParseXmlToolCalls:
 # Tool prompt rendering
 # ---------------------------------------------------------------------------
 
-class TestRenderToolsForPrompt:
 
+class TestRenderToolsForPrompt:
     SAMPLE_TOOLS = [
         {
             "type": "function",
@@ -150,18 +149,20 @@ class TestRenderToolsForPrompt:
         assert "<function=TOOL_NAME>" in rendered
 
     def test_multiple_tools(self):
-        tools = self.SAMPLE_TOOLS + [{
-            "type": "function",
-            "function": {
-                "name": "search",
-                "description": "Search the web.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
+        tools = self.SAMPLE_TOOLS + [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search",
+                    "description": "Search the web.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"query": {"type": "string"}},
+                        "required": ["query"],
+                    },
                 },
-            },
-        }]
+            }
+        ]
         rendered = VLLMProvider._render_tools_for_prompt(tools)
         assert "## calculate" in rendered
         assert "## search" in rendered
@@ -171,8 +172,8 @@ class TestRenderToolsForPrompt:
 # Strip tool messages
 # ---------------------------------------------------------------------------
 
-class TestStripToolMessages:
 
+class TestStripToolMessages:
     def test_removes_tool_role_messages(self):
         messages = [
             {"role": "user", "content": "hello"},
@@ -203,8 +204,8 @@ class TestStripToolMessages:
 # format_assistant_message
 # ---------------------------------------------------------------------------
 
-class TestFormatAssistantMessage:
 
+class TestFormatAssistantMessage:
     def _make_provider(self, tool_mode="api"):
         p = object.__new__(VLLMProvider)
         p._reasoning_format = ""
@@ -254,8 +255,8 @@ class TestFormatAssistantMessage:
 # build_tool_result_messages — dual mode
 # ---------------------------------------------------------------------------
 
-class TestBuildToolResultMessages:
 
+class TestBuildToolResultMessages:
     def _make_provider(self):
         p = object.__new__(VLLMProvider)
         p._reasoning_format = ""
@@ -266,8 +267,12 @@ class TestBuildToolResultMessages:
         provider = self._make_provider()
         provider._last_call_xml_tools = True
         results = [
-            {"tool_call_id": "xmlcall_0", "name": "get_weather",
-             "output": '{"temp": 18}', "is_error": False},
+            {
+                "tool_call_id": "xmlcall_0",
+                "name": "get_weather",
+                "output": '{"temp": 18}',
+                "is_error": False,
+            },
         ]
         msgs = provider.build_tool_result_messages(results)
         assert len(msgs) == 1
@@ -279,10 +284,18 @@ class TestBuildToolResultMessages:
         provider = self._make_provider()
         provider._last_call_xml_tools = True
         results = [
-            {"tool_call_id": "xmlcall_0", "name": "get_weather",
-             "output": "sunny", "is_error": False},
-            {"tool_call_id": "xmlcall_1", "name": "multiply",
-             "output": "714", "is_error": False},
+            {
+                "tool_call_id": "xmlcall_0",
+                "name": "get_weather",
+                "output": "sunny",
+                "is_error": False,
+            },
+            {
+                "tool_call_id": "xmlcall_1",
+                "name": "multiply",
+                "output": "714",
+                "is_error": False,
+            },
         ]
         msgs = provider.build_tool_result_messages(results)
         assert len(msgs) == 1  # combined into one user message
@@ -293,8 +306,12 @@ class TestBuildToolResultMessages:
         provider = self._make_provider()
         provider._last_call_xml_tools = True
         results = [
-            {"tool_call_id": "xmlcall_0", "name": "execute_python",
-             "output": "NameError: x not defined", "is_error": True},
+            {
+                "tool_call_id": "xmlcall_0",
+                "name": "execute_python",
+                "output": "NameError: x not defined",
+                "is_error": True,
+            },
         ]
         msgs = provider.build_tool_result_messages(results)
         assert "error" in msgs[0]["content"]
@@ -303,8 +320,12 @@ class TestBuildToolResultMessages:
         provider = self._make_provider()
         provider._last_call_xml_tools = False
         results = [
-            {"tool_call_id": "call_0", "name": "multiply",
-             "output": "42", "is_error": False},
+            {
+                "tool_call_id": "call_0",
+                "name": "multiply",
+                "output": "42",
+                "is_error": False,
+            },
         ]
         msgs = provider.build_tool_result_messages(results)
         assert len(msgs) == 1
@@ -317,8 +338,8 @@ class TestBuildToolResultMessages:
 # prepare_messages — think tag stripping
 # ---------------------------------------------------------------------------
 
-class TestPrepareMessages:
 
+class TestPrepareMessages:
     def _make_provider(self, reasoning_format="think_tags"):
         p = object.__new__(VLLMProvider)
         p._tool_mode = "api"

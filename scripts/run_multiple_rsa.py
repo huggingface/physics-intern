@@ -40,6 +40,7 @@ DEFAULT_WORKSPACE_BASE = PROJECT_ROOT / "workspaces"
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RunResult:
     run_index: int
@@ -63,6 +64,7 @@ class RunResult:
 # ---------------------------------------------------------------------------
 # Workspace result parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_workspace_results(workspace_dir: Path) -> tuple[str, bool, dict | None]:
     """Read formal verification results from a completed workspace.
@@ -127,9 +129,12 @@ async def run_one(
 ) -> RunResult:
     """Run a single open_dirac_rsa subprocess, streaming round progress."""
     cmd = [
-        "uv", "run", "open_dirac_rsa",
+        "uv",
+        "run",
+        "open_dirac_rsa",
         str(problem_path),
-        "--workspace-dir", str(workspace_dir),
+        "--workspace-dir",
+        str(workspace_dir),
     ]
     if model_key:
         cmd.extend(["--model", model_key])
@@ -196,7 +201,9 @@ async def run_one(
             )
             elapsed = time.monotonic() - start
 
-            formal_answer, has_answer, rsa_payload = parse_workspace_results(workspace_dir)
+            formal_answer, has_answer, rsa_payload = parse_workspace_results(
+                workspace_dir
+            )
 
             error = None
             if proc.returncode != 0 and not has_answer:
@@ -204,8 +211,14 @@ async def run_one(
                 error = f"exit code {proc.returncode}: {tail}"
 
             return _build_result(
-                run_index, workspace_dir, formal_answer, has_answer,
-                elapsed, proc.returncode, error, rsa_payload,
+                run_index,
+                workspace_dir,
+                formal_answer,
+                has_answer,
+                elapsed,
+                proc.returncode,
+                error,
+                rsa_payload,
             )
 
         except asyncio.TimeoutError:
@@ -219,12 +232,18 @@ async def run_one(
             except (asyncio.TimeoutError, ProcessLookupError):
                 pass
             # Salvage whatever the child managed to write before the timeout.
-            formal_answer, has_answer, rsa_payload = parse_workspace_results(workspace_dir)
+            formal_answer, has_answer, rsa_payload = parse_workspace_results(
+                workspace_dir
+            )
             if not has_answer:
                 formal_answer = "error"
             return _build_result(
-                run_index, workspace_dir, formal_answer, has_answer,
-                elapsed, None,
+                run_index,
+                workspace_dir,
+                formal_answer,
+                has_answer,
+                elapsed,
+                None,
                 f"timeout after {timeout:.0f}s" if not has_answer else None,
                 rsa_payload,
             )
@@ -278,6 +297,7 @@ def _build_result(
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
+
 async def run_multiple(args: argparse.Namespace) -> int:
     """Run N RSA instances and report aggregate results."""
     n = args.runs
@@ -291,8 +311,7 @@ async def run_multiple(args: argparse.Namespace) -> int:
     workspace_base = args.workspace_base
 
     workspace_dirs = [
-        workspace_base
-        / f"{timestamp}_{problem_stem}_{safe_model}_rsa_run{i:03d}"
+        workspace_base / f"{timestamp}_{problem_stem}_{safe_model}_rsa_run{i:03d}"
         for i in range(n)
     ]
 
@@ -323,12 +342,18 @@ async def run_multiple(args: argparse.Namespace) -> int:
     async def worker(run_index: int) -> RunResult:
         nonlocal completed
         result = await run_one(
-            run_index, args.problem, args.model,
+            run_index,
+            args.problem,
+            args.model,
             args.config,
-            args.N, args.K, args.T,
+            args.N,
+            args.K,
+            args.T,
             args.rsa_concurrency,
             workspace_dirs[run_index],
-            args.timeout, semaphore, print_lock,
+            args.timeout,
+            semaphore,
+            print_lock,
         )
         async with lock:
             completed += 1
@@ -336,7 +361,9 @@ async def run_multiple(args: argparse.Namespace) -> int:
             status = result.formal_answer.upper()
             if result.error:
                 status = f"ERROR: {result.error[:80]}"
-            cost_str = f", ${result.total_cost_usd:.4f}" if result.total_cost_usd else ""
+            cost_str = (
+                f", ${result.total_cost_usd:.4f}" if result.total_cost_usd else ""
+            )
             print(
                 f"[{completed}/{n}] run{run_index:03d} ({result.duration_s:.0f}s{cost_str}) {status}",
                 file=sys.stderr,
@@ -447,37 +474,75 @@ async def run_multiple(args: argparse.Namespace) -> int:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run open_dirac_rsa N times on a single problem with concurrency.",
     )
     parser.add_argument("problem", type=Path, help="Path to problem YAML file")
-    parser.add_argument("--model", type=str, default=None,
-                        help=f"Model key from models.yaml (default: {DEFAULTS['model']})")
-    parser.add_argument("--config", type=Path, default=None,
-                        help="Config YAML file to pass through")
-    parser.add_argument("-N", type=int, default=None,
-                        help="RSA population size (default: RSA runner default — 6)")
-    parser.add_argument("-K", type=int, default=None,
-                        help="RSA aggregation subset size (default: RSA runner default — 2)")
-    parser.add_argument("-T", type=int, default=None,
-                        help="RSA number of rounds (default: RSA runner default — 4)")
-    parser.add_argument("--rsa-concurrency", type=int, default=None,
-                        help="Max parallel LLM calls within a single RSA run "
-                             "(default: RSA runner default — N)")
-    parser.add_argument("--runs", type=int, required=True,
-                        help="Number of independent RSA runs")
-    parser.add_argument("--concurrency", type=int, default=3,
-                        help="Max parallel RSA runs (default: 3). "
-                             "Note: each RSA run itself fans out up to N calls, "
-                             "so effective in-flight LLM calls ≈ concurrency × N.")
-    parser.add_argument("--timeout", type=int, default=3600,
-                        help="Per-run timeout in seconds (default: 3600)")
-    parser.add_argument("--workspace-base", type=Path, default=DEFAULT_WORKSPACE_BASE,
-                        help="Base directory for workspaces")
-    parser.add_argument("--output-dir", type=Path,
-                        default=PROJECT_ROOT / "results" / "multiple_rsa",
-                        help="Output directory for summary JSON")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
+    )
+    parser.add_argument(
+        "--config", type=Path, default=None, help="Config YAML file to pass through"
+    )
+    parser.add_argument(
+        "-N",
+        type=int,
+        default=None,
+        help="RSA population size (default: RSA runner default — 6)",
+    )
+    parser.add_argument(
+        "-K",
+        type=int,
+        default=None,
+        help="RSA aggregation subset size (default: RSA runner default — 2)",
+    )
+    parser.add_argument(
+        "-T",
+        type=int,
+        default=None,
+        help="RSA number of rounds (default: RSA runner default — 4)",
+    )
+    parser.add_argument(
+        "--rsa-concurrency",
+        type=int,
+        default=None,
+        help="Max parallel LLM calls within a single RSA run "
+        "(default: RSA runner default — N)",
+    )
+    parser.add_argument(
+        "--runs", type=int, required=True, help="Number of independent RSA runs"
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=3,
+        help="Max parallel RSA runs (default: 3). "
+        "Note: each RSA run itself fans out up to N calls, "
+        "so effective in-flight LLM calls ≈ concurrency × N.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=3600,
+        help="Per-run timeout in seconds (default: 3600)",
+    )
+    parser.add_argument(
+        "--workspace-base",
+        type=Path,
+        default=DEFAULT_WORKSPACE_BASE,
+        help="Base directory for workspaces",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "multiple_rsa",
+        help="Output directory for summary JSON",
+    )
     args = parser.parse_args()
 
     if args.runs < 1:

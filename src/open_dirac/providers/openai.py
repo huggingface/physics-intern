@@ -20,8 +20,13 @@ _ITEMS_KEY = "_openai_items"
 class OpenAIProvider(LLMProvider):
     """OpenAI API provider (Responses API)."""
 
-    def __init__(self, api_key: str = "", reasoning_effort: str = "",
-                 timeout: float = 600.0, **kwargs):
+    def __init__(
+        self,
+        api_key: str = "",
+        reasoning_effort: str = "",
+        timeout: float = 600.0,
+        **kwargs,
+    ):
         try:
             from openai import OpenAI
         except ImportError:
@@ -38,8 +43,14 @@ class OpenAIProvider(LLMProvider):
         )
         self._reasoning_effort = reasoning_effort
 
-    def call(self, model: str, max_tokens: int, system: str,
-             messages: list[dict], tools: list[dict] | None = None) -> ProviderResponse:
+    def call(
+        self,
+        model: str,
+        max_tokens: int,
+        system: str,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+    ) -> ProviderResponse:
         kwargs = dict(
             model=model,
             instructions=system,
@@ -82,10 +93,12 @@ class OpenAIProvider(LLMProvider):
             content = msg.get("content", "")
             if isinstance(content, str):
                 part_type = "input_text" if role != "assistant" else "output_text"
-                out.append({
-                    "role": role,
-                    "content": [{"type": part_type, "text": content}],
-                })
+                out.append(
+                    {
+                        "role": role,
+                        "content": [{"type": part_type, "text": content}],
+                    }
+                )
             else:
                 out.append({"role": role, "content": content})
         return out
@@ -97,13 +110,15 @@ class OpenAIProvider(LLMProvider):
         result = []
         for t in tools:
             fn = t["function"]
-            result.append({
-                "type": "function",
-                "name": fn["name"],
-                "description": fn.get("description", ""),
-                "parameters": fn.get("parameters", {}),
-                "strict": False,
-            })
+            result.append(
+                {
+                    "type": "function",
+                    "name": fn["name"],
+                    "description": fn.get("description", ""),
+                    "parameters": fn.get("parameters", {}),
+                    "strict": False,
+                }
+            )
         return result
 
     # ── Response parsing ───────────────────────────────────────────────────
@@ -126,11 +141,13 @@ class OpenAIProvider(LLMProvider):
                     parsed_args = json.loads(args_str) if args_str else {}
                 except (json.JSONDecodeError, ValueError):
                     parsed_args = {"raw": args_str}
-                tool_calls.append({
-                    "id": item.call_id,
-                    "name": item.name,
-                    "input": parsed_args,
-                })
+                tool_calls.append(
+                    {
+                        "id": item.call_id,
+                        "name": item.name,
+                        "input": parsed_args,
+                    }
+                )
                 replay_items.append(item.model_dump(exclude_none=True))
             elif kind == "reasoning":
                 replay_items.append(item.model_dump(exclude_none=True))

@@ -11,12 +11,14 @@ Usage:
     uv run python -m open_dirac.one_shot problems/critpt/quantum_error_correction_main.yaml --model gpt-5.4-high
     uv run python -m open_dirac.one_shot problems/critpt/quantum_error_correction_main.yaml -o result.md
 """
+
 from __future__ import annotations
 
 import argparse
 import sys
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from ..baselines import (
@@ -37,6 +39,7 @@ from ..verification import run_formal_evaluation, write_formal_eval_report
 # Single run
 # ---------------------------------------------------------------------------
 
+
 def _run_single(
     args: argparse.Namespace,
     config: Config,
@@ -47,8 +50,10 @@ def _run_single(
 ) -> None:
     """Run once, evaluate against ground truth, write outputs."""
     result = run_baseline_call(
-        provider, config,
-        system=SYSTEM_PROMPT, user_message=user_message,
+        provider,
+        config,
+        system=SYSTEM_PROMPT,
+        user_message=user_message,
         agent_name="one_shot",
     )
 
@@ -74,7 +79,9 @@ def _run_single(
     # Rich console singleton (stdout), which would corrupt one-shot's
     # stdout-is-response contract. The stderr verdict line below replaces it.
     ev = run_formal_evaluation(
-        str(workspace_root), problem_def, problem_path=args.problem,
+        str(workspace_root),
+        problem_def,
+        problem_path=args.problem,
     )
     if ev.skipped:
         print(f"Evaluation:    SKIPPED ({ev.skip_reason})", file=sys.stderr)
@@ -101,6 +108,7 @@ def _run_single(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="open_dirac.one_shot",
@@ -121,7 +129,11 @@ def main() -> None:
 
     # --- Workspace (lightweight, no git) ---
     workspace_root = setup_workspace(
-        args, config, problem_def, problem_text, "oneshot",
+        args,
+        config,
+        problem_def,
+        problem_text,
+        "oneshot",
     )
 
     print(f"Model:     {config.model} ({config.model_id})", file=sys.stderr)

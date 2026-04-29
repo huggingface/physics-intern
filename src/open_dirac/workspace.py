@@ -62,7 +62,9 @@ Claims use ## ER-NNN (established, verified) or ## WH-NNN (working hypothesis, p
 
 # Open Questions
 """
-        self.write_file("RESEARCH_STATE.md", render_frontmatter(research_meta, research_body))
+        self.write_file(
+            "RESEARCH_STATE.md", render_frontmatter(research_meta, research_body)
+        )
 
         # CRITIQUE_LOG.md
         critique_meta = {
@@ -70,30 +72,50 @@ Claims use ## ER-NNN (established, verified) or ## WH-NNN (working hypothesis, p
             "unresolved_critiques": 0,
             "last_critic_pass": "never",
         }
-        self.write_file("CRITIQUE_LOG.md", render_frontmatter(
-            critique_meta, "# Active Critiques\n\n# Resolved Critiques\n"))
+        self.write_file(
+            "CRITIQUE_LOG.md",
+            render_frontmatter(
+                critique_meta, "# Active Critiques\n\n# Resolved Critiques\n"
+            ),
+        )
 
         # EVIDENCE_LOG.md
         evidence_meta = {
             "total_entries": 0,
         }
-        self.write_file("EVIDENCE_LOG.md", render_frontmatter(
-            evidence_meta, "# Evidence Log\n"))
+        self.write_file(
+            "EVIDENCE_LOG.md", render_frontmatter(evidence_meta, "# Evidence Log\n")
+        )
 
         # METRICS.md
-        self.write_file("METRICS.md", render_frontmatter(
-            {"total_iterations": 0, "total_llm_calls": 0,
-             "total_input_tokens": 0, "total_output_tokens": 0,
-             "max_tokens_reached_count": 0, "retries": 0},
-            "# Per-Iteration Metrics\n\n# Alerts\n"))
+        self.write_file(
+            "METRICS.md",
+            render_frontmatter(
+                {
+                    "total_iterations": 0,
+                    "total_llm_calls": 0,
+                    "total_input_tokens": 0,
+                    "total_output_tokens": 0,
+                    "max_tokens_reached_count": 0,
+                    "retries": 0,
+                },
+                "# Per-Iteration Metrics\n\n# Alerts\n",
+            ),
+        )
 
         # Git init
-        subprocess.run(["git", "init"], cwd=str(self.root),
-                        capture_output=True, check=False)
-        subprocess.run(["git", "add", "-A"], cwd=str(self.root),
-                        capture_output=True, check=False)
-        subprocess.run(["git", "commit", "-m", "Initial workspace setup"],
-                        cwd=str(self.root), capture_output=True, check=False)
+        subprocess.run(
+            ["git", "init"], cwd=str(self.root), capture_output=True, check=False
+        )
+        subprocess.run(
+            ["git", "add", "-A"], cwd=str(self.root), capture_output=True, check=False
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "Initial workspace setup"],
+            cwd=str(self.root),
+            capture_output=True,
+            check=False,
+        )
 
     def read_file(self, filename: str) -> str:
         """Read a file from the workspace. Returns empty string if missing."""
@@ -117,6 +139,7 @@ Claims use ## ER-NNN (established, verified) or ## WH-NNN (working hypothesis, p
     def read_file_tail(self, filename: str, n_entries: int = 5) -> str:
         """Read the last N ## sections from a file."""
         from .utils.markdown import tail_entries
+
         text = self.read_file(filename)
         if not text:
             return ""
@@ -147,10 +170,15 @@ Claims use ## ER-NNN (established, verified) or ## WH-NNN (working hypothesis, p
         """
         if not (self.root / ".git").exists():
             return
-        subprocess.run(["git", "add", "-A"], cwd=str(self.root),
-                        capture_output=True, check=False)
-        subprocess.run(["git", "commit", "-m", message, "--allow-empty"],
-                        cwd=str(self.root), capture_output=True, check=False)
+        subprocess.run(
+            ["git", "add", "-A"], cwd=str(self.root), capture_output=True, check=False
+        )
+        subprocess.run(
+            ["git", "commit", "-m", message, "--allow-empty"],
+            cwd=str(self.root),
+            capture_output=True,
+            check=False,
+        )
 
 
 def log_scaffold_event(

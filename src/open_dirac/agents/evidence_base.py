@@ -25,7 +25,8 @@ _RELEVANT_ID_RE = re.compile(r"^(?:ER|WH|RQ)-\d+$")
 
 
 def render_relevant_results(
-    refs: list[str], research_state: "ResearchState | None",
+    refs: list[str],
+    research_state: "ResearchState | None",
 ) -> str:
     """Resolve relevant_results IDs to their content for agent context."""
     lines: list[str] = []
@@ -97,19 +98,29 @@ class EvidenceAgent(BaseAgent):
         if self.research_state:
             rs_parts: list[str] = []
             if self.research_state.conventions:
-                rs_parts.append(f"<conventions>\n{self.research_state.conventions}\n</conventions>")
+                rs_parts.append(
+                    f"<conventions>\n{self.research_state.conventions}\n</conventions>"
+                )
             ers = self.research_state.established_hypotheses()
             if ers:
                 er_lines = [f"- **{er.id}**: {er.statement}" for er in ers]
-                rs_parts.append("<established-results>\n" + "\n".join(er_lines) + "\n</established-results>")
+                rs_parts.append(
+                    "<established-results>\n"
+                    + "\n".join(er_lines)
+                    + "\n</established-results>"
+                )
             if rs_parts:
-                parts.append("<research-state>\n" + "\n".join(rs_parts) + "\n</research-state>")
+                parts.append(
+                    "<research-state>\n" + "\n".join(rs_parts) + "\n</research-state>"
+                )
 
         # 3. Task — target, background, instructions, method hints, assumptions, relevant results
         task_parts: list[str] = []
         target_text = self._resolve_target_text(task.target_claim)
         if target_text:
-            task_parts.append(f"<target>\n{task.target_claim}: {target_text}\n</target>")
+            task_parts.append(
+                f"<target>\n{task.target_claim}: {target_text}\n</target>"
+            )
         if task.background:
             task_parts.append(f"<background>\n{task.background}\n</background>")
         if task.body:
@@ -125,7 +136,9 @@ class EvidenceAgent(BaseAgent):
             task_parts.append(f"<relevant-results>\n{items}\n</relevant-results>")
         if task.recommended_sanity_checks:
             items = "\n".join(f"- {c}" for c in task.recommended_sanity_checks)
-            task_parts.append(f"<recommended-sanity-checks>\n{items}\n</recommended-sanity-checks>")
+            task_parts.append(
+                f"<recommended-sanity-checks>\n{items}\n</recommended-sanity-checks>"
+            )
         if task_parts:
             parts.append("<task>\n" + "\n\n".join(task_parts) + "\n</task>")
 
@@ -183,7 +196,9 @@ class EvidenceAgent(BaseAgent):
             if crit_id not in seen_ids:
                 crit = self.research_state.critiques.get(crit_id)
                 if crit:
-                    lines.append(f"- **{crit.id}** [{crit.severity.value}]: {crit.argument}")
+                    lines.append(
+                        f"- **{crit.id}** [{crit.severity.value}]: {crit.argument}"
+                    )
                     seen_ids.add(crit.id)
         if not lines:
             return ""
@@ -214,5 +229,6 @@ class EvidenceAgent(BaseAgent):
             _append(state.critiques[target_id].evidence)
 
     @abstractmethod
-    def process_response(self, response: "LLMResponse | AgentResult", task: "Task", iteration: int):
-        ...
+    def process_response(
+        self, response: "LLMResponse | AgentResult", task: "Task", iteration: int
+    ): ...

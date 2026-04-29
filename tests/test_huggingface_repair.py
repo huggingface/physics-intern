@@ -2,13 +2,13 @@
 
 import json
 import pytest
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class FakeResponse:
     """Mimics httpx.Response with .json() and .text."""
@@ -47,7 +47,12 @@ def _make_exc(failed_generation: str | None, *, nested: bool = False) -> Excepti
     if failed_generation is None:
         body = {"error": "something else"}
     elif nested:
-        body = {"error": {"message": "tool_use_failed", "failed_generation": failed_generation}}
+        body = {
+            "error": {
+                "message": "tool_use_failed",
+                "failed_generation": failed_generation,
+            }
+        }
     else:
         body = {"failed_generation": failed_generation}
     exc = Exception("tool_use_failed: bad tool call")
@@ -86,6 +91,7 @@ def _make_provider():
     with patch.dict("os.environ", {"HF_TOKEN": "fake"}):
         with patch("huggingface_hub.InferenceClient"):
             from open_dirac.providers.huggingface import HuggingFaceProvider
+
             return HuggingFaceProvider(api_key="fake")
 
 
@@ -93,11 +99,12 @@ def _make_provider():
 # _extract_failed_generation unit tests
 # ---------------------------------------------------------------------------
 
-class TestExtractFailedGeneration:
 
+class TestExtractFailedGeneration:
     def test_strategy1_response_json(self):
         """Strategy 1: exc.response.json() with top-level failed_generation."""
         from open_dirac.providers.huggingface import HuggingFaceProvider
+
         raw = '{"name": "execute_python", "arguments": print(1)}'
         exc = _make_exc(raw)
         result = HuggingFaceProvider._extract_failed_generation(exc)
@@ -106,6 +113,7 @@ class TestExtractFailedGeneration:
     def test_strategy1_nested(self):
         """Strategy 1: nested error dict."""
         from open_dirac.providers.huggingface import HuggingFaceProvider
+
         raw = '{"name": "execute_python", "arguments": x=1}'
         exc = _make_exc(raw, nested=True)
         result = HuggingFaceProvider._extract_failed_generation(exc)
@@ -114,6 +122,7 @@ class TestExtractFailedGeneration:
     def test_strategy2_broken_json_method(self):
         """Strategy 2: .json() fails but .text has valid JSON."""
         from open_dirac.providers.huggingface import HuggingFaceProvider
+
         raw = '{"name": "execute_python", "arguments": print(42)}'
         exc = _make_exc_broken_json(raw)
         result = HuggingFaceProvider._extract_failed_generation(exc)
@@ -122,6 +131,7 @@ class TestExtractFailedGeneration:
     def test_strategy3_str_extraction(self):
         """Strategy 3: both .json() and .text fail, extract from str(exc)."""
         from open_dirac.providers.huggingface import HuggingFaceProvider
+
         raw = '{"name": "execute_python", "arguments": import numpy as np}'
         exc = _make_exc_str_only(raw)
         result = HuggingFaceProvider._extract_failed_generation(exc)
@@ -131,6 +141,7 @@ class TestExtractFailedGeneration:
     def test_no_response_attr(self):
         """No .response at all → empty string."""
         from open_dirac.providers.huggingface import HuggingFaceProvider
+
         exc = Exception("some error without failed_generation")
         result = HuggingFaceProvider._extract_failed_generation(exc)
         assert result == ""
@@ -138,6 +149,7 @@ class TestExtractFailedGeneration:
     def test_no_failed_generation_anywhere(self):
         """Nothing to extract → empty string."""
         from open_dirac.providers.huggingface import HuggingFaceProvider
+
         exc = _make_exc(None)
         result = HuggingFaceProvider._extract_failed_generation(exc)
         assert result == ""
@@ -147,12 +159,14 @@ class TestExtractFailedGeneration:
 # _repair_failed_tool_call unit tests
 # ---------------------------------------------------------------------------
 
-class TestRepairFailedToolCall:
 
+class TestRepairFailedToolCall:
     def test_raw_code_arguments(self):
         """Raw code (not JSON) → repaired as {"code": ...}."""
         provider = _make_provider()
-        raw = '{"name": "execute_python", "arguments": import numpy as np\nprint(np.pi)}'
+        raw = (
+            '{"name": "execute_python", "arguments": import numpy as np\nprint(np.pi)}'
+        )
         exc = _make_exc(raw)
         result = provider._repair_failed_tool_call(exc)
         assert result is not None
@@ -176,7 +190,7 @@ class TestRepairFailedToolCall:
         provider = _make_provider()
         code = "import sympy\nprint(sympy.pi)"
         args_json = json.dumps({"code": code})
-        raw = '{"name": "execute_python", "arguments": ' + args_json + '}'
+        raw = '{"name": "execute_python", "arguments": ' + args_json + "}"
         exc = _make_exc(raw)
         result = provider._repair_failed_tool_call(exc)
         assert result is not None
@@ -207,7 +221,7 @@ class TestRepairFailedToolCall:
         """Multiline code with quotes, braces, backslashes."""
         provider = _make_provider()
         code = 'x = {"a": 1}\nprint(f"result: {x}")\npath = "C:\\\\Users"'
-        raw = '{"name": "execute_python", "arguments": ' + code + '}'
+        raw = '{"name": "execute_python", "arguments": ' + code + "}"
         exc = _make_exc(raw)
         result = provider._repair_failed_tool_call(exc)
         assert result is not None
@@ -262,7 +276,7 @@ class TestRepairFailedToolCall:
             "for x in xs:\n"
             '    print(f"x={x:.3f}")\n'
         )
-        raw = '{"name": "execute_python", "arguments": ' + code + '}'
+        raw = '{"name": "execute_python", "arguments": ' + code + "}"
         exc = _make_exc(raw)
         result = provider._repair_failed_tool_call(exc)
         assert result is not None
@@ -274,8 +288,8 @@ class TestRepairFailedToolCall:
 # Integration: call() catches and repairs
 # ---------------------------------------------------------------------------
 
-class TestCallRepair:
 
+class TestCallRepair:
     def test_call_returns_repaired_on_tool_use_failed(self):
         """call() catches tool_use_failed and returns repaired response."""
         provider = _make_provider()
@@ -286,8 +300,11 @@ class TestCallRepair:
 
         tools = [{"type": "function", "function": {"name": "execute_python"}}]
         result = provider.call(
-            model="test-model", max_tokens=4096,
-            system="sys", messages=[], tools=tools,
+            model="test-model",
+            max_tokens=4096,
+            system="sys",
+            messages=[],
+            tools=tools,
         )
         assert result.stop_reason == "tool_use"
         assert result.tool_calls[0]["input"] == {"code": 'print("hello")'}
@@ -300,8 +317,11 @@ class TestCallRepair:
         provider._client.chat.completions.create = MagicMock(side_effect=exc)
 
         result = provider.call(
-            model="test-model", max_tokens=4096,
-            system="sys", messages=[], tools=None,
+            model="test-model",
+            max_tokens=4096,
+            system="sys",
+            messages=[],
+            tools=None,
         )
         assert result.stop_reason == "tool_use"
         assert result.tool_calls[0]["input"] == {"code": 'print("text-only")'}
@@ -316,8 +336,11 @@ class TestCallRepair:
         tools = [{"type": "function", "function": {"name": "execute_python"}}]
         with pytest.raises(Exception, match="tool_use_failed"):
             provider.call(
-                model="test-model", max_tokens=4096,
-                system="sys", messages=[], tools=tools,
+                model="test-model",
+                max_tokens=4096,
+                system="sys",
+                messages=[],
+                tools=tools,
             )
 
     def test_call_reraises_non_tool_use_error(self):
@@ -329,8 +352,11 @@ class TestCallRepair:
         tools = [{"type": "function", "function": {"name": "execute_python"}}]
         with pytest.raises(Exception, match="rate_limit_exceeded"):
             provider.call(
-                model="test-model", max_tokens=4096,
-                system="sys", messages=[], tools=tools,
+                model="test-model",
+                max_tokens=4096,
+                system="sys",
+                messages=[],
+                tools=tools,
             )
 
 
@@ -338,8 +364,8 @@ class TestCallRepair:
 # format_assistant_message compatibility
 # ---------------------------------------------------------------------------
 
-class TestFormatAssistantMessage:
 
+class TestFormatAssistantMessage:
     def test_repaired_raw_content_formats_correctly(self):
         """format_assistant_message works with SimpleNamespace raw_content."""
         provider = _make_provider()
@@ -362,6 +388,7 @@ class TestFormatAssistantMessage:
 # Post-processor error repair
 # ---------------------------------------------------------------------------
 
+
 def _make_post_processor_exc(failed_generation: str | None) -> Exception:
     """Build a fake 'gpt oss post processor' exception."""
     msg = "Encountered Exception during gpt oss post processor"
@@ -376,11 +403,12 @@ def _make_post_processor_exc(failed_generation: str | None) -> Exception:
 
 
 class TestPostProcessorRepair:
-
     def test_repair_succeeds_with_failed_generation(self):
         """Post-processor error with failed_generation → repaired."""
         provider = _make_provider()
-        raw = '{"name": "execute_python", "arguments": import numpy as np\nprint(np.pi)}'
+        raw = (
+            '{"name": "execute_python", "arguments": import numpy as np\nprint(np.pi)}'
+        )
         exc = _make_post_processor_exc(raw)
         result = provider._repair_failed_tool_call(exc)
         assert result is not None
@@ -403,8 +431,11 @@ class TestPostProcessorRepair:
 
         tools = [{"type": "function", "function": {"name": "execute_python"}}]
         result = provider.call(
-            model="test-model", max_tokens=4096,
-            system="sys", messages=[], tools=tools,
+            model="test-model",
+            max_tokens=4096,
+            system="sys",
+            messages=[],
+            tools=tools,
         )
         assert result.stop_reason == "tool_use"
         assert result.tool_calls[0]["input"] == {"code": 'print("post_proc")'}
@@ -418,6 +449,9 @@ class TestPostProcessorRepair:
         tools = [{"type": "function", "function": {"name": "execute_python"}}]
         with pytest.raises(Exception, match="post processor"):
             provider.call(
-                model="test-model", max_tokens=4096,
-                system="sys", messages=[], tools=tools,
+                model="test-model",
+                max_tokens=4096,
+                system="sys",
+                messages=[],
+                tools=tools,
             )

@@ -36,10 +36,7 @@ class PermanentMemory:
     def append(self, content: str, iteration: int) -> str:
         """Append an iteration-tagged entry. Return confirmation message."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        entry = (
-            f"\n## Iteration {iteration} — {timestamp}\n\n"
-            f"{content.strip()}\n"
-        )
+        entry = f"\n## Iteration {iteration} — {timestamp}\n\n{content.strip()}\n"
         with open(self._path, "a") as f:
             f.write(entry)
         return f"Written to permanent memory (iteration {iteration}, {len(content)} chars)."
@@ -72,10 +69,7 @@ class Scratchpad:
     def append(self, content: str, iteration: int) -> str:
         """Append an iteration-tagged entry. Return confirmation message."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        entry = (
-            f"\n## Iteration {iteration} — {timestamp}\n\n"
-            f"{content.strip()}\n"
-        )
+        entry = f"\n## Iteration {iteration} — {timestamp}\n\n{content.strip()}\n"
         with open(self._path, "a") as f:
             f.write(entry)
         self._entry_count += 1

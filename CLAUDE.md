@@ -7,7 +7,7 @@ See README.md for overview, motivation, and design principles.
 ## Tech Stack
 
 - Use `uv` for dependency management
-- Tests: `pytest` (run with `uv run python -m pytest -v`, need `--extra dev`)
+- Tests: `pytest` (run with `uv run python -m pytest -v`, need `--extra testing`)
 - `rich` for console output
 
 ## Key Invariants

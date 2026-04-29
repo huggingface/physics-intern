@@ -1,10 +1,7 @@
 """Tests for the independent verification / diagnosis script."""
 
-import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 
 from open_dirac.verification import (
     WorkspaceContents,
@@ -23,7 +20,9 @@ from open_dirac.verification.diagnosis import (
     parse_diagnosis,
     write_diagnosis_report,
 )
-from open_dirac.verification.event_summary import summarize_event_log as _summarize_event_log
+from open_dirac.verification.event_summary import (
+    summarize_event_log as _summarize_event_log,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -145,10 +144,15 @@ in the surface gravity calculation.
 # Tests
 # ---------------------------------------------------------------------------
 
-def _make_workspace(tmp_path, *, research_state=RESEARCH_STATE,
-                    current_task=CURRENT_TASK_TERMINATED,
-                    critique_log=CRITIQUE_LOG,
-                    evidence_log=EVIDENCE_LOG):
+
+def _make_workspace(
+    tmp_path,
+    *,
+    research_state=RESEARCH_STATE,
+    current_task=CURRENT_TASK_TERMINATED,
+    critique_log=CRITIQUE_LOG,
+    evidence_log=EVIDENCE_LOG,
+):
     """Create a mock workspace directory."""
     (tmp_path / "RESEARCH_STATE.md").write_text(research_state)
     (tmp_path / "CURRENT_TASK.md").write_text(current_task)
@@ -363,11 +367,15 @@ def test_build_diagnosis_prompt_with_rerun_results(tmp_path):
     rerun = [
         RerunResult(
             script_path="/tmp/check_001.py",
-            execution=ExecutionResult(stdout="All checks passed\n", stderr="", returncode=0, timed_out=False),
+            execution=ExecutionResult(
+                stdout="All checks passed\n", stderr="", returncode=0, timed_out=False
+            ),
         ),
         RerunResult(
             script_path="/tmp/check_002.py",
-            execution=ExecutionResult(stdout="", stderr="Error!", returncode=1, timed_out=False),
+            execution=ExecutionResult(
+                stdout="", stderr="Error!", returncode=1, timed_out=False
+            ),
         ),
     ]
 
@@ -394,7 +402,9 @@ def test_build_diagnosis_prompt_includes_git_log(tmp_path):
     """Git log should appear in user content when available."""
     ws_dir = _make_workspace(tmp_path)
     contents = load_workspace(ws_dir)
-    contents.git_log = "abc1234 iteration 1: orchestrator\ndef5678 iteration 2: researcher"
+    contents.git_log = (
+        "abc1234 iteration 1: orchestrator\ndef5678 iteration 2: researcher"
+    )
     _, user_content = build_diagnosis_prompt(contents)
 
     assert "Git Log" in user_content
@@ -445,33 +455,34 @@ established_results: 1
     # status: completed + non-terminate task → should be clean
     ws1 = tmp_path / "ws_completed"
     ws1.mkdir()
-    ws_dir1 = _make_workspace(ws1,
-        current_task=CURRENT_TASK_NOT_TERMINATED,
-        research_state=completed_state)
+    ws_dir1 = _make_workspace(
+        ws1, current_task=CURRENT_TASK_NOT_TERMINATED, research_state=completed_state
+    )
     contents1 = load_workspace(ws_dir1)
     assert contents1.terminated_cleanly is True
 
     # status: partially_complete + non-terminate task → should be clean
     ws2 = tmp_path / "ws_partial"
     ws2.mkdir()
-    ws_dir2 = _make_workspace(ws2,
+    ws_dir2 = _make_workspace(
+        ws2,
         current_task=CURRENT_TASK_NOT_TERMINATED,
-        research_state=partially_complete_state)
+        research_state=partially_complete_state,
+    )
     contents2 = load_workspace(ws_dir2)
     assert contents2.terminated_cleanly is True
 
     # No status in RESEARCH_STATE + non-terminate task → still not clean
     ws3 = tmp_path / "ws_no_status"
     ws3.mkdir()
-    ws_dir3 = _make_workspace(ws3,
-        current_task=CURRENT_TASK_NOT_TERMINATED)
+    ws_dir3 = _make_workspace(ws3, current_task=CURRENT_TASK_NOT_TERMINATED)
     contents3 = load_workspace(ws_dir3)
     assert contents3.terminated_cleanly is False
 
 
 def test_rerun_computations(tmp_path):
     """Re-run a trivial computation script via sandbox."""
-    ws_dir = _make_workspace(tmp_path)
+    _make_workspace(tmp_path)
     comp_dir = tmp_path / "computations"
     comp_dir.mkdir()
     (comp_dir / "trivial.py").write_text("print(2 + 2)")
@@ -486,26 +497,31 @@ def test_rerun_computations(tmp_path):
 # Diagnosis report writing tests
 # ---------------------------------------------------------------------------
 
+
 def test_write_diagnosis_report(tmp_path):
     """Diagnosis sections are appended to VERIFICATION.md."""
     ws_dir = _make_workspace(tmp_path)
     report_path = tmp_path / "VERIFICATION.md"
-    report_path.write_text("---\nformal_answer: correct\n---\n\n# Verification Report\n\n## Formal Answer Evaluation: CORRECT\n")
+    report_path.write_text(
+        "---\nformal_answer: correct\n---\n\n# Verification Report\n\n## Formal Answer Evaluation: CORRECT\n"
+    )
 
     diag_result = DiagnosisResult(
         formal_outcome="CORRECT",
         diagnosis_mode="success_analysis",
         summary="Clean run with one corrected error.",
-        events=[DiagnosisEvent(
-            event_id="EVENT-001",
-            chain_type="correction_chain",
-            classification="CAUGHT",
-            agents_involved=["researcher", "reviewer"],
-            iterations="iterations 4-7",
-            description="Sign error caught by reviewer.",
-            root_cause="Wrong sign convention.",
-            evidence_ids=["WH-002", "ER-002"],
-        )],
+        events=[
+            DiagnosisEvent(
+                event_id="EVENT-001",
+                chain_type="correction_chain",
+                classification="CAUGHT",
+                agents_involved=["researcher", "reviewer"],
+                iterations="iterations 4-7",
+                description="Sign error caught by reviewer.",
+                root_cause="Wrong sign convention.",
+                evidence_ids=["WH-002", "ER-002"],
+            )
+        ],
         weakest_link="Sign error in surface gravity.",
         recommendations=["Add sign checks", "Require numerical verification"],
     )
@@ -550,6 +566,7 @@ def test_write_diagnosis_report_creates_if_missing(tmp_path):
 # ---------------------------------------------------------------------------
 # Formal eval report writing tests
 # ---------------------------------------------------------------------------
+
 
 def test_write_formal_eval_report_correct(tmp_path):
     """Correct formal eval writes proper VERIFICATION.md."""
@@ -631,7 +648,9 @@ def test_summarize_event_log_truncation():
     # Generate many events
     lines = []
     for i in range(500):
-        lines.append(f'{{"kind":"scaffold","ts":"T","iter":{i},"category":"call_reliability","event":"api_retry","detail":"attempt={i}"}}')
+        lines.append(
+            f'{{"kind":"scaffold","ts":"T","iter":{i},"category":"call_reliability","event":"api_retry","detail":"attempt={i}"}}'
+        )
     raw = "\n".join(lines)
     summary = _summarize_event_log(raw, max_chars=1000)
     assert len(summary) <= 1000
@@ -790,6 +809,7 @@ def test_formal_eval_prompt_skipped_not_included(tmp_path):
 # Reference file loading
 # ---------------------------------------------------------------------------
 
+
 def test_load_reference_file_with_python_tag(tmp_path, monkeypatch):
     """Reference file with ```python tag → extracts answer expression."""
     monkeypatch.setattr("open_dirac.verification.workspace.REFERENCES_DIR", tmp_path)
@@ -847,6 +867,7 @@ def test_load_reference_file_no_code_block(tmp_path, monkeypatch):
 # Formal eval fallback to reference file
 # ---------------------------------------------------------------------------
 
+
 def test_formal_eval_fallback_to_reference(tmp_path, monkeypatch):
     """Empty answer in YAML + reference file with answer → formal eval proceeds."""
     ws_dir = _make_workspace(tmp_path)
@@ -881,7 +902,9 @@ def test_formal_eval_no_fallback_when_answer_present(tmp_path, monkeypatch):
         lambda path: (called.append(1), None) or (None, None),
     )
 
-    result = run_formal_evaluation(ws_dir, HAWKING_PROBLEM_DEF, problem_path=Path("test.yaml"))
+    result = run_formal_evaluation(
+        ws_dir, HAWKING_PROBLEM_DEF, problem_path=Path("test.yaml")
+    )
 
     assert not result.skipped
     assert result.correct is True
@@ -892,11 +915,14 @@ def test_formal_eval_no_fallback_when_answer_present(tmp_path, monkeypatch):
 # build_diagnosis_prompt with reference content
 # ---------------------------------------------------------------------------
 
+
 def test_build_diagnosis_prompt_with_reference_content():
     """Reference content is included in diagnosis prompt."""
     contents = WorkspaceContents(
         workspace_dir="/tmp/test",
-        research_state="# State", evidence_log="# Evidence", critique_log="# Critiques",
+        research_state="# State",
+        evidence_log="# Evidence",
+        critique_log="# Critiques",
     )
     ref_content = "# Typical Good Run\nExpected: 5 iterations, VALID verdict."
 
@@ -911,7 +937,9 @@ def test_build_diagnosis_prompt_without_reference_content():
     """No reference content → no Reference Document section."""
     contents = WorkspaceContents(
         workspace_dir="/tmp/test",
-        research_state="# State", evidence_log="# Evidence", critique_log="# Critiques",
+        research_state="# State",
+        evidence_log="# Evidence",
+        critique_log="# Critiques",
     )
 
     _, user_content = build_diagnosis_prompt(contents, reference_content=None)
@@ -923,10 +951,13 @@ def test_build_diagnosis_prompt_without_reference_content():
 # load_or_run_formal_eval
 # ---------------------------------------------------------------------------
 
+
 def test_load_or_run_reads_existing_report(tmp_path):
     """If VERIFICATION.md has formal_answer, read it instead of re-running."""
-    ws_dir = _make_workspace(tmp_path)
-    (tmp_path / "VERIFICATION.md").write_text("---\nformal_answer: correct\n---\n\n# Report\n")
+    _make_workspace(tmp_path)
+    (tmp_path / "VERIFICATION.md").write_text(
+        "---\nformal_answer: correct\n---\n\n# Report\n"
+    )
 
     result = load_or_run_formal_eval(str(tmp_path), None, None)
 
@@ -936,7 +967,7 @@ def test_load_or_run_reads_existing_report(tmp_path):
 
 def test_load_or_run_falls_back_to_fresh(tmp_path):
     """If no VERIFICATION.md, run formal eval fresh."""
-    ws_dir = _make_workspace(tmp_path)
+    _make_workspace(tmp_path)
     (tmp_path / "ANSWER.md").write_text(CORRECT_ANSWER_MD)
 
     result = load_or_run_formal_eval(str(tmp_path), HAWKING_PROBLEM_DEF, None)

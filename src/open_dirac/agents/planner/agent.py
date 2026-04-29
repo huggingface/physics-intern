@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 from open_dirac.llm import LLMResponse
@@ -34,7 +33,9 @@ class PlannerAgent(BaseAgent):
     prompt_file = "prompt.md"
     tools = []
 
-    def __init__(self, config: Config, workspace: WorkspaceManager, metrics: MetricsTracker):
+    def __init__(
+        self, config: Config, workspace: WorkspaceManager, metrics: MetricsTracker
+    ):
         super().__init__(config, workspace, metrics)
         self.research_state: ResearchState | None = None
         self.parsed_strategy: str | None = None
@@ -102,11 +103,15 @@ class PlannerAgent(BaseAgent):
         ]
         if self.research_state:
             if self.research_state.answer_template:
-                parts.append(f"\n<answer-template>\n{self.research_state.answer_template}\n</answer-template>")
+                parts.append(
+                    f"\n<answer-template>\n{self.research_state.answer_template}\n</answer-template>"
+                )
             parts.append(f"\n{_problem_guidelines()}")
             survey_ctx = render_background_survey_xml(self.research_state)
             if survey_ctx:
-                parts.append(f"\n<background-survey>\n{survey_ctx}\n</background-survey>")
+                parts.append(
+                    f"\n<background-survey>\n{survey_ctx}\n</background-survey>"
+                )
         return "\n".join(parts)
 
     def process_response(self, response: LLMResponse, task: Task, iteration: int):
@@ -132,7 +137,12 @@ class PlannerAgent(BaseAgent):
                     if isinstance(c, dict) and "predicate" in c:
                         checks.append(c)
                     elif isinstance(c, dict) and "check" in c:
-                        checks.append({"predicate": c["check"], "rationale": c.get("rationale", "")})
+                        checks.append(
+                            {
+                                "predicate": c["check"],
+                                "rationale": c.get("rationale", ""),
+                            }
+                        )
                     elif isinstance(c, str) and c.strip():
                         checks.append({"predicate": c.strip()})
                 self.parsed_sanity_checks = checks if checks else None
@@ -142,7 +152,8 @@ class PlannerAgent(BaseAgent):
             raw_ca = parsed.get("critique_assessments")
             if isinstance(raw_ca, list):
                 self.parsed_critique_assessments = [
-                    a for a in raw_ca
+                    a
+                    for a in raw_ca
                     if isinstance(a, dict) and "id" in a and "verdict" in a
                 ]
             else:

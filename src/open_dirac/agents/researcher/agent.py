@@ -119,9 +119,7 @@ class ResearcherAgent(EvidenceAgent):
             if derivation_text.strip():
                 safe_target = target_id or "unknown"
                 derivation_file = f"{safe_target}_{iteration:03d}.md"
-                workspace.write_file(
-                    f"derivations/{derivation_file}", derivation_text
-                )
+                workspace.write_file(f"derivations/{derivation_file}", derivation_text)
 
         if parsed and "result" in parsed:
             confidence = parsed.get("confidence", "partial")

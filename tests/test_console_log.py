@@ -4,7 +4,6 @@ from open_dirac.console import LoggingConsole, replay_log
 
 
 class TestLoggingConsole:
-
     def test_tee_to_file(self, tmp_path):
         log_path = tmp_path / "console.log"
         c = LoggingConsole()
@@ -53,7 +52,6 @@ class TestLoggingConsole:
 
 
 class TestReplayLog:
-
     def test_replay_tails_lines(self, tmp_path, capsys):
         log_path = tmp_path / "console.log"
         lines = [f"line {i}" for i in range(100)]

@@ -40,7 +40,7 @@ class TestParseReviewJson:
     def test_last_fenced_wins(self):
         text = (
             '```json\n{"verdict": "INCONCLUSIVE", "summary": "a", "details": "b"}\n```\n'
-            'More analysis...\n'
+            "More analysis...\n"
             '```json\n{"verdict": "VERIFIED", "summary": "c", "details": "d"}\n```'
         )
         result = _parse_review_json(text)
@@ -52,7 +52,7 @@ class TestParseReviewJson:
         assert _parse_review_json(text) is None
 
     def test_invalid_json_returns_none(self):
-        text = '```json\n{invalid json}\n```'
+        text = "```json\n{invalid json}\n```"
         assert _parse_review_json(text) is None
 
     def test_fenced_preferred_over_bare(self):
@@ -92,20 +92,31 @@ class TestReviewerValidateResponse:
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
         text = '```json\n{"verdict": "VERIFIED", "summary": "ok", "details": "d"}\n```'
-        response = LLMResponse(text=text, input_tokens=100, output_tokens=50,
-                               stop_reason="end_turn", duration=0.1)
+        response = LLMResponse(
+            text=text,
+            input_tokens=100,
+            output_tokens=50,
+            stop_reason="end_turn",
+            duration=0.1,
+        )
         assert agent._validate_response(response) is True
 
     def test_unparseable_response_fails(self):
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
-        response = LLMResponse(text="No JSON here", input_tokens=100,
-                               output_tokens=50, stop_reason="end_turn", duration=0.1)
+        response = LLMResponse(
+            text="No JSON here",
+            input_tokens=100,
+            output_tokens=50,
+            stop_reason="end_turn",
+            duration=0.1,
+        )
         assert agent._validate_response(response) is False
 
     def test_parse_retries_from_config(self):
         """parse_retries is now configured globally via Config.parse_retries."""
         from open_dirac.config import Config
+
         config = Config()
         assert config.parse_retries == 2
 
@@ -114,11 +125,21 @@ class TestReviewerProcessResponse:
     def test_parses_verified(self):
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         text = 'Analysis...\n```json\n{"verdict": "VERIFIED", "summary": "Correct derivation.", "details": "All steps check out."}\n```'
-        response = LLMResponse(text=text, input_tokens=100, output_tokens=50,
-                               stop_reason="end_turn", duration=0.1)
+        response = LLMResponse(
+            text=text,
+            input_tokens=100,
+            output_tokens=50,
+            stop_reason="end_turn",
+            duration=0.1,
+        )
         agent.process_response(response, task, iteration=1)
         review = agent.research_state.hypotheses["WH-001"].review
         assert review is not None
@@ -129,11 +150,21 @@ class TestReviewerProcessResponse:
     def test_parses_refuted(self):
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         text = '{"verdict": "REFUTED", "summary": "Sign error.", "details": "Line 3 has wrong sign."}'
-        response = LLMResponse(text=text, input_tokens=100, output_tokens=50,
-                               stop_reason="end_turn", duration=0.1)
+        response = LLMResponse(
+            text=text,
+            input_tokens=100,
+            output_tokens=50,
+            stop_reason="end_turn",
+            duration=0.1,
+        )
         agent.process_response(response, task, iteration=2)
         review = agent.research_state.hypotheses["WH-001"].review
         assert review.verdict == "REFUTED"
@@ -141,11 +172,20 @@ class TestReviewerProcessResponse:
     def test_fallback_inconclusive_on_no_json(self):
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
-        response = LLMResponse(text="Some analysis without JSON output.",
-                               input_tokens=100, output_tokens=50,
-                               stop_reason="end_turn", duration=0.1)
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
+        response = LLMResponse(
+            text="Some analysis without JSON output.",
+            input_tokens=100,
+            output_tokens=50,
+            stop_reason="end_turn",
+            duration=0.1,
+        )
         with pytest.raises(ParseFailureError):
             agent.process_response(response, task, iteration=3)
         # No review stored on parse failure
@@ -154,11 +194,21 @@ class TestReviewerProcessResponse:
     def test_invalid_verdict_normalized(self):
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         text = '```json\n{"verdict": "MAYBE", "summary": "not sure", "details": "..."}\n```'
-        response = LLMResponse(text=text, input_tokens=100, output_tokens=50,
-                               stop_reason="end_turn", duration=0.1)
+        response = LLMResponse(
+            text=text,
+            input_tokens=100,
+            output_tokens=50,
+            stop_reason="end_turn",
+            duration=0.1,
+        )
         agent.process_response(response, task, iteration=1)
         review = agent.research_state.hypotheses["WH-001"].review
         assert review.verdict == "INCONCLUSIVE"
@@ -178,18 +228,25 @@ class TestReviewerBuildContext:
         comp_dir.mkdir()
         (comp_dir / "001_calc.py").write_text("import numpy as np\nprint(42)")
         (comp_dir / "001_calc.output").write_text("42")
-        agent.research_state.hypotheses["WH-001"].evidence = [Evidence(
-            type="compute",
-            approach="Direct calculation",
-            scripts=["001_calc.py"],
-            script_purposes={"001_calc.py": "Compute the answer"},
-            output="42",
-            method="numerical",
-            result="42",
-            confidence="exact",
-        )]
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        agent.research_state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="compute",
+                approach="Direct calculation",
+                scripts=["001_calc.py"],
+                script_purposes={"001_calc.py": "Compute the answer"},
+                output="42",
+                method="numerical",
+                result="42",
+                confidence="exact",
+            )
+        ]
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert '<computation name="001_calc.py">' in ctx
         assert "<purpose>Compute the answer</purpose>" in ctx
@@ -205,16 +262,26 @@ class TestReviewerBuildContext:
         (comp_dir / "001_setup.output").write_text("ok")
         (comp_dir / "002_verify.py").write_text("# verify")
         (comp_dir / "002_verify.output").write_text("pass")
-        agent.research_state.hypotheses["WH-001"].evidence = [Evidence(
-            type="compute",
-            scripts=["001_setup.py", "002_verify.py"],
-            script_purposes={"001_setup.py": "Setup data", "002_verify.py": "Verify result"},
-            method="numerical",
-            result="ok",
-            confidence="exact",
-        )]
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        agent.research_state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="compute",
+                scripts=["001_setup.py", "002_verify.py"],
+                script_purposes={
+                    "001_setup.py": "Setup data",
+                    "002_verify.py": "Verify result",
+                },
+                method="numerical",
+                result="ok",
+                confidence="exact",
+            )
+        ]
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert '<computation name="001_setup.py">' in ctx
         assert '<computation name="002_verify.py">' in ctx
@@ -227,17 +294,26 @@ class TestReviewerBuildContext:
         # Write derivation file
         deriv_dir = root / "derivations"
         deriv_dir.mkdir()
-        (deriv_dir / "WH-001_001.md").write_text("Starting from the Schwarzschild metric...")
-        agent.research_state.hypotheses["WH-001"].evidence = [Evidence(
-            type="research",
-            reasoning="full text including JSON block",
-            derivation_file="WH-001_001.md",
-            method="analytical",
-            result="T_H = 1/(8*pi*M)",
-            confidence="exact",
-        )]
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        (deriv_dir / "WH-001_001.md").write_text(
+            "Starting from the Schwarzschild metric..."
+        )
+        agent.research_state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="research",
+                reasoning="full text including JSON block",
+                derivation_file="WH-001_001.md",
+                method="analytical",
+                result="T_H = 1/(8*pi*M)",
+                confidence="exact",
+            )
+        ]
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert '<derivation file="WH-001_001.md">' in ctx
         assert "Starting from the Schwarzschild metric" in ctx
@@ -247,16 +323,23 @@ class TestReviewerBuildContext:
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
         # No derivation file on disk — should fall back to ev.reasoning
-        agent.research_state.hypotheses["WH-001"].evidence = [Evidence(
-            type="research",
-            reasoning="Fallback reasoning text",
-            derivation_file="WH-001_001.md",
-            method="analytical",
-            result="T_H = 1/(8*pi*M)",
-            confidence="exact",
-        )]
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        agent.research_state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="research",
+                reasoning="Fallback reasoning text",
+                derivation_file="WH-001_001.md",
+                method="analytical",
+                result="T_H = 1/(8*pi*M)",
+                confidence="exact",
+            )
+        ]
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert '<derivation file="WH-001_001.md">' in ctx
         assert "Fallback reasoning text" in ctx
@@ -264,15 +347,22 @@ class TestReviewerBuildContext:
     def test_no_derivation_file_uses_reasoning(self):
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
-        agent.research_state.hypotheses["WH-001"].evidence = [Evidence(
-            type="research",
-            reasoning="By direct derivation from the metric...",
-            method="analytical",
-            result="T_H = 1/(8*pi*M)",
-            confidence="exact",
-        )]
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        agent.research_state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="research",
+                reasoning="By direct derivation from the metric...",
+                method="analytical",
+                result="T_H = 1/(8*pi*M)",
+                confidence="exact",
+            )
+        ]
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert "<reasoning>" in ctx
         assert "By direct derivation from the metric" in ctx
@@ -280,15 +370,22 @@ class TestReviewerBuildContext:
     def test_research_evidence_has_reasoning(self):
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
-        agent.research_state.hypotheses["WH-001"].evidence = [Evidence(
-            type="research",
-            reasoning="By direct derivation from the metric...",
-            method="analytical",
-            result="T_H = 1/(8*pi*M)",
-            confidence="exact",
-        )]
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        agent.research_state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="research",
+                reasoning="By direct derivation from the metric...",
+                method="analytical",
+                result="T_H = 1/(8*pi*M)",
+                confidence="exact",
+            )
+        ]
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert "<reasoning>" in ctx
         assert "By direct derivation from the metric" in ctx
@@ -299,15 +396,22 @@ class TestReviewerBuildContext:
         root = Path(tempfile.mkdtemp())
         agent = _make_reviewer(root)
         (root / "computations").mkdir()
-        agent.research_state.hypotheses["WH-001"].evidence = [Evidence(
-            type="compute",
-            scripts=["missing_script.py"],
-            method="numerical",
-            result="42",
-            confidence="exact",
-        )]
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        agent.research_state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="compute",
+                scripts=["missing_script.py"],
+                method="numerical",
+                result="42",
+                confidence="exact",
+            )
+        ]
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert "[not found]" in ctx
 
@@ -323,8 +427,13 @@ class TestReviewerProblemContext:
         agent = _make_reviewer(root)
         agent.research_state.problem_summary = "Derive T_H for Schwarzschild BH."
         agent.research_state.problem_statement = "Full lengthy problem statement..."
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert "Full lengthy problem statement..." in ctx
 
@@ -333,8 +442,13 @@ class TestReviewerProblemContext:
         agent = _make_reviewer(root)
         agent.research_state.problem_summary = ""
         agent.research_state.problem_statement = "Full lengthy problem statement..."
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert "Full lengthy problem statement..." in ctx
 
@@ -343,8 +457,13 @@ class TestReviewerProblemContext:
         agent = _make_reviewer(root)
         agent.research_state.problem_statement = "Test problem"
         agent.research_state.answer_template = "F(p) = <sympy expression>"
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert "<answer-template>" in ctx
         assert "F(p) = <sympy expression>" in ctx
@@ -354,8 +473,13 @@ class TestReviewerProblemContext:
         agent = _make_reviewer(root)
         agent.research_state.problem_statement = "Test problem"
         agent.research_state.answer_template = ""
-        task = Task(task_id="T1", task_type=TaskType.REVIEW, assigned_to="reviewer",
-                    body="Review WH-001", target_claim="WH-001")
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            body="Review WH-001",
+            target_claim="WH-001",
+        )
         ctx = agent.build_context(task, iteration=1)
         assert "<answer-template>" not in ctx
 
@@ -368,6 +492,7 @@ class TestReviewerProblemContext:
 class TestComputerEvidenceFiltering:
     def _make_agent(self):
         from open_dirac.agents.computer import ComputerAgent
+
         agent = ComputerAgent.__new__(ComputerAgent)
         agent.research_state = ResearchState(problem_statement="test")
         rq_id = f"RQ-{agent.research_state.next_entity_num():03d}"
@@ -379,30 +504,58 @@ class TestComputerEvidenceFiltering:
 
     def _make_result(self, tool_calls):
         from open_dirac.llm import AgentResult
+
         return AgentResult(text="", tool_calls=tool_calls)
 
     def _make_tc(self, name, tool_input, output="ok", is_error=False):
         from open_dirac.tool_call import ToolCall
-        return ToolCall(tool_name=name, tool_input=tool_input,
-                        output=output, is_error=is_error, duration=0.1)
+
+        return ToolCall(
+            tool_name=name,
+            tool_input=tool_input,
+            output=output,
+            is_error=is_error,
+            duration=0.1,
+        )
 
     def test_evidence_scripts_filters(self):
         agent, rq_id = self._make_agent()
-        task = Task(task_id="T1", task_type=TaskType.COMPUTE, assigned_to="computer",
-                    body=f"Compute {rq_id}", target_claim=rq_id)
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            body=f"Compute {rq_id}",
+            target_claim=rq_id,
+        )
         tool_calls = [
             self._make_tc("document_approach", {"approach": "test"}),
-            self._make_tc("execute_python", {"purpose": "Setup", "code": "pass"},
-                          output="=== 001_setup.py ===\nPurpose: Setup\nExit: success\n\nok"),
-            self._make_tc("execute_python", {"purpose": "Main calc", "code": "print(42)"},
-                          output="=== 002_main.py ===\nPurpose: Main calc\nExit: success\n\n42"),
-            self._make_tc("execute_python", {"purpose": "Verify", "code": "print('pass')"},
-                          output="=== 003_verify.py ===\nPurpose: Verify\nExit: success\n\npass"),
-            self._make_tc("submit_result", {
-                "target_id": rq_id, "method": "numerical", "result": "42",
-                "confidence": "exact", "description": "d", "notes": "n",
-                "evidence_scripts": ["002_main.py", "003_verify.py"],
-            }),
+            self._make_tc(
+                "execute_python",
+                {"purpose": "Setup", "code": "pass"},
+                output="=== 001_setup.py ===\nPurpose: Setup\nExit: success\n\nok",
+            ),
+            self._make_tc(
+                "execute_python",
+                {"purpose": "Main calc", "code": "print(42)"},
+                output="=== 002_main.py ===\nPurpose: Main calc\nExit: success\n\n42",
+            ),
+            self._make_tc(
+                "execute_python",
+                {"purpose": "Verify", "code": "print('pass')"},
+                output="=== 003_verify.py ===\nPurpose: Verify\nExit: success\n\npass",
+            ),
+            self._make_tc(
+                "submit_result",
+                {
+                    "target_id": rq_id,
+                    "method": "numerical",
+                    "result": "42",
+                    "confidence": "exact",
+                    "description": "d",
+                    "notes": "n",
+                    "evidence_scripts": ["002_main.py", "003_verify.py"],
+                },
+            ),
         ]
         result = self._make_result(tool_calls)
         agent.process_response(result, task, iteration=1)
@@ -412,17 +565,29 @@ class TestComputerEvidenceFiltering:
 
     def test_no_evidence_scripts_uses_all(self):
         agent, rq_id = self._make_agent()
-        task = Task(task_id="T1", task_type=TaskType.COMPUTE, assigned_to="computer",
-                    body=f"Compute {rq_id}", target_claim=rq_id)
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            body=f"Compute {rq_id}",
+            target_claim=rq_id,
+        )
         tool_calls = [
             self._make_tc("document_approach", {"approach": "test"}),
             self._make_tc("execute_python", {"purpose": "A", "code": "pass"}),
             self._make_tc("execute_python", {"purpose": "B", "code": "pass"}),
             self._make_tc("execute_python", {"purpose": "C", "code": "pass"}),
-            self._make_tc("submit_result", {
-                "target_id": rq_id, "method": "m", "result": "r",
-                "confidence": "exact", "description": "d", "notes": "n",
-            }),
+            self._make_tc(
+                "submit_result",
+                {
+                    "target_id": rq_id,
+                    "method": "m",
+                    "result": "r",
+                    "confidence": "exact",
+                    "description": "d",
+                    "notes": "n",
+                },
+            ),
         ]
         result = self._make_result(tool_calls)
         agent.process_response(result, task, iteration=1)
@@ -431,16 +596,28 @@ class TestComputerEvidenceFiltering:
 
     def test_invalid_evidence_scripts_falls_back(self):
         agent, rq_id = self._make_agent()
-        task = Task(task_id="T1", task_type=TaskType.COMPUTE, assigned_to="computer",
-                    body=f"Compute {rq_id}", target_claim=rq_id)
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            body=f"Compute {rq_id}",
+            target_claim=rq_id,
+        )
         tool_calls = [
             self._make_tc("document_approach", {"approach": "test"}),
             self._make_tc("execute_python", {"purpose": "A", "code": "pass"}),
-            self._make_tc("submit_result", {
-                "target_id": rq_id, "method": "m", "result": "r",
-                "confidence": "exact", "description": "d", "notes": "n",
-                "evidence_scripts": ["nonexistent.py"],
-            }),
+            self._make_tc(
+                "submit_result",
+                {
+                    "target_id": rq_id,
+                    "method": "m",
+                    "result": "r",
+                    "confidence": "exact",
+                    "description": "d",
+                    "notes": "n",
+                    "evidence_scripts": ["nonexistent.py"],
+                },
+            ),
         ]
         result = self._make_result(tool_calls)
         agent.process_response(result, task, iteration=1)
@@ -450,17 +627,35 @@ class TestComputerEvidenceFiltering:
 
     def test_purposes_collected(self):
         agent, rq_id = self._make_agent()
-        task = Task(task_id="T1", task_type=TaskType.COMPUTE, assigned_to="computer",
-                    body=f"Compute {rq_id}", target_claim=rq_id)
+        task = Task(
+            task_id="T1",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            body=f"Compute {rq_id}",
+            target_claim=rq_id,
+        )
         tool_calls = [
             self._make_tc("document_approach", {"approach": "test"}),
-            self._make_tc("execute_python", {"purpose": "Initialize grid", "code": "pass"}),
-            self._make_tc("execute_python", {"purpose": "Main calculation", "code": "pass"}),
-            self._make_tc("execute_python", {"purpose": "Verify result", "code": "pass"}),
-            self._make_tc("submit_result", {
-                "target_id": rq_id, "method": "m", "result": "r",
-                "confidence": "exact", "description": "d", "notes": "n",
-            }),
+            self._make_tc(
+                "execute_python", {"purpose": "Initialize grid", "code": "pass"}
+            ),
+            self._make_tc(
+                "execute_python", {"purpose": "Main calculation", "code": "pass"}
+            ),
+            self._make_tc(
+                "execute_python", {"purpose": "Verify result", "code": "pass"}
+            ),
+            self._make_tc(
+                "submit_result",
+                {
+                    "target_id": rq_id,
+                    "method": "m",
+                    "result": "r",
+                    "confidence": "exact",
+                    "description": "d",
+                    "notes": "n",
+                },
+            ),
         ]
         result = self._make_result(tool_calls)
         agent.process_response(result, task, iteration=1)
@@ -483,14 +678,16 @@ class TestEvidenceScriptPurposesSerialization:
         state.hypotheses["WH-001"] = Hypothesis(
             id="WH-001",
             statement="test",
-            evidence=[Evidence(
-                type="compute",
-                scripts=["001_calc.py"],
-                script_purposes={"001_calc.py": "Compute partition function"},
-                method="numerical",
-                result="42",
-                confidence="exact",
-            )],
+            evidence=[
+                Evidence(
+                    type="compute",
+                    scripts=["001_calc.py"],
+                    script_purposes={"001_calc.py": "Compute partition function"},
+                    method="numerical",
+                    result="42",
+                    confidence="exact",
+                )
+            ],
         )
         json_str = state.to_json()
         restored = ResearchState.from_json(json_str)
@@ -502,14 +699,16 @@ class TestEvidenceScriptPurposesSerialization:
         state.research_questions["RQ-001"] = ResearchQuestion(
             id="RQ-001",
             question="What is X?",
-            evidence=[Evidence(
-                type="compute",
-                scripts=["001_calc.py"],
-                script_purposes={"001_calc.py": "Compute X"},
-                method="numerical",
-                result="42",
-                confidence="exact",
-            )],
+            evidence=[
+                Evidence(
+                    type="compute",
+                    scripts=["001_calc.py"],
+                    script_purposes={"001_calc.py": "Compute X"},
+                    method="numerical",
+                    result="42",
+                    confidence="exact",
+                )
+            ],
         )
         json_str = state.to_json()
         restored = ResearchState.from_json(json_str)
@@ -519,17 +718,20 @@ class TestEvidenceScriptPurposesSerialization:
     def test_missing_script_purposes_defaults_empty(self):
         """Legacy JSON without script_purposes deserializes to empty dict."""
         import json
+
         data = {
             "hypotheses": {
                 "WH-001": {
                     "id": "WH-001",
-                    "evidence": [{
-                        "type": "compute",
-                        "scripts": ["001_calc.py"],
-                        "method": "numerical",
-                        "result": "42",
-                        "confidence": "exact",
-                    }],
+                    "evidence": [
+                        {
+                            "type": "compute",
+                            "scripts": ["001_calc.py"],
+                            "method": "numerical",
+                            "result": "42",
+                            "confidence": "exact",
+                        }
+                    ],
                 }
             }
         }

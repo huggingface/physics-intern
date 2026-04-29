@@ -3,7 +3,6 @@
 import tempfile
 from unittest.mock import MagicMock
 
-import pytest
 
 from open_dirac.agents.critic import CriticAgent, _parse_critic_json
 from open_dirac.research_state import (
@@ -20,8 +19,8 @@ from open_dirac.research_state import (
 # _parse_critic_json tests
 # ---------------------------------------------------------------------------
 
-class TestParseCriticJson:
 
+class TestParseCriticJson:
     def test_fenced_json(self):
         text = 'Some analysis.\n```json\n{"summary": "ok", "details": "d", "critiques": []}\n```\n'
         result = _parse_critic_json(text)
@@ -33,7 +32,7 @@ class TestParseCriticJson:
         """Takes the last fenced JSON block."""
         text = (
             '```json\n{"summary": "first", "details": "d", "critiques": []}\n```\n'
-            'More text.\n'
+            "More text.\n"
             '```json\n{"summary": "second", "details": "d", "critiques": [{"severity": "HIGH", "target_id": "WH-001", "argument": "bad"}]}\n```\n'
         )
         result = _parse_critic_json(text)
@@ -43,7 +42,7 @@ class TestParseCriticJson:
 
     def test_bare_json_with_nested_braces(self):
         text = (
-            'My analysis is complete.\n'
+            "My analysis is complete.\n"
             '{"summary": "done", "details": "full analysis", "critiques": '
             '[{"severity": "MEDIUM", "target_id": "ER-001", "argument": "issue"}]}'
         )
@@ -99,6 +98,7 @@ class TestParseCriticJson:
 # process_response tests
 # ---------------------------------------------------------------------------
 
+
 def _make_state(**kwargs) -> ResearchState:
     return ResearchState(**kwargs)
 
@@ -119,15 +119,18 @@ def _make_response(text: str):
 
 
 class TestCriticProcessResponse:
-
     def test_critiques_numbered_from_state(self):
         """CRIT-NNN numbering uses research_state.next_critique_num()."""
         agent = _make_agent()
         state = _make_state()
         # Pre-populate one critique so next is CRIT-002
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=[], severity=Severity.LOW,
-            argument="old", status=CritiqueStatus.ACTIVE, iteration_filed=1,
+            id="CRIT-001",
+            targets=[],
+            severity=Severity.LOW,
+            argument="old",
+            status=CritiqueStatus.ACTIVE,
+            iteration_filed=1,
         )
         agent.research_state = state
         task = MagicMock()
@@ -160,7 +163,9 @@ class TestCriticProcessResponse:
         agent = _make_agent()
         state = _make_state()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="test", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            statement="test",
+            status=HypothesisStatus.WORKING,
             iteration_created=1,
         )
         agent.research_state = state
@@ -181,7 +186,9 @@ class TestCriticProcessResponse:
         agent.process_response(resp, task, iteration=1)
         assert agent._no_critiques_filed
         assert len(agent.research_state.critic_clean_reviews) == 1
-        assert "Parse failure" in agent.research_state.critic_clean_reviews[0]["summary"]
+        assert (
+            "Parse failure" in agent.research_state.critic_clean_reviews[0]["summary"]
+        )
 
     def test_invalid_severity_defaults_to_medium(self):
         """Unknown severity value falls back to MEDIUM."""

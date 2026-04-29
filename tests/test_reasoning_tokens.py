@@ -10,6 +10,7 @@ from open_dirac.providers.base import (
 
 # ── estimate_reasoning_tokens ──────────────────────────────────────────────
 
+
 class TestEstimateReasoningTokens:
     def test_standard_think_tags(self):
         content = "Hello <think>Let me reason about this step by step</think> The answer is 4."
@@ -44,6 +45,7 @@ class TestEstimateReasoningTokens:
 
 
 # ── estimate_answer_tokens ─────────────────────────────────────────────────
+
 
 class TestEstimateAnswerTokens:
     def test_text_only(self):
@@ -84,6 +86,7 @@ class TestEstimateAnswerTokens:
 
 # ── strip_think_tags ───────────────────────────────────────────────────────
 
+
 class TestStripThinkTags:
     def test_standard_tags(self):
         text = "<think>Step 1: reason\nStep 2: more reasoning</think>The answer is 4."
@@ -116,6 +119,7 @@ class TestStripThinkTags:
 
 
 # ── ProviderResponse invariant ─────────────────────────────────────────────
+
 
 class TestProviderResponseInvariant:
     def test_invariant_with_reasoning(self):
@@ -170,8 +174,13 @@ class TestProviderResponseInvariant:
 
     def test_anthropic_tool_call_only(self):
         """Anthropic with text='' and tool_calls: answer_tokens should be nonzero."""
-        tool_calls = [{"id": "1", "name": "execute_python",
-                        "input": {"code": "import numpy as np\nprint(np.pi)"}}]
+        tool_calls = [
+            {
+                "id": "1",
+                "name": "execute_python",
+                "input": {"code": "import numpy as np\nprint(np.pi)"},
+            }
+        ]
         output_tokens = 200
         answer_tokens = min(estimate_answer_tokens("", tool_calls), output_tokens)
         reasoning_tokens = output_tokens - answer_tokens
@@ -226,7 +235,8 @@ class TestProviderResponseInvariant:
         output_tokens = 300
         tool_calls = [{"id": "1", "name": "calc", "input": {"expr": "7*13"}}]
         answer_tokens = min(
-            estimate_answer_tokens("Let me calculate", tool_calls), output_tokens)
+            estimate_answer_tokens("Let me calculate", tool_calls), output_tokens
+        )
         reasoning_tokens = output_tokens - answer_tokens
         assert reasoning_tokens + answer_tokens == output_tokens
 
@@ -243,31 +253,48 @@ class TestProviderResponseInvariant:
 
 # ── LLMResponse / AgentResult fields ──────────────────────────────────────
 
+
 class TestLLMWrapperFields:
     def test_llm_response_defaults(self):
         from open_dirac.llm import LLMResponse
-        resp = LLMResponse(text="hi", input_tokens=10, output_tokens=5,
-                           stop_reason="end_turn", duration=1.0)
+
+        resp = LLMResponse(
+            text="hi",
+            input_tokens=10,
+            output_tokens=5,
+            stop_reason="end_turn",
+            duration=1.0,
+        )
         assert resp.reasoning_tokens == 0
         assert resp.answer_tokens == 0
 
     def test_llm_response_with_reasoning(self):
         from open_dirac.llm import LLMResponse
-        resp = LLMResponse(text="hi", input_tokens=10, output_tokens=50,
-                           stop_reason="end_turn", duration=1.0,
-                           reasoning_tokens=30, answer_tokens=20)
+
+        resp = LLMResponse(
+            text="hi",
+            input_tokens=10,
+            output_tokens=50,
+            stop_reason="end_turn",
+            duration=1.0,
+            reasoning_tokens=30,
+            answer_tokens=20,
+        )
         assert resp.reasoning_tokens == 30
         assert resp.answer_tokens == 20
 
     def test_agent_result_defaults(self):
         from open_dirac.llm import AgentResult
+
         result = AgentResult(text="done")
         assert result.total_reasoning_tokens == 0
         assert result.total_answer_tokens == 0
 
     def test_agent_result_with_reasoning(self):
         from open_dirac.llm import AgentResult
-        result = AgentResult(text="done", total_reasoning_tokens=500,
-                             total_answer_tokens=200)
+
+        result = AgentResult(
+            text="done", total_reasoning_tokens=500, total_answer_tokens=200
+        )
         assert result.total_reasoning_tokens == 500
         assert result.total_answer_tokens == 200

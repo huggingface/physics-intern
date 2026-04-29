@@ -1,20 +1,15 @@
 """Tests for the autophysicist mode."""
 
 import textwrap
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from open_dirac.autophysicist.memory import PermanentMemory, Scratchpad
 from open_dirac.autophysicist.subagent import (
     SubAgentResult,
     _extract_python_code,
-    dispatch_subagent,
 )
 from open_dirac.autophysicist.tools import ManagerToolExecutor
 from open_dirac.config import Config
-from open_dirac.tool_call import ToolCall
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +55,7 @@ class TestPermanentMemory:
 
 class TestScratchpad:
     def test_creates_file(self, tmp_path):
-        sp = Scratchpad(tmp_path)
+        Scratchpad(tmp_path)
         assert (tmp_path / "SCRATCHPAD.md").exists()
 
     def test_append_and_window(self, tmp_path):
@@ -143,8 +138,11 @@ class TestSubAgentResult:
     def test_format_no_code(self):
         r = SubAgentResult(
             reasoning_text="The answer is 42.",
-            code="", execution_output="", execution_status="no_code",
-            total_input_tokens=100, total_output_tokens=50,
+            code="",
+            execution_output="",
+            execution_status="no_code",
+            total_input_tokens=100,
+            total_output_tokens=50,
         )
         formatted = r.format_for_manager()
         assert "The answer is 42." in formatted
@@ -156,7 +154,8 @@ class TestSubAgentResult:
             code="print(3.14159)",
             execution_output="3.14159",
             execution_status="success",
-            total_input_tokens=200, total_output_tokens=100,
+            total_input_tokens=200,
+            total_output_tokens=100,
         )
         formatted = r.format_for_manager()
         assert "Computing pi." in formatted
@@ -223,9 +222,13 @@ class TestManagerToolExecutor:
         ex = _make_executor(tmp_path)
         tools = ex.active_tools
         names = {t["function"]["name"] for t in tools}
-        assert names == {"dispatch_subagent", "write_to_permanent_memory",
-                         "write_to_scratchpad", "end_turn",
-                         "submit_final_answer"}
+        assert names == {
+            "dispatch_subagent",
+            "write_to_permanent_memory",
+            "write_to_scratchpad",
+            "end_turn",
+            "submit_final_answer",
+        }
 
     def test_wind_down_removes_dispatch(self, tmp_path):
         ex = _make_executor(tmp_path)
@@ -238,10 +241,13 @@ class TestManagerToolExecutor:
     def test_dispatch_blocked_during_wind_down(self, tmp_path):
         ex = _make_executor(tmp_path)
         ex._wind_down = True
-        tc = ex.execute("dispatch_subagent", {
-            "system_prompt": "You are a physicist.",
-            "user_message": "Derive F=ma.",
-        })
+        tc = ex.execute(
+            "dispatch_subagent",
+            {
+                "system_prompt": "You are a physicist.",
+                "user_message": "Derive F=ma.",
+            },
+        )
         assert tc.is_error
         assert "unavailable" in tc.output.lower()
 
@@ -302,6 +308,7 @@ class TestContextAssembly:
 
     def test_empty_state(self, tmp_path):
         from open_dirac.autophysicist.runner import _build_user_content
+
         mem = PermanentMemory(tmp_path)
         sp = Scratchpad(tmp_path)
         content = _build_user_content("What is 2+2?", "", mem, sp, 1, 10)
@@ -311,6 +318,7 @@ class TestContextAssembly:
 
     def test_with_answer_template(self, tmp_path):
         from open_dirac.autophysicist.runner import _build_user_content
+
         mem = PermanentMemory(tmp_path)
         sp = Scratchpad(tmp_path)
         template = "def answer():\n    return 42"
@@ -321,6 +329,7 @@ class TestContextAssembly:
 
     def test_empty_answer_template_omitted(self, tmp_path):
         from open_dirac.autophysicist.runner import _build_user_content
+
         mem = PermanentMemory(tmp_path)
         sp = Scratchpad(tmp_path)
         content = _build_user_content("What is 2+2?", "", mem, sp, 1, 10)
@@ -328,6 +337,7 @@ class TestContextAssembly:
 
     def test_with_populated_state(self, tmp_path):
         from open_dirac.autophysicist.runner import _build_user_content
+
         mem = PermanentMemory(tmp_path)
         mem.append("Verified: 2+2=4", iteration=1)
         sp = Scratchpad(tmp_path)

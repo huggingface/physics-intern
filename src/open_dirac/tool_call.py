@@ -6,6 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class ToolCall:
     """Record of a single tool invocation."""
+
     tool_name: str
     tool_input: dict
     output: str

@@ -26,7 +26,10 @@ def render_orchestrator_slim_state(
     parts: list[str] = []
 
     # Conventions (full)
-    conv = state.conventions or "(To be populated by the orchestrator as conventions become clear.)"
+    conv = (
+        state.conventions
+        or "(To be populated by the orchestrator as conventions become clear.)"
+    )
     parts.append(f"<conventions>\n{conv}\n</conventions>")
 
     # Strategy (full)
@@ -39,12 +42,18 @@ def render_orchestrator_slim_state(
 
     # Established Results — one-liner per ER
     ers = sorted(
-        [h for h in state.hypotheses.values() if h.status == HypothesisStatus.ESTABLISHED],
+        [
+            h
+            for h in state.hypotheses.values()
+            if h.status == HypothesisStatus.ESTABLISHED
+        ],
         key=lambda h: h.id,
     )
     if ers:
         er_lines = [f"- {h.id}: {h.statement}, VERIFIED" for h in ers]
-        parts.append("<established-results>\n" + "\n".join(er_lines) + "\n</established-results>")
+        parts.append(
+            "<established-results>\n" + "\n".join(er_lines) + "\n</established-results>"
+        )
 
     # Working Hypotheses — one-liner per WH
     whs = sorted(
@@ -71,22 +80,30 @@ def render_orchestrator_slim_state(
             if rq.status == RQStatus.OPEN:
                 n_open_rqs += 1
                 n_ev = len(rq.evidence)
-                ev_note = f", {n_ev} evidence item{'s' if n_ev != 1 else ''}" if n_ev else ""
+                ev_note = (
+                    f", {n_ev} evidence item{'s' if n_ev != 1 else ''}" if n_ev else ""
+                )
                 rq_lines.append(f"- {rq.id}: {rq.question}, OPEN{ev_note}")
             elif rq.resolved_to and all(t.startswith("ER-") for t in rq.resolved_to):
                 continue  # already visible in established-results
             elif rq.resolved_to:
-                rq_lines.append(f"- {rq.id}: {rq.question}, RESOLVED → {', '.join(rq.resolved_to)}")
+                rq_lines.append(
+                    f"- {rq.id}: {rq.question}, RESOLVED → {', '.join(rq.resolved_to)}"
+                )
             else:
                 rq_lines.append(f"- {rq.id}: {rq.question}, {rq.status.upper()}")
     if max_open_rqs is not None:
         cap_note = f"Open RQ cap: {max_open_rqs} (currently {n_open_rqs} open"
         if n_open_rqs >= max_open_rqs:
-            cap_note += " — limit reached, resolve existing RQs before creating new ones"
+            cap_note += (
+                " — limit reached, resolve existing RQs before creating new ones"
+            )
         cap_note += ")"
         rq_lines.insert(0, cap_note)
     if rq_lines:
-        parts.append("<research-questions>\n" + "\n".join(rq_lines) + "\n</research-questions>")
+        parts.append(
+            "<research-questions>\n" + "\n".join(rq_lines) + "\n</research-questions>"
+        )
 
     # Dead Ends — one-liner per entry (truncated for context budget)
     def _trunc(s: str, cap: int) -> str:

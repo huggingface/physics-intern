@@ -9,13 +9,16 @@ from pathlib import Path
 @dataclass
 class ExecutionResult:
     """Result of a sandboxed Python execution."""
+
     stdout: str
     stderr: str
     returncode: int
     timed_out: bool
 
 
-def execute_python(script_path: str | Path, timeout: int = 60, cwd: str | Path | None = None) -> ExecutionResult:
+def execute_python(
+    script_path: str | Path, timeout: int = 60, cwd: str | Path | None = None
+) -> ExecutionResult:
     """Execute a Python script with timeout. Returns ExecutionResult."""
     script_path = Path(script_path).resolve()
     try:

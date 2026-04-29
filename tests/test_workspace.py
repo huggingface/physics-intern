@@ -1,7 +1,6 @@
 """Tests for workspace initialization, file I/O, and git operations."""
 
 import inspect
-import json
 
 from open_dirac.config import Config
 from open_dirac.workspace import WorkspaceManager
@@ -20,8 +19,8 @@ def _make_ws(tmp_path, init=True):
 # init
 # ---------------------------------------------------------------------------
 
-class TestInit:
 
+class TestInit:
     def test_creates_research_state_without_warmups(self, tmp_path):
         ws = _make_ws(tmp_path)
         content = ws.read_file("RESEARCH_STATE.md")
@@ -59,8 +58,8 @@ class TestInit:
 # File I/O
 # ---------------------------------------------------------------------------
 
-class TestFileIO:
 
+class TestFileIO:
     def test_write_read_roundtrip(self, tmp_path):
         ws = _make_ws(tmp_path)
         ws.write_file("test.txt", "hello world")
@@ -112,8 +111,8 @@ class TestFileIO:
 # read_file_tail
 # ---------------------------------------------------------------------------
 
-class TestReadFileTail:
 
+class TestReadFileTail:
     def test_tail_returns_last_sections(self, tmp_path):
         ws = _make_ws(tmp_path)
         content = "## Section 1\nfoo\n\n## Section 2\nbar\n\n## Section 3\nbaz\n"
@@ -131,17 +130,20 @@ class TestReadFileTail:
 # git_commit
 # ---------------------------------------------------------------------------
 
-class TestGitCommit:
 
+class TestGitCommit:
     def test_commit_after_write(self, tmp_path):
         ws = _make_ws(tmp_path)
         ws.write_file("new.txt", "content")
         ws.git_commit("add new.txt")
         # Verify commit exists in log
         import subprocess
+
         result = subprocess.run(
             ["git", "log", "--oneline", "-1"],
-            cwd=str(ws.root), capture_output=True, text=True,
+            cwd=str(ws.root),
+            capture_output=True,
+            text=True,
         )
         assert "add new.txt" in result.stdout
 
@@ -152,5 +154,3 @@ class TestGitCommit:
         ws.root.mkdir(parents=True)
         ws.write_file("test.txt", "data")
         ws.git_commit("should not crash")  # no .git → silent no-op
-
-

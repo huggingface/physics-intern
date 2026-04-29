@@ -16,6 +16,7 @@ def __getattr__(name: str):
     }
     if name in _registry:
         import importlib
+
         mod = importlib.import_module(_registry[name], __package__)
         return getattr(mod, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

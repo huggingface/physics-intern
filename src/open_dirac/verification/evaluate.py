@@ -10,6 +10,7 @@ Symbolic comparison uses a cascading chain:
   4. candidate.equals(truth)  (random numerical substitution)
   5. Numerical fallback for constant expressions
 """
+
 from __future__ import annotations
 
 import re
@@ -35,6 +36,7 @@ def _with_timeout(fn, timeout=_SYMPY_TIMEOUT):
     SIGALRM is delivered asynchronously by the OS and interrupts the
     computation regardless of GIL state.
     """
+
     def _alarm_handler(signum, frame):
         raise _SympyTimeout(f"Computation exceeded {timeout}s timeout")
 
@@ -53,6 +55,7 @@ def _with_timeout(fn, timeout=_SYMPY_TIMEOUT):
 # Code extraction
 # ---------------------------------------------------------------------------
 
+
 def extract_answer_code(response_text: str) -> str | None:
     """Return the last ``python code block containing ``def answer`` in *response_text*."""
     pattern = r"```python\s*\n(.*?)```"
@@ -66,6 +69,7 @@ def extract_answer_code(response_text: str) -> str | None:
 # ---------------------------------------------------------------------------
 # Answer type classification
 # ---------------------------------------------------------------------------
+
 
 def _classify_answer_type(answer_value: Any) -> str:
     """Return ``"numerical"`` if *answer_value* is a plain number, else ``"symbolic"``."""
@@ -81,6 +85,7 @@ def _classify_answer_type(answer_value: Any) -> str:
 # ---------------------------------------------------------------------------
 # Template parsing
 # ---------------------------------------------------------------------------
+
 
 def _parse_template_preamble(answer_template: str) -> tuple[str, list[str]]:
     """Extract preamble code and ``answer()`` parameter names from *answer_template*.
@@ -104,6 +109,7 @@ def _parse_template_preamble(answer_template: str) -> tuple[str, list[str]]:
 # ---------------------------------------------------------------------------
 # Numerical comparison
 # ---------------------------------------------------------------------------
+
 
 def _compare_numerical(candidate: Any, truth: float, rtol: float = 0.01) -> dict:
     """Compare numerical answers with relative tolerance."""
@@ -132,6 +138,7 @@ def _compare_numerical(candidate: Any, truth: float, rtol: float = 0.01) -> dict
 # Symbolic comparison
 # ---------------------------------------------------------------------------
 
+
 def _compare_single_symbolic(candidate: Any, truth: Any) -> dict:
     """Compare a single candidate value against a single truth value.
 
@@ -156,7 +163,12 @@ def _compare_single_symbolic(candidate: Any, truth: Any) -> dict:
     try:
         diff = _with_timeout(lambda: sp.simplify(candidate - truth))
         if diff == 0:
-            return {"correct": True, "method": "simplify", "error": None, "details": str(diff)}
+            return {
+                "correct": True,
+                "method": "simplify",
+                "error": None,
+                "details": str(diff),
+            }
     except (_SympyTimeout, Exception):
         pass
 
@@ -164,7 +176,12 @@ def _compare_single_symbolic(candidate: Any, truth: Any) -> dict:
     try:
         diff = _with_timeout(lambda: sp.simplify(sp.expand(candidate - truth)))
         if diff == 0:
-            return {"correct": True, "method": "expand_simplify", "error": None, "details": str(diff)}
+            return {
+                "correct": True,
+                "method": "expand_simplify",
+                "error": None,
+                "details": str(diff),
+            }
     except (_SympyTimeout, Exception):
         pass
 
@@ -172,14 +189,24 @@ def _compare_single_symbolic(candidate: Any, truth: Any) -> dict:
     try:
         ratio = _with_timeout(lambda: sp.simplify(candidate / truth))
         if ratio == 1:
-            return {"correct": True, "method": "ratio", "error": None, "details": str(ratio)}
+            return {
+                "correct": True,
+                "method": "ratio",
+                "error": None,
+                "details": str(ratio),
+            }
     except (_SympyTimeout, Exception):
         pass
 
     # 4. .equals() — random numerical substitution (most robust)
     try:
         if _with_timeout(lambda: candidate.equals(truth)):
-            return {"correct": True, "method": "equals", "error": None, "details": "candidate.equals(truth)"}
+            return {
+                "correct": True,
+                "method": "equals",
+                "error": None,
+                "details": "candidate.equals(truth)",
+            }
     except (_SympyTimeout, Exception):
         pass
 
@@ -217,7 +244,11 @@ def _eval_truth(answer_str: str, namespace: dict[str, Any]) -> tuple[Any, str | 
 
     if "\n" not in answer_str:
         # Single-line: eval the RHS
-        rhs = answer_str.split("=", 1)[1].strip() if "=" in answer_str else answer_str.strip()
+        rhs = (
+            answer_str.split("=", 1)[1].strip()
+            if "=" in answer_str
+            else answer_str.strip()
+        )
         try:
             return eval(rhs, truth_ns), None  # noqa: S307
         except Exception as exc:
@@ -263,7 +294,7 @@ def _compare_symbolic(
             # Take the last N variables to skip intermediates
             names = list(truth_vars.keys())
             if len(candidate) <= len(names):
-                names = names[-len(candidate):]
+                names = names[-len(candidate) :]
             truth_values = [truth_vars[n] for n in names]
         else:
             # Single candidate: use the last variable
@@ -299,6 +330,7 @@ def _compare_symbolic(
 # Main entry point
 # ---------------------------------------------------------------------------
 
+
 def _compare_tuple(candidate: Any, truth: Any) -> dict:
     """Compare candidate and truth values element-by-element.
 
@@ -329,8 +361,7 @@ def _compare_tuple(candidate: Any, truth: Any) -> dict:
 
     methods = [r["method"] for r in element_results]
     details = "; ".join(
-        f"[{i}] {r['method']}: {r['details']}"
-        for i, r in enumerate(element_results)
+        f"[{i}] {r['method']}: {r['details']}" for i, r in enumerate(element_results)
     )
     return {
         "correct": all_correct,
@@ -363,10 +394,19 @@ def evaluate_response(
 
     has_reference_fn = reference_code is not None
     if not has_reference_fn:
-        if answer_value is None or (isinstance(answer_value, str) and not answer_value.strip()):
-            return {"correct": None, "method": "no_answer", "error": "No answer in problem definition", "details": ""}
+        if answer_value is None or (
+            isinstance(answer_value, str) and not answer_value.strip()
+        ):
+            return {
+                "correct": None,
+                "method": "no_answer",
+                "error": "No answer in problem definition",
+                "details": "",
+            }
 
-    answer_type = _classify_answer_type(answer_value) if not has_reference_fn else "symbolic"
+    answer_type = (
+        _classify_answer_type(answer_value) if not has_reference_fn else "symbolic"
+    )
     answer_str = str(answer_value).strip() if not has_reference_fn else ""
 
     # Extract candidate code from LLM response
@@ -399,6 +439,7 @@ def evaluate_response(
     if "sp" not in namespace:
         try:
             import sympy as sp
+
             namespace["sp"] = sp
         except ImportError:
             pass

@@ -43,6 +43,7 @@ _ER_WH_ID_RE = re.compile(r"\b(?:ER|WH)-\d+\b")
 # Individual check functions — all operate on ResearchState
 # ---------------------------------------------------------------------------
 
+
 def check_er_demotion_safety(research_state: ResearchState) -> list[Violation]:
     """Demote ER-NNN hypotheses when verification verdict is REFUTED."""
     violations: list[Violation] = []
@@ -54,12 +55,14 @@ def check_er_demotion_safety(research_state: ResearchState) -> list[Violation]:
         if h.review and h.review.verdict == Verdict.REFUTED:
             new_id = demote_hypothesis(research_state, hid)
             if new_id:
-                violations.append(Violation(
-                    check="er_demotion_safety",
-                    severity=ViolationSeverity.WARNING,
-                    message=f"{hid} has REFUTED review — demoted to {new_id}",
-                    detail=hid,
-                ))
+                violations.append(
+                    Violation(
+                        check="er_demotion_safety",
+                        severity=ViolationSeverity.WARNING,
+                        message=f"{hid} has REFUTED review — demoted to {new_id}",
+                        detail=hid,
+                    )
+                )
 
     return violations
 
@@ -87,12 +90,14 @@ def check_phantom_labels(research_state: ResearchState) -> list[Violation]:
                     if not backed:
                         line = line.replace("VERIFIED", "[unverified]")
                         changed = True
-                        violations.append(Violation(
-                            check="phantom_labels",
-                            severity=ViolationSeverity.ERROR,
-                            message="Unsubstantiated VERIFIED label stripped",
-                            detail=f"{hid}: {', '.join(ids_in_line)}",
-                        ))
+                        violations.append(
+                            Violation(
+                                check="phantom_labels",
+                                severity=ViolationSeverity.ERROR,
+                                message="Unsubstantiated VERIFIED label stripped",
+                                detail=f"{hid}: {', '.join(ids_in_line)}",
+                            )
+                        )
             new_lines.append(line)
         if changed:
             h.derivation = "\n".join(new_lines)
@@ -140,12 +145,14 @@ def check_stale_unverified_labels(research_state: ResearchState) -> list[Violati
                         if er_form in research_state.hypotheses:
                             line = line.replace(wh, er_form)
                     changed = True
-                    violations.append(Violation(
-                        check="stale_unverified_labels",
-                        severity=ViolationSeverity.WARNING,
-                        message=f"Promoted [unverified] → VERIFIED for {', '.join(ids_in_line)}",
-                        detail=f"{hid}: {', '.join(ids_in_line)}",
-                    ))
+                    violations.append(
+                        Violation(
+                            check="stale_unverified_labels",
+                            severity=ViolationSeverity.WARNING,
+                            message=f"Promoted [unverified] → VERIFIED for {', '.join(ids_in_line)}",
+                            detail=f"{hid}: {', '.join(ids_in_line)}",
+                        )
+                    )
             new_lines.append(line)
         if changed:
             h.derivation = "\n".join(new_lines)
@@ -153,12 +160,14 @@ def check_stale_unverified_labels(research_state: ResearchState) -> list[Violati
     return []
 
 
-def check_critique_resolution_consistency(research_state: ResearchState) -> list[Violation]:
+def check_critique_resolution_consistency(
+    research_state: ResearchState,
+) -> list[Violation]:
     """Check that resolved critiques are consistent with current state."""
     violations: list[Violation] = []
 
     _LABEL_KEYWORDS = re.compile(
-        r'label|inconsisten|rename|mislabel|header', re.IGNORECASE
+        r"label|inconsisten|rename|mislabel|header", re.IGNORECASE
     )
 
     for crit_id, crit in research_state.critiques.items():
@@ -177,31 +186,39 @@ def check_critique_resolution_consistency(research_state: ResearchState) -> list
             wh_form = f"WH-{num}"
             er_form = f"ER-{num}"
 
-            if (tid not in research_state.hypotheses
-                    and wh_form not in research_state.hypotheses
-                    and er_form not in research_state.hypotheses):
-                violations.append(Violation(
-                    check="critique_resolution_consistency",
-                    severity=ViolationSeverity.WARNING,
-                    message=(
-                        f"Resolved {crit_id} targets {tid} which no longer "
-                        f"exists in research state"
-                    ),
-                    detail=f"{crit_id}:{tid}",
-                ))
+            if (
+                tid not in research_state.hypotheses
+                and wh_form not in research_state.hypotheses
+                and er_form not in research_state.hypotheses
+            ):
+                violations.append(
+                    Violation(
+                        check="critique_resolution_consistency",
+                        severity=ViolationSeverity.WARNING,
+                        message=(
+                            f"Resolved {crit_id} targets {tid} which no longer "
+                            f"exists in research state"
+                        ),
+                        detail=f"{crit_id}:{tid}",
+                    )
+                )
 
-            if (is_label_critique
-                    and wh_form in research_state.hypotheses
-                    and er_form in research_state.hypotheses):
-                violations.append(Violation(
-                    check="critique_resolution_consistency",
-                    severity=ViolationSeverity.WARNING,
-                    message=(
-                        f"Resolved {crit_id} (label critique) but {wh_form} and "
-                        f"{er_form} still co-exist in research state"
-                    ),
-                    detail=f"{crit_id}:{wh_form}+{er_form}",
-                ))
+            if (
+                is_label_critique
+                and wh_form in research_state.hypotheses
+                and er_form in research_state.hypotheses
+            ):
+                violations.append(
+                    Violation(
+                        check="critique_resolution_consistency",
+                        severity=ViolationSeverity.WARNING,
+                        message=(
+                            f"Resolved {crit_id} (label critique) but {wh_form} and "
+                            f"{er_form} still co-exist in research state"
+                        ),
+                        detail=f"{crit_id}:{wh_form}+{er_form}",
+                    )
+                )
 
     return violations
 
@@ -228,9 +245,16 @@ def validate_post_integration(
     violations: list[Violation] = []
     for check in _DEFAULT_CHECKS:
         check_violations = check(research_state)
-        if check_violations and workspace and hasattr(workspace, 'root') and workspace.root:
+        if (
+            check_violations
+            and workspace
+            and hasattr(workspace, "root")
+            and workspace.root
+        ):
             for v in check_violations:
-                log_scaffold_event(workspace.root, iteration, CC.STATE_INVARIANTS, v.check, v.message)
+                log_scaffold_event(
+                    workspace.root, iteration, CC.STATE_INVARIANTS, v.check, v.message
+                )
         violations.extend(check_violations)
     return violations
 
@@ -238,6 +262,7 @@ def validate_post_integration(
 # ---------------------------------------------------------------------------
 # Termination gate
 # ---------------------------------------------------------------------------
+
 
 def can_terminate(
     workspace: WorkspaceManager,
@@ -280,19 +305,19 @@ def can_terminate(
                         f"{h.id} has VERIFIED review but unestablished dependencies "
                         f"({', '.join(unest)}). Promote or resolve the dependencies "
                         f"so {h.id} can auto-promote, or call "
-                        f"abandon_hypothesis(id=\"{h.id}\") before terminating."
+                        f'abandon_hypothesis(id="{h.id}") before terminating.'
                     )
                 else:
                     blockers.append(
                         f"{h.id} has VERIFIED review but was not promoted. "
                         f"This is unexpected — auto-promotion should have handled it. "
-                        f"Abandon with abandon_hypothesis(id=\"{h.id}\") before terminating."
+                        f'Abandon with abandon_hypothesis(id="{h.id}") before terminating.'
                     )
             else:
                 blockers.append(
                     f"{h.id} has no VERIFIED review. "
                     f"Emit task_type: review targeting {h.id}, "
-                    f"or call abandon_hypothesis(id=\"{h.id}\"), before terminating."
+                    f'or call abandon_hypothesis(id="{h.id}"), before terminating.'
                 )
 
     return (len(blockers) == 0, blockers)
