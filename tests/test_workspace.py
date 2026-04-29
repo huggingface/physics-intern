@@ -1,6 +1,7 @@
 """Tests for workspace initialization, file I/O, and git operations."""
 
 import inspect
+import subprocess
 
 from open_dirac.config import Config
 from open_dirac.workspace import WorkspaceManager
@@ -12,6 +13,12 @@ def _make_ws(tmp_path, init=True):
     ws = WorkspaceManager(config)
     if init:
         ws.init("Derive the result.")
+        # Set git identity so commits work on CI runners without global config
+        for cmd in (
+            ["git", "config", "user.email", "test@test.com"],
+            ["git", "config", "user.name", "Test"],
+        ):
+            subprocess.run(cmd, cwd=str(ws.root), capture_output=True, check=False)
     return ws
 
 
@@ -136,9 +143,6 @@ class TestGitCommit:
         ws = _make_ws(tmp_path)
         ws.write_file("new.txt", "content")
         ws.git_commit("add new.txt")
-        # Verify commit exists in log
-        import subprocess
-
         result = subprocess.run(
             ["git", "log", "--oneline", "-1"],
             cwd=str(ws.root),
