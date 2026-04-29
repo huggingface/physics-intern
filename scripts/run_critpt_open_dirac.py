@@ -26,13 +26,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from run_critpt_common import (
-    PROJECT_ROOT, DEFAULT_PROBLEMS_DIR, DEFAULTS,
-    Problem, RunResult,
-    resolve_critpt_model_string, discover_problems,
-    load_resume_config, find_completed_submissions,
-    resolve_model, make_output_dir,
-    write_submission_json, write_batch_metadata, write_initial_batch_metadata,
-    setup_signal_handler, print_final_summary,
+    PROJECT_ROOT,
+    DEFAULT_PROBLEMS_DIR,
+    DEFAULTS,
+    Problem,
+    RunResult,
+    resolve_critpt_model_string,
+    discover_problems,
+    load_resume_config,
+    find_completed_submissions,
+    resolve_model,
+    make_output_dir,
+    write_submission_json,
+    write_batch_metadata,
+    write_initial_batch_metadata,
+    setup_signal_handler,
+    print_final_summary,
 )
 
 DEFAULT_WORKSPACE_BASE = PROJECT_ROOT / "workspaces"
@@ -43,45 +52,95 @@ DEFAULT_RESULTS_BASE = PROJECT_ROOT / "results" / "critpt"
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Run CritPt benchmark problems through OpenDirac in parallel.",
     )
-    p.add_argument("--resume", type=Path, default=None,
-                   help="Resume from an existing output directory (recovers all params)")
-    p.add_argument("--model", default=None,
-                   help=f"Model key from models.yaml (default: {DEFAULTS['model']})")
-    p.add_argument("--max-iterations", type=int, default=None,
-                   help=f"Max iterations per problem (default: {DEFAULTS['max_iterations']})")
-    p.add_argument("--config", type=Path, default=None,
-                   help="Config YAML file to pass through to each run")
-    p.add_argument("--concurrency", type=int, default=10,
-                   help="Max parallel runs (default: 10)")
-    p.add_argument("--timeout", type=int, default=21600,
-                   help="Per-problem timeout in seconds (default: 21600)")
-    p.add_argument("--output-dir", type=Path, default=None,
-                   help="Output directory for submission JSONs")
-    p.add_argument("--problems-dir", type=Path, default=DEFAULT_PROBLEMS_DIR,
-                   help="Directory of problem YAMLs")
-    p.add_argument("--workspace-base", type=Path, default=DEFAULT_WORKSPACE_BASE,
-                   help="Base directory for workspaces")
-    p.add_argument("--problems", type=str, default=None,
-                   help='Subset of problems, e.g. "1-10" or "1,5,30-40"')
-    p.add_argument("--force", action="store_true",
-                   help="Re-run problems even if submission JSON already exists")
-    p.add_argument("--fresh", action="store_true",
-                   help="Ignore existing workspaces; start every problem from scratch")
-    p.add_argument("--no-sibling-history", action="store_true",
-                   help="Do not fold prior attempts from sibling output dirs "
-                        "into batch_metadata.json")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Show what would be run without executing")
+    p.add_argument(
+        "--resume",
+        type=Path,
+        default=None,
+        help="Resume from an existing output directory (recovers all params)",
+    )
+    p.add_argument(
+        "--model",
+        default=None,
+        help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
+    )
+    p.add_argument(
+        "--max-iterations",
+        type=int,
+        default=None,
+        help=f"Max iterations per problem (default: {DEFAULTS['max_iterations']})",
+    )
+    p.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Config YAML file to pass through to each run",
+    )
+    p.add_argument(
+        "--concurrency", type=int, default=10, help="Max parallel runs (default: 10)"
+    )
+    p.add_argument(
+        "--timeout",
+        type=int,
+        default=21600,
+        help="Per-problem timeout in seconds (default: 21600)",
+    )
+    p.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory for submission JSONs",
+    )
+    p.add_argument(
+        "--problems-dir",
+        type=Path,
+        default=DEFAULT_PROBLEMS_DIR,
+        help="Directory of problem YAMLs",
+    )
+    p.add_argument(
+        "--workspace-base",
+        type=Path,
+        default=DEFAULT_WORKSPACE_BASE,
+        help="Base directory for workspaces",
+    )
+    p.add_argument(
+        "--problems",
+        type=str,
+        default=None,
+        help='Subset of problems, e.g. "1-10" or "1,5,30-40"',
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-run problems even if submission JSON already exists",
+    )
+    p.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Ignore existing workspaces; start every problem from scratch",
+    )
+    p.add_argument(
+        "--no-sibling-history",
+        action="store_true",
+        help="Do not fold prior attempts from sibling output dirs "
+        "into batch_metadata.json",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be run without executing",
+    )
     return p
 
 
 # ---------------------------------------------------------------------------
 # Workspace-based resume logic
 # ---------------------------------------------------------------------------
+
 
 def find_existing_workspace(
     problem_id: str,
@@ -107,6 +166,7 @@ def find_existing_workspace(
 @dataclass
 class ResumeAction:
     """What to do for a problem on resume."""
+
     problem: Problem
     action: str  # "skip", "extract", "resume", "fresh"
     workspace: Path | None = None
@@ -129,23 +189,35 @@ def plan_actions(
             actions.append(ResumeAction(problem=p, action="skip"))
             continue
 
-        ws = None if fresh else find_existing_workspace(p.problem_id, model_key, workspace_base)
+        ws = (
+            None
+            if fresh
+            else find_existing_workspace(p.problem_id, model_key, workspace_base)
+        )
         if ws:
             answer_path = ws / "ANSWER.md"
             if answer_path.exists():
                 code = answer_path.read_text().strip()
                 if code and not code.startswith("FORMATTER_REJECTION"):
-                    actions.append(ResumeAction(
-                        problem=p, action="extract",
-                        workspace=ws, answer_code=code,
-                    ))
+                    actions.append(
+                        ResumeAction(
+                            problem=p,
+                            action="extract",
+                            workspace=ws,
+                            answer_code=code,
+                        )
+                    )
                     continue
             # Workspace exists but no valid answer — try to resume
             graph_path = ws / "RESEARCH_GRAPH.json"
             if graph_path.exists():
-                actions.append(ResumeAction(
-                    problem=p, action="resume", workspace=ws,
-                ))
+                actions.append(
+                    ResumeAction(
+                        problem=p,
+                        action="resume",
+                        workspace=ws,
+                    )
+                )
                 continue
         # No workspace or empty workspace — fresh run
         actions.append(ResumeAction(problem=p, action="fresh"))
@@ -160,8 +232,8 @@ _ITERATION_RE = re.compile(r"ITERATION\s+(\d+)")
 # Matches: "Transient API error (attempt K/M): {exc}"  — see src/open_dirac/llm.py
 _RETRY_RE = re.compile(r"Transient API error \(attempt (\d+)/(\d+)\)(?::\s*(.+))?")
 
-_STALL_WARN_AFTER_S = 15 * 60     # first warning after 15 min of silence
-_STALL_REWARN_EVERY_S = 30 * 60   # re-warn every 30 min while still silent
+_STALL_WARN_AFTER_S = 15 * 60  # first warning after 15 min of silence
+_STALL_REWARN_EVERY_S = 30 * 60  # re-warn every 30 min while still silent
 _WATCHDOG_TICK_S = 60
 
 # Per-problem live state, keyed by problem_id. Accessed by the streamer,
@@ -227,6 +299,7 @@ async def _stall_watchdog(print_lock: asyncio.Lock) -> None:
 # Worker: run one problem
 # ---------------------------------------------------------------------------
 
+
 async def run_one_problem(
     action: ResumeAction,
     model_key: str,
@@ -259,21 +332,31 @@ async def run_one_problem(
             # _handle_dirty_workspace (which would hang in a subprocess).
             ws = action.workspace
             p = await asyncio.create_subprocess_exec(
-                "git", "checkout", ".", cwd=str(ws),
+                "git",
+                "checkout",
+                ".",
+                cwd=str(ws),
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
             await p.wait()
             p = await asyncio.create_subprocess_exec(
-                "git", "clean", "-fd", cwd=str(ws),
+                "git",
+                "clean",
+                "-fd",
+                cwd=str(ws),
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
             await p.wait()
             cmd = [
-                "uv", "run", "open_dirac",
-                "--resume", str(action.workspace),
-                "--max-iterations", str(max_iterations),
+                "uv",
+                "run",
+                "open_dirac",
+                "--resume",
+                str(action.workspace),
+                "--max-iterations",
+                str(max_iterations),
             ]
             workspace_dir = action.workspace
         else:
@@ -284,11 +367,16 @@ async def run_one_problem(
             workspace_dir = workspace_base / ws_name
 
             cmd = [
-                "uv", "run", "open_dirac",
+                "uv",
+                "run",
+                "open_dirac",
                 str(problem.yaml_path),
-                "--model", model_key,
-                "--max-iterations", str(max_iterations),
-                "--workspace-dir", str(workspace_dir),
+                "--model",
+                model_key,
+                "--max-iterations",
+                str(max_iterations),
+                "--workspace-dir",
+                str(workspace_dir),
             ]
 
         if config_path:
@@ -454,6 +542,7 @@ async def run_one_problem(
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
+
 async def run_batch(args: argparse.Namespace) -> int:
     """Main batch orchestrator. Returns exit code."""
     # Handle --resume: restore params from saved batch_metadata.json
@@ -492,7 +581,11 @@ async def run_batch(args: argparse.Namespace) -> int:
 
     # Plan actions (workspace-based resume logic)
     actions = plan_actions(
-        problems, output_dir, args.workspace_base, args.model, args.force,
+        problems,
+        output_dir,
+        args.workspace_base,
+        args.model,
+        args.force,
         fresh=args.fresh,
     )
 
@@ -548,7 +641,11 @@ async def run_batch(args: argparse.Namespace) -> int:
     semaphore = asyncio.Semaphore(args.concurrency)
     start_time = datetime.now(timezone.utc)
     write_initial_batch_metadata(
-        output_dir, critpt_model, generation_config, run_config, start_time,
+        output_dir,
+        critpt_model,
+        generation_config,
+        run_config,
+        start_time,
     )
     total = len(to_run)
     completed = 0
@@ -562,9 +659,14 @@ async def run_batch(args: argparse.Namespace) -> int:
         nonlocal completed, succeeded, failed
 
         result = await run_one_problem(
-            action, args.model, args.max_iterations,
-            args.config, args.workspace_base,
-            args.timeout, semaphore, print_lock,
+            action,
+            args.model,
+            args.max_iterations,
+            args.config,
+            args.workspace_base,
+            args.timeout,
+            semaphore,
+            print_lock,
         )
 
         if result.success:
@@ -616,24 +718,39 @@ async def run_batch(args: argparse.Namespace) -> int:
         if isinstance(r, Exception) and not isinstance(r, asyncio.CancelledError):
             p = to_run[i].problem
             async with lock:
-                all_results.append(RunResult(
-                    problem_n=p.n, problem_id=p.problem_id,
-                    success=False, answer_code=None,
-                    error=str(r), duration_s=0,
-                ))
+                all_results.append(
+                    RunResult(
+                        problem_n=p.n,
+                        problem_id=p.problem_id,
+                        success=False,
+                        answer_code=None,
+                        error=str(r),
+                        duration_s=0,
+                    )
+                )
                 failed += 1
                 completed += 1
 
     end_time = datetime.now(timezone.utc)
 
     write_batch_metadata(
-        output_dir, critpt_model, all_results,
-        generation_config, run_config, start_time, end_time,
+        output_dir,
+        critpt_model,
+        all_results,
+        generation_config,
+        run_config,
+        start_time,
+        end_time,
         include_sibling_history=not args.resume and not args.no_sibling_history,
     )
     print_final_summary(
-        all_results, total, succeeded, failed,
-        start_time, end_time, output_dir,
+        all_results,
+        total,
+        succeeded,
+        failed,
+        start_time,
+        end_time,
+        output_dir,
     )
 
     return 0 if failed == 0 else 1

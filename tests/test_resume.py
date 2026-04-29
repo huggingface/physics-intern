@@ -3,16 +3,24 @@
 import json
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from open_dirac.config import Config, _PERSIST_FIELDS
 from open_dirac.engine import (
-    OpenDirac, LoopState, _reconstruct_loop_state, _find_last_critic_iteration,
+    OpenDirac,
+    LoopState,
+    _reconstruct_loop_state,
+    _find_last_critic_iteration,
 )
 from open_dirac.workspace import WorkspaceManager
 from open_dirac.research_state import (
-    ResearchState, Hypothesis, HypothesisStatus, Evidence, ReviewResult,
-    Verdict, ResearchQuestion, RQStatus,
+    ResearchState,
+    Hypothesis,
+    HypothesisStatus,
+    Evidence,
+    ReviewResult,
+    Verdict,
+    ResearchQuestion,
 )
 
 
@@ -20,8 +28,8 @@ from open_dirac.research_state import (
 # Config persistence
 # ---------------------------------------------------------------------------
 
-class TestConfigPersistence:
 
+class TestConfigPersistence:
     def test_config_save_load_roundtrip(self, tmp_path):
         config = Config(workspace_dir=str(tmp_path))
         config.save(tmp_path)
@@ -74,8 +82,8 @@ class TestConfigPersistence:
 # Workspace attach
 # ---------------------------------------------------------------------------
 
-class TestWorkspaceAttach:
 
+class TestWorkspaceAttach:
     def test_workspace_attach_existing(self, tmp_path):
         # Set up a valid workspace
         config = Config(workspace_dir=str(tmp_path))
@@ -107,21 +115,27 @@ class TestWorkspaceAttach:
 # Loop state reconstruction
 # ---------------------------------------------------------------------------
 
-class TestReconstructLoopState:
 
+class TestReconstructLoopState:
     def test_reconstruct_loop_state_claim_failures(self):
         state = ResearchState()
         # REFUTED review on a WORKING hypothesis → counted
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="A", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            statement="A",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict=Verdict.REFUTED, summary="bad", iteration=3),
-            iteration_created=1, iteration_modified=3,
+            iteration_created=1,
+            iteration_modified=3,
         )
         # VERIFIED review on a WORKING hypothesis → not counted
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", statement="B", status=HypothesisStatus.WORKING,
+            id="WH-002",
+            statement="B",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="ok", iteration=4),
-            iteration_created=2, iteration_modified=4,
+            iteration_created=2,
+            iteration_modified=4,
         )
         ls = _reconstruct_loop_state(state)
         assert ls.claim_failure_count == {"WH-001": 1}
@@ -129,13 +143,17 @@ class TestReconstructLoopState:
     def test_reconstruct_loop_state_last_content_iter(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="A", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            statement="A",
+            status=HypothesisStatus.WORKING,
             evidence=[Evidence(type="research", result="x", iteration=5)],
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="ok", iteration=7),
-            iteration_created=1, iteration_modified=7,
+            iteration_created=1,
+            iteration_modified=7,
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Q?",
+            id="RQ-001",
+            question="Q?",
             evidence=[Evidence(type="compute", result="y", iteration=6)],
             iteration_created=2,
         )
@@ -156,9 +174,12 @@ class TestReconstructLoopState:
         """REFUTED review on an ESTABLISHED hypothesis should NOT be counted."""
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", statement="A", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            statement="A",
+            status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(verdict=Verdict.REFUTED, summary="bad", iteration=3),
-            iteration_created=1, iteration_modified=3,
+            iteration_created=1,
+            iteration_modified=3,
         )
         ls = _reconstruct_loop_state(state)
         assert ls.claim_failure_count == {}
@@ -168,8 +189,8 @@ class TestReconstructLoopState:
 # Find last critic iteration
 # ---------------------------------------------------------------------------
 
-class TestFindLastCriticIteration:
 
+class TestFindLastCriticIteration:
     def test_find_last_critic_iteration(self, tmp_path):
         log = tmp_path / "EVENT_LOG.jsonl"
         lines = [
@@ -187,7 +208,9 @@ class TestFindLastCriticIteration:
 
     def test_find_last_critic_no_critic_entries(self, tmp_path):
         log = tmp_path / "EVENT_LOG.jsonl"
-        log.write_text(json.dumps({"kind": "llm_call", "agent": "researcher", "iter": 5}) + "\n")
+        log.write_text(
+            json.dumps({"kind": "llm_call", "agent": "researcher", "iter": 5}) + "\n"
+        )
         assert _find_last_critic_iteration(tmp_path) == 0
 
 
@@ -195,8 +218,8 @@ class TestFindLastCriticIteration:
 # Engine resume
 # ---------------------------------------------------------------------------
 
-class TestEngineResume:
 
+class TestEngineResume:
     def _make_workspace(self, tmp_path):
         """Create a minimal valid workspace for resume testing."""
         import subprocess
@@ -209,11 +232,21 @@ class TestEngineResume:
         (ws_dir / "logs").mkdir()
 
         # Git init
-        subprocess.run(["git", "init"], cwd=str(ws_dir), capture_output=True, check=True)
-        subprocess.run(["git", "config", "user.email", "test@test.com"],
-                        cwd=str(ws_dir), capture_output=True, check=True)
-        subprocess.run(["git", "config", "user.name", "Test"],
-                        cwd=str(ws_dir), capture_output=True, check=True)
+        subprocess.run(
+            ["git", "init"], cwd=str(ws_dir), capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=str(ws_dir),
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=str(ws_dir),
+            capture_output=True,
+            check=True,
+        )
 
         # problem.yaml
         problem_def = {
@@ -235,17 +268,25 @@ class TestEngineResume:
             survey_background="Survey done.",
         )
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="T_H = 1/(8*pi*M)",
+            id="WH-001",
+            statement="T_H = 1/(8*pi*M)",
             status=HypothesisStatus.WORKING,
             evidence=[Evidence(type="research", result="derived", iteration=2)],
-            iteration_created=1, iteration_modified=2,
+            iteration_created=1,
+            iteration_modified=2,
         )
         state.save(ws_dir)
 
         # Initial commit
-        subprocess.run(["git", "add", "-A"], cwd=str(ws_dir), capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", "state"], cwd=str(ws_dir),
-                        capture_output=True, check=True)
+        subprocess.run(
+            ["git", "add", "-A"], cwd=str(ws_dir), capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "state"],
+            cwd=str(ws_dir),
+            capture_output=True,
+            check=True,
+        )
 
         return ws_dir
 
@@ -262,9 +303,12 @@ class TestEngineResume:
 
     def test_resume_missing_problem_yaml(self, tmp_path):
         import subprocess
+
         ws_dir = tmp_path / "ws"
         ws_dir.mkdir()
-        subprocess.run(["git", "init"], cwd=str(ws_dir), capture_output=True, check=True)
+        subprocess.run(
+            ["git", "init"], cwd=str(ws_dir), capture_output=True, check=True
+        )
         config = Config(workspace_dir=str(ws_dir))
         config.save(ws_dir)
         with pytest.raises(FileNotFoundError, match="problem.yaml"):
@@ -288,8 +332,8 @@ class TestEngineResume:
 # Surveyor skip and completed workspace guard
 # ---------------------------------------------------------------------------
 
-class TestRunSurveyorSkip:
 
+class TestRunSurveyorSkip:
     def test_run_skips_surveyor_on_resume(self, tmp_path):
         """With existing survey_background, surveyor should not be called."""
         engine = OpenDirac.__new__(OpenDirac)
@@ -377,10 +421,11 @@ class TestRunSurveyorSkip:
 # CLI argument parsing
 # ---------------------------------------------------------------------------
 
-class TestCLIParsing:
 
+class TestCLIParsing:
     def test_cli_resume_flag(self):
         from open_dirac.main import build_parser
+
         parser = build_parser()
         args = parser.parse_args(["--resume", "/some/workspace"])
         assert args.resume == Path("/some/workspace")
@@ -389,9 +434,12 @@ class TestCLIParsing:
 
     def test_cli_problem_optional_with_resume(self):
         from open_dirac.main import build_parser
+
         parser = build_parser()
         # Should not error when problem is omitted with --resume
-        args = parser.parse_args(["--resume", "/some/workspace", "--max-iterations", "20"])
+        args = parser.parse_args(
+            ["--resume", "/some/workspace", "--max-iterations", "20"]
+        )
         assert args.resume == Path("/some/workspace")
         assert args.max_iterations == 20
         # problem is optional with --resume, defaults to None
@@ -399,6 +447,7 @@ class TestCLIParsing:
 
     def test_cli_problem_required_without_resume(self):
         from open_dirac.main import build_parser
+
         parser = build_parser()
         args = parser.parse_args(["some/problem.yaml"])
         assert args.problem == Path("some/problem.yaml")

@@ -73,7 +73,9 @@ class TestPlannerProcessResponse:
         response.text = "1. Derive surface gravity\n2. Apply Unruh effect"
         task = Task(task_id="PLAN-000", task_type=TaskType.PLAN, assigned_to="planner")
         agent.process_response(response, task, iteration=0)
-        assert agent.parsed_strategy == "1. Derive surface gravity\n2. Apply Unruh effect"
+        assert (
+            agent.parsed_strategy == "1. Derive surface gravity\n2. Apply Unruh effect"
+        )
 
     def test_strips_whitespace(self):
         agent = self._make_agent()
@@ -148,7 +150,9 @@ class TestPlannerReviseContext:
         )
         # Add a dead end
         state.failed_approaches.append(
-            FailedApproach(description="Naive WKB method", reason="Divergent at horizon")
+            FailedApproach(
+                description="Naive WKB method", reason="Divergent at horizon"
+            )
         )
         # Add background survey
         state.survey_background = "Black hole thermodynamics fundamentals."
@@ -197,8 +201,16 @@ class TestPlannerReviseContext:
         # ER still shown
         assert "ER-001: kappa = 1/(4M), VERIFIED" in ctx
         # WHs and RQs are no longer shown in revise context
-        assert "WH-002" not in ctx.split("<dead-ends>")[0] if "<dead-ends>" in ctx else "WH-002" not in ctx
-        assert "WH-003" not in ctx.split("<dead-ends>")[0] if "<dead-ends>" in ctx else "WH-003" not in ctx
+        assert (
+            "WH-002" not in ctx.split("<dead-ends>")[0]
+            if "<dead-ends>" in ctx
+            else "WH-002" not in ctx
+        )
+        assert (
+            "WH-003" not in ctx.split("<dead-ends>")[0]
+            if "<dead-ends>" in ctx
+            else "WH-003" not in ctx
+        )
         assert "RQ-001" not in ctx
 
     def test_revise_context_includes_dead_ends(self):
@@ -342,20 +354,39 @@ class TestPlannerReviseProcessResponse:
             assigned_to="planner",
         )
         agent.process_response(response, task, iteration=5)
-        assert agent.parsed_strategy == "1. Re-derive surface gravity\n2. Verify with Euclidean method"
+        assert (
+            agent.parsed_strategy
+            == "1. Re-derive surface gravity\n2. Verify with Euclidean method"
+        )
         assert len(agent.parsed_entity_actions) == 3
-        assert agent.parsed_entity_actions[0] == {"id": "ER-001", "action": "keep", "concern": "may need re-examination"}
-        assert agent.parsed_entity_actions[1] == {"id": "WH-002", "action": "abandon", "reason": "premise invalidated"}
+        assert agent.parsed_entity_actions[0] == {
+            "id": "ER-001",
+            "action": "keep",
+            "concern": "may need re-examination",
+        }
+        assert agent.parsed_entity_actions[1] == {
+            "id": "WH-002",
+            "action": "abandon",
+            "reason": "premise invalidated",
+        }
         assert len(agent.parsed_sanity_checks) == 1
-        assert agent.parsed_sanity_checks[0] == {"predicate": "T -> 0 as M -> inf", "rationale": "Large BH limit"}
-        assert agent.parsed_revision_rationale == "ER-001 demotion invalidates downstream results."
+        assert agent.parsed_sanity_checks[0] == {
+            "predicate": "T -> 0 as M -> inf",
+            "rationale": "Large BH limit",
+        }
+        assert (
+            agent.parsed_revision_rationale
+            == "ER-001 demotion invalidates downstream results."
+        )
         # No critique_assessments in JSON → None
         assert agent.parsed_critique_assessments is None
 
     def test_fallback_on_malformed_json(self):
         agent = self._make_agent()
         response = MagicMock(spec=LLMResponse)
-        response.text = "The strategy looks fine. No JSON here, just plain text analysis."
+        response.text = (
+            "The strategy looks fine. No JSON here, just plain text analysis."
+        )
         task = Task(
             task_id="PLAN-REV-001",
             task_type=TaskType.PLAN_REVISE,
@@ -363,7 +394,10 @@ class TestPlannerReviseProcessResponse:
         )
         agent.process_response(response, task, iteration=5)
         # Fallback: strategy is the full text
-        assert agent.parsed_strategy == "The strategy looks fine. No JSON here, just plain text analysis."
+        assert (
+            agent.parsed_strategy
+            == "The strategy looks fine. No JSON here, just plain text analysis."
+        )
         assert agent.parsed_entity_actions is None
         assert agent.parsed_sanity_checks is None
         assert agent.parsed_critique_assessments is None
@@ -445,7 +479,6 @@ Actually, corrected:
         agent.process_response(response, task, iteration=5)
         assert agent.parsed_strategy == "correct strategy"
         assert agent.parsed_revision_rationale == "corrected"
-
 
     def test_parses_critique_assessments(self):
         agent = self._make_agent()
@@ -544,7 +577,7 @@ class TestParsePlannerJson:
         assert result is None
 
     def test_returns_none_for_invalid_json(self):
-        text = '```json\n{invalid}\n```'
+        text = "```json\n{invalid}\n```"
         result = _parse_planner_json(text)
         assert result is None
 
@@ -580,7 +613,9 @@ class TestPlannerInitialModeUnchanged:
         response.text = "1. Derive surface gravity\n2. Apply Unruh effect"
         task = Task(task_id="PLAN-000", task_type=TaskType.PLAN, assigned_to="planner")
         agent.process_response(response, task, iteration=0)
-        assert agent.parsed_strategy == "1. Derive surface gravity\n2. Apply Unruh effect"
+        assert (
+            agent.parsed_strategy == "1. Derive surface gravity\n2. Apply Unruh effect"
+        )
         # Revise-mode fields should remain None
         assert agent.parsed_entity_actions is None
         assert agent.parsed_sanity_checks is None
@@ -593,7 +628,11 @@ class TestPlannerInitialModeUnchanged:
 
     def test_is_revise_mode_true_for_plan_revise(self):
         agent = self._make_agent()
-        task = Task(task_id="PLAN-REV-001", task_type=TaskType.PLAN_REVISE, assigned_to="planner")
+        task = Task(
+            task_id="PLAN-REV-001",
+            task_type=TaskType.PLAN_REVISE,
+            assigned_to="planner",
+        )
         assert agent._is_revise_mode(task)
 
 
@@ -612,6 +651,7 @@ class TestEngineApplyStrategy:
             ws.file_size = MagicMock(return_value=0)
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.research_state = ResearchState(
@@ -630,9 +670,14 @@ class TestEngineApplyStrategy:
 
     def test_apply_strategy_stores_strategy(self):
         engine = self._make_engine()
-        engine.planner.parsed_strategy = "1. Compute surface gravity\n2. Apply periodicity"
+        engine.planner.parsed_strategy = (
+            "1. Compute surface gravity\n2. Apply periodicity"
+        )
         engine._apply_strategy()
-        assert engine.research_state.strategy == "1. Compute surface gravity\n2. Apply periodicity"
+        assert (
+            engine.research_state.strategy
+            == "1. Compute surface gravity\n2. Apply periodicity"
+        )
 
     def test_apply_strategy_none_does_nothing(self):
         engine = self._make_engine()
@@ -656,6 +701,7 @@ class TestTaskTypePlanRevise:
 
     def test_plan_revise_maps_to_planner(self):
         from open_dirac.task import TASK_TYPE_AGENT_MAP
+
         assert TASK_TYPE_AGENT_MAP[TaskType.PLAN_REVISE] == "planner"
 
     def test_task_from_frontmatter_plan_revise(self):

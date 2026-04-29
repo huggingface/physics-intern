@@ -1,4 +1,5 @@
 """Shared prompts and prompt assembly for the one-shot and RSA baselines."""
+
 from __future__ import annotations
 
 

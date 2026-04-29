@@ -28,6 +28,7 @@ class CallRecord:
 # METRICS.md parsers (shared with scripts/analyze_batch.py)
 # ---------------------------------------------------------------------------
 
+
 def parse_yaml_frontmatter(text: str) -> dict:
     """Extract YAML frontmatter from a markdown file.
 
@@ -64,27 +65,31 @@ def parse_metrics_table(text: str) -> list[dict]:
             parts = [c.strip() for c in line.split("|")[1:-1]]
             try:
                 if len(parts) >= 8:
-                    rows.append({
-                        "iter": int(parts[0]),
-                        "agent": parts[1],
-                        "input_tokens": int(parts[2]),
-                        "output_tokens": int(parts[3]),
-                        "max_tokens_hit": parts[4].lower() == "yes",
-                        "rounds": int(parts[5]),
-                        "tool_calls": int(parts[6]),
-                        "duration_s": float(parts[7]),
-                    })
+                    rows.append(
+                        {
+                            "iter": int(parts[0]),
+                            "agent": parts[1],
+                            "input_tokens": int(parts[2]),
+                            "output_tokens": int(parts[3]),
+                            "max_tokens_hit": parts[4].lower() == "yes",
+                            "rounds": int(parts[5]),
+                            "tool_calls": int(parts[6]),
+                            "duration_s": float(parts[7]),
+                        }
+                    )
                 elif len(parts) >= 6:
-                    rows.append({
-                        "iter": int(parts[0]),
-                        "agent": parts[1],
-                        "input_tokens": int(parts[2]),
-                        "output_tokens": int(parts[3]),
-                        "max_tokens_hit": parts[4].lower() == "yes",
-                        "rounds": 1,
-                        "tool_calls": 0,
-                        "duration_s": float(parts[5]),
-                    })
+                    rows.append(
+                        {
+                            "iter": int(parts[0]),
+                            "agent": parts[1],
+                            "input_tokens": int(parts[2]),
+                            "output_tokens": int(parts[3]),
+                            "max_tokens_hit": parts[4].lower() == "yes",
+                            "rounds": 1,
+                            "tool_calls": 0,
+                            "duration_s": float(parts[5]),
+                        }
+                    )
             except (ValueError, IndexError):
                 pass
         elif in_table and not line.startswith("|"):
@@ -107,7 +112,9 @@ def _parse_alerts(text: str) -> list[dict]:
             m = re.match(r"^-\s*\[iter\s+(\d+)\]\s*(.*)$", line)
             if m:
                 try:
-                    alerts.append({"iteration": int(m.group(1)), "message": m.group(2).strip()})
+                    alerts.append(
+                        {"iteration": int(m.group(1)), "message": m.group(2).strip()}
+                    )
                 except ValueError:
                     pass
     return alerts
@@ -127,17 +134,35 @@ class MetricsTracker:
         self.max_tokens_reached_count: int = 0
         self.total_tool_calls: int = 0
 
-    def record_call(self, iteration: int, agent: str, input_tokens: int,
-                    output_tokens: int, duration: float, max_tokens_hit: bool,
-                    rounds: int = 1, tool_calls: int = 0, truncated: bool = False,
-                    reasoning_tokens: int = 0, answer_tokens: int = 0):
-        self.calls.append(CallRecord(
-            iteration=iteration, agent=agent,
-            input_tokens=input_tokens, output_tokens=output_tokens,
-            duration=duration, max_tokens_hit=max_tokens_hit,
-            rounds=rounds, tool_calls=tool_calls, truncated=truncated,
-            reasoning_tokens=reasoning_tokens, answer_tokens=answer_tokens,
-        ))
+    def record_call(
+        self,
+        iteration: int,
+        agent: str,
+        input_tokens: int,
+        output_tokens: int,
+        duration: float,
+        max_tokens_hit: bool,
+        rounds: int = 1,
+        tool_calls: int = 0,
+        truncated: bool = False,
+        reasoning_tokens: int = 0,
+        answer_tokens: int = 0,
+    ):
+        self.calls.append(
+            CallRecord(
+                iteration=iteration,
+                agent=agent,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                duration=duration,
+                max_tokens_hit=max_tokens_hit,
+                rounds=rounds,
+                tool_calls=tool_calls,
+                truncated=truncated,
+                reasoning_tokens=reasoning_tokens,
+                answer_tokens=answer_tokens,
+            )
+        )
         self.total_input_tokens += input_tokens
         self.total_output_tokens += output_tokens
         self.total_reasoning_tokens += reasoning_tokens
@@ -180,27 +205,35 @@ class MetricsTracker:
         if fm:
             tracker.total_input_tokens = int(fm.get("total_input_tokens", 0) or 0)
             tracker.total_output_tokens = int(fm.get("total_output_tokens", 0) or 0)
-            tracker.total_reasoning_tokens = int(fm.get("total_reasoning_tokens", 0) or 0)
+            tracker.total_reasoning_tokens = int(
+                fm.get("total_reasoning_tokens", 0) or 0
+            )
             tracker.total_answer_tokens = int(fm.get("total_answer_tokens", 0) or 0)
             tracker.total_tool_calls = int(fm.get("total_tool_calls", 0) or 0)
-            tracker.max_tokens_reached_count = int(fm.get("max_tokens_reached_count", 0) or 0)
+            tracker.max_tokens_reached_count = int(
+                fm.get("max_tokens_reached_count", 0) or 0
+            )
 
         for row in parse_metrics_table(text):
-            tracker.calls.append(CallRecord(
-                iteration=row["iter"],
-                agent=row["agent"],
-                input_tokens=row["input_tokens"],
-                output_tokens=row["output_tokens"],
-                duration=row["duration_s"],
-                max_tokens_hit=row["max_tokens_hit"],
-                rounds=row["rounds"],
-                tool_calls=row["tool_calls"],
-                truncated=False,
-                reasoning_tokens=0,
-                answer_tokens=0,
-            ))
+            tracker.calls.append(
+                CallRecord(
+                    iteration=row["iter"],
+                    agent=row["agent"],
+                    input_tokens=row["input_tokens"],
+                    output_tokens=row["output_tokens"],
+                    duration=row["duration_s"],
+                    max_tokens_hit=row["max_tokens_hit"],
+                    rounds=row["rounds"],
+                    tool_calls=row["tool_calls"],
+                    truncated=False,
+                    reasoning_tokens=0,
+                    answer_tokens=0,
+                )
+            )
             if row["agent"] == "deep_critic":
-                tracker.last_critic_iteration = max(tracker.last_critic_iteration, row["iter"])
+                tracker.last_critic_iteration = max(
+                    tracker.last_critic_iteration, row["iter"]
+                )
 
         tracker.alerts = _parse_alerts(text)
         return tracker
@@ -230,16 +263,24 @@ class MetricsTracker:
 
         lines.append("# Per-Iteration Metrics\n")
         if has_tool_calls:
-            lines.append("| Iter | Agent | Input Tokens | Output Tokens | Max Tokens Hit | Rounds | Tool Calls | Duration (s) |")
-            lines.append("|------|-------|-------------|---------------|----------------|--------|------------|-------------|")
+            lines.append(
+                "| Iter | Agent | Input Tokens | Output Tokens | Max Tokens Hit | Rounds | Tool Calls | Duration (s) |"
+            )
+            lines.append(
+                "|------|-------|-------------|---------------|----------------|--------|------------|-------------|"
+            )
             for c in reversed(self.calls):
                 lines.append(
                     f"| {c.iteration} | {c.agent} | {c.input_tokens} | {c.output_tokens} "
                     f"| {'yes' if c.max_tokens_hit else 'no'} | {c.rounds} | {c.tool_calls} | {c.duration:.1f} |"
                 )
         else:
-            lines.append("| Iter | Agent | Input Tokens | Output Tokens | Max Tokens Hit | Duration (s) |")
-            lines.append("|------|-------|-------------|---------------|----------------|-------------|")
+            lines.append(
+                "| Iter | Agent | Input Tokens | Output Tokens | Max Tokens Hit | Duration (s) |"
+            )
+            lines.append(
+                "|------|-------|-------------|---------------|----------------|-------------|"
+            )
             for c in reversed(self.calls):
                 lines.append(
                     f"| {c.iteration} | {c.agent} | {c.input_tokens} | {c.output_tokens} "

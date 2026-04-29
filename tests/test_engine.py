@@ -1,6 +1,6 @@
 """Tests for OpenDirac engine (research status, budget enforcement, overrides)."""
 
-from unittest.mock import MagicMock, patch, PropertyMock, call
+from unittest.mock import MagicMock, patch
 
 from open_dirac.config import Config
 from open_dirac.loop_state import DispatchRecord, LoopState
@@ -14,6 +14,7 @@ class TestSetResearchStatus:
 
     def test_set_research_status(self):
         from open_dirac.engine import OpenDirac
+
         engine = OpenDirac.__new__(OpenDirac)
         engine.config = Config()
         engine.research_state = ResearchState()
@@ -37,9 +38,11 @@ class TestEnrichComputeTask:
 
             def capture_write(filename, content):
                 written[filename] = content
+
             ws.write_file = MagicMock(side_effect=capture_write)
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.research_state = ResearchState()
@@ -54,10 +57,16 @@ class TestEnrichComputeTask:
     def test_enrich_compute_task_appends_context(self):
         """Prior failures exist -> CURRENT_TASK enriched."""
         engine, ws, written = self._make_engine()
-        ws.read_file = MagicMock(return_value="---\ntask_type: compute\n---\n\nCompute WH-003 mass.")
+        ws.read_file = MagicMock(
+            return_value="---\ntask_type: compute\n---\n\nCompute WH-003 mass."
+        )
 
-        task = Task(task_id="TASK-003", task_type=TaskType.COMPUTE,
-                    assigned_to="computer", body="Compute WH-003 mass limit")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            body="Compute WH-003 mass limit",
+        )
         engine._enrich_compute_task_with_prior_failures(task)
 
         assert "CURRENT_TASK.md" in written
@@ -69,10 +78,16 @@ class TestEnrichComputeTask:
     def test_enrich_compute_task_no_match(self):
         """No prior failures on this target -> unchanged."""
         engine, ws, written = self._make_engine()
-        ws.read_file = MagicMock(return_value="---\ntask_type: compute\n---\n\nCompute WH-099.")
+        ws.read_file = MagicMock(
+            return_value="---\ntask_type: compute\n---\n\nCompute WH-099."
+        )
 
-        task = Task(task_id="TASK-003", task_type=TaskType.COMPUTE,
-                    assigned_to="computer", body="Compute WH-099 something new")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            body="Compute WH-099 something new",
+        )
         engine._enrich_compute_task_with_prior_failures(task)
 
         assert "CURRENT_TASK.md" not in written  # write_file not called
@@ -90,6 +105,7 @@ class TestComputeVerdictTracking:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config(stall_recompute_limit=stall_recompute_limit)
             engine.workspace = ws
@@ -101,19 +117,26 @@ class TestComputeVerdictTracking:
 
     def _set_verification(self, engine, target, verdict_str, summary=""):
         from open_dirac.research_state import Hypothesis, ReviewResult
+
         if target not in engine.research_state.hypotheses:
             engine.research_state.hypotheses[target] = Hypothesis(id=target)
         engine.research_state.hypotheses[target].review = ReviewResult(
-            verdict=verdict_str, summary=summary, iteration=engine.iteration,
+            verdict=verdict_str,
+            summary=summary,
+            iteration=engine.iteration,
         )
 
     def test_refuted_signals_orchestrator(self):
         """REFUTED verdict adds to pending_compute_verdicts."""
         engine = self._make_engine()
         self._set_verification(engine, "WH-001", "REFUTED")
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_compute_verdicts) == 1
@@ -124,9 +147,13 @@ class TestComputeVerdictTracking:
         """INCONCLUSIVE also counted and signals orchestrator."""
         engine = self._make_engine()
         self._set_verification(engine, "WH-001", "INCONCLUSIVE")
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_compute_verdicts) == 1
@@ -135,16 +162,23 @@ class TestComputeVerdictTracking:
     def test_refuted_marks_evidence_as_refuted(self):
         """REFUTED verdict marks all existing evidence on hypothesis as refuted."""
         engine = self._make_engine()
-        h = Hypothesis(id="WH-001", evidence=[
-            Evidence(type="compute", result="wrong answer", iteration=1),
-            Evidence(type="research", result="also wrong", iteration=2),
-        ])
+        h = Hypothesis(
+            id="WH-001",
+            evidence=[
+                Evidence(type="compute", result="wrong answer", iteration=1),
+                Evidence(type="research", result="also wrong", iteration=2),
+            ],
+        )
         engine.research_state.hypotheses["WH-001"] = h
         h.review = ReviewResult(verdict="REFUTED", summary="bad", iteration=3)
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Review WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Review WH-001",
+        )
         engine._track_agent_result(task)
 
         assert all(ev.refuted for ev in h.evidence)
@@ -152,16 +186,27 @@ class TestComputeVerdictTracking:
     def test_refuted_keeps_working_and_increments_refuted_count(self):
         """REFUTED verdict keeps WH WORKING, increments refuted_count, no FailedApproach."""
         from open_dirac.research_state import HypothesisStatus
-        engine = self._make_engine()
-        h = Hypothesis(id="WH-001", statement="Claim X = Y", evidence=[
-            Evidence(type="compute", result="wrong", iteration=1),
-        ])
-        engine.research_state.hypotheses["WH-001"] = h
-        h.review = ReviewResult(verdict="REFUTED", summary="Derivation has an error in step 3", iteration=3)
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Review WH-001")
+        engine = self._make_engine()
+        h = Hypothesis(
+            id="WH-001",
+            statement="Claim X = Y",
+            evidence=[
+                Evidence(type="compute", result="wrong", iteration=1),
+            ],
+        )
+        engine.research_state.hypotheses["WH-001"] = h
+        h.review = ReviewResult(
+            verdict="REFUTED", summary="Derivation has an error in step 3", iteration=3
+        )
+
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Review WH-001",
+        )
         engine._track_agent_result(task)
 
         assert h.status == HypothesisStatus.WORKING
@@ -173,15 +218,22 @@ class TestComputeVerdictTracking:
     def test_inconclusive_keeps_evidence(self):
         """INCONCLUSIVE verdict keeps existing evidence (not wrong, just insufficient)."""
         engine = self._make_engine()
-        h = Hypothesis(id="WH-001", evidence=[
-            Evidence(type="compute", result="unclear", iteration=1),
-        ])
+        h = Hypothesis(
+            id="WH-001",
+            evidence=[
+                Evidence(type="compute", result="unclear", iteration=1),
+            ],
+        )
         engine.research_state.hypotheses["WH-001"] = h
         h.review = ReviewResult(verdict="INCONCLUSIVE", summary="unclear", iteration=2)
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Review WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Review WH-001",
+        )
         engine._track_agent_result(task)
 
         assert not any(ev.refuted for ev in h.evidence)
@@ -189,15 +241,22 @@ class TestComputeVerdictTracking:
     def test_verified_does_not_mark_evidence_refuted(self):
         """VERIFIED verdict leaves evidence untouched."""
         engine = self._make_engine()
-        h = Hypothesis(id="WH-001", evidence=[
-            Evidence(type="compute", result="correct", iteration=1),
-        ])
+        h = Hypothesis(
+            id="WH-001",
+            evidence=[
+                Evidence(type="compute", result="correct", iteration=1),
+            ],
+        )
         engine.research_state.hypotheses["WH-001"] = h
         h.review = ReviewResult(verdict="VERIFIED", summary="good", iteration=2)
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Review WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Review WH-001",
+        )
         engine._track_agent_result(task)
 
         assert not any(ev.refuted for ev in h.evidence)
@@ -208,9 +267,13 @@ class TestComputeVerdictTracking:
         self._set_verification(engine, "WH-001", "REFUTED")
         engine._state.claim_failure_count["WH-001"] = 1  # next will be 2 == limit
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_compute_verdicts) == 1
@@ -225,9 +288,13 @@ class TestComputeVerdictTracking:
         self._set_verification(engine, "WH-001", "VERIFIED")
         engine._state.claim_failure_count["WH-001"] = 1
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert "WH-001" not in engine._state.claim_failure_count
@@ -238,9 +305,13 @@ class TestComputeVerdictTracking:
         """VERIFIED verification populates dict with claim and verdict."""
         engine = self._make_engine()
         self._set_verification(engine, "WH-001", "VERIFIED")
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_verified_results) == 1
@@ -251,9 +322,12 @@ class TestComputeVerdictTracking:
     def test_verified_banner_renders_and_consumed_once(self):
         """VERIFIED HYPOTHESES banner renders in context suffix and is consumed."""
         engine = self._make_engine()
-        engine._state.pending_verified_results = [{
-            "claim": "WH-001", "verdict": "VERIFIED",
-        }]
+        engine._state.pending_verified_results = [
+            {
+                "claim": "WH-001",
+                "verdict": "VERIFIED",
+            }
+        ]
         prefix = engine._build_context_suffix()
         assert "VERIFIED HYPOTHESES" in prefix
         assert "WH-001 VERIFIED by reviewer" in prefix
@@ -266,27 +340,42 @@ class TestComputeVerdictTracking:
     def test_verified_banner_with_claim_id(self):
         """VERIFIED banner includes claim ID."""
         engine = self._make_engine()
-        engine._state.pending_verified_results = [{
-            "claim": "WH-001", "verdict": "VERIFIED",
-        }]
+        engine._state.pending_verified_results = [
+            {
+                "claim": "WH-001",
+                "verdict": "VERIFIED",
+            }
+        ]
         prefix = engine._build_context_suffix()
         assert "WH-001" in prefix
 
     def test_verified_banner_ordering(self):
         """VERIFIED banner appears after evidence results, before verification results."""
         engine = self._make_engine()
-        engine._state.pending_explore_results = [{
-            "target_id": "WH-002", "description": "Explore result",
-            "result": "x = 42", "confidence": "exact",
-            "task_id": "TASK-001", "task_type": "compute",
-        }]
-        engine._state.pending_verified_results = [{
-            "claim": "WH-001", "verdict": "VERIFIED",
-        }]
-        engine._state.pending_compute_verdicts = [{
-            "verdict": "REFUTED", "claim": "WH-003", "attempt": 1,
-            "notes": "",
-        }]
+        engine._state.pending_explore_results = [
+            {
+                "target_id": "WH-002",
+                "description": "Explore result",
+                "result": "x = 42",
+                "confidence": "exact",
+                "task_id": "TASK-001",
+                "task_type": "compute",
+            }
+        ]
+        engine._state.pending_verified_results = [
+            {
+                "claim": "WH-001",
+                "verdict": "VERIFIED",
+            }
+        ]
+        engine._state.pending_compute_verdicts = [
+            {
+                "verdict": "REFUTED",
+                "claim": "WH-003",
+                "attempt": 1,
+                "notes": "",
+            }
+        ]
         prefix = engine._build_context_suffix()
         explore_pos = prefix.index("EVIDENCE RESULTS")
         verified_pos = prefix.index("VERIFIED HYPOTHESES")
@@ -296,22 +385,32 @@ class TestComputeVerdictTracking:
     def test_provenance_in_evidence_banner(self):
         """Evidence results banner includes task provenance."""
         engine = self._make_engine()
-        engine._state.pending_explore_results = [{
-            "target_id": "RQ-001", "description": "Derived formula",
-            "result": "T = 1/(8*pi*M)", "confidence": "exact",
-            "task_id": "TASK-002", "task_type": "research",
-        }]
+        engine._state.pending_explore_results = [
+            {
+                "target_id": "RQ-001",
+                "description": "Derived formula",
+                "result": "T = 1/(8*pi*M)",
+                "confidence": "exact",
+                "task_id": "TASK-002",
+                "task_type": "research",
+            }
+        ]
         suffix = engine._build_context_suffix()
         assert "[from TASK-002: research on RQ-001]" in suffix
 
     def test_failed_evidence_no_consider_hint(self):
         """Failed evidence shows NOTE instead of Consider hint."""
         engine = self._make_engine()
-        engine._state.pending_explore_results = [{
-            "target_id": "RQ-001", "description": "unknown",
-            "result": "Agent produced no exit tool call.", "confidence": "partial",
-            "task_id": "TASK-001", "task_type": "compute",
-        }]
+        engine._state.pending_explore_results = [
+            {
+                "target_id": "RQ-001",
+                "description": "unknown",
+                "result": "Agent produced no exit tool call.",
+                "confidence": "partial",
+                "task_id": "TASK-001",
+                "task_type": "compute",
+            }
+        ]
         suffix = engine._build_context_suffix()
         assert "do NOT treat it as usable evidence" in suffix
         assert "Consider: formulate" not in suffix
@@ -319,11 +418,16 @@ class TestComputeVerdictTracking:
     def test_failed_research_parse_no_consider_hint(self):
         """Failed research parse shows NOTE instead of Consider hint."""
         engine = self._make_engine()
-        engine._state.pending_explore_results = [{
-            "target_id": "RQ-002", "description": "unknown",
-            "result": "Failed to parse structured research output.", "confidence": "partial",
-            "task_id": "TASK-002", "task_type": "research",
-        }]
+        engine._state.pending_explore_results = [
+            {
+                "target_id": "RQ-002",
+                "description": "unknown",
+                "result": "Failed to parse structured research output.",
+                "confidence": "partial",
+                "task_id": "TASK-002",
+                "task_type": "research",
+            }
+        ]
         suffix = engine._build_context_suffix()
         assert "do NOT treat it as usable evidence" in suffix
         assert "Consider: formulate" not in suffix
@@ -331,31 +435,44 @@ class TestComputeVerdictTracking:
     def test_successful_evidence_has_consider_hint(self):
         """Successful evidence retains the Consider hint."""
         engine = self._make_engine()
-        engine._state.pending_explore_results = [{
-            "target_id": "RQ-003", "description": "Computed value",
-            "result": "T = 1/(8*pi*M)", "confidence": "exact",
-            "task_id": "TASK-003", "task_type": "compute",
-        }]
+        engine._state.pending_explore_results = [
+            {
+                "target_id": "RQ-003",
+                "description": "Computed value",
+                "result": "T = 1/(8*pi*M)",
+                "confidence": "exact",
+                "task_id": "TASK-003",
+                "task_type": "compute",
+            }
+        ]
         suffix = engine._build_context_suffix()
         assert "do NOT treat it as usable evidence" not in suffix
 
     def test_provenance_in_verified_banner(self):
         """Verified hypotheses banner includes task provenance."""
         engine = self._make_engine()
-        engine._state.pending_verified_results = [{
-            "claim": "WH-001", "verdict": "VERIFIED",
-            "task_id": "TASK-003",
-        }]
+        engine._state.pending_verified_results = [
+            {
+                "claim": "WH-001",
+                "verdict": "VERIFIED",
+                "task_id": "TASK-003",
+            }
+        ]
         suffix = engine._build_context_suffix()
         assert "[from TASK-003]" in suffix
 
     def test_provenance_in_verdict_banner(self):
         """Verification results banner includes task provenance."""
         engine = self._make_engine()
-        engine._state.pending_compute_verdicts = [{
-            "verdict": "REFUTED", "claim": "WH-001", "attempt": 1,
-            "notes": "", "task_id": "TASK-004",
-        }]
+        engine._state.pending_compute_verdicts = [
+            {
+                "verdict": "REFUTED",
+                "claim": "WH-001",
+                "attempt": 1,
+                "notes": "",
+                "task_id": "TASK-004",
+            }
+        ]
         suffix = engine._build_context_suffix()
         assert "[from TASK-004]" in suffix
 
@@ -363,19 +480,32 @@ class TestComputeVerdictTracking:
         """_track_agent_result stores task_id and task_type in pending results."""
         engine = self._make_engine()
         from open_dirac.research_state import Evidence
+
         rq = engine.research_state.research_questions.get("RQ-001")
         if rq is None:
             from open_dirac.research_state import ResearchQuestion
+
             engine.research_state.research_questions["RQ-001"] = ResearchQuestion(
-                id="RQ-001", question="What is T?",
+                id="RQ-001",
+                question="What is T?",
             )
-        engine.research_state.research_questions["RQ-001"].evidence = [Evidence(
-            type="research", reasoning="Derived", method="algebra",
-            result="T = 1/(8*pi*M)", confidence="exact", iteration=1,
-        )]
-        task = Task(task_id="TASK-005", task_type=TaskType.RESEARCH,
-                    assigned_to="researcher", target_claim="RQ-001",
-                    body="Derive temperature")
+        engine.research_state.research_questions["RQ-001"].evidence = [
+            Evidence(
+                type="research",
+                reasoning="Derived",
+                method="algebra",
+                result="T = 1/(8*pi*M)",
+                confidence="exact",
+                iteration=1,
+            )
+        ]
+        task = Task(
+            task_id="TASK-005",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            target_claim="RQ-001",
+            body="Derive temperature",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_explore_results) == 1
@@ -389,9 +519,13 @@ class TestComputeVerdictTracking:
         self._set_verification(engine, "WH-002", "REFUTED")
         engine._state.claim_failure_count["WH-001"] = 1
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-002",
-                    body="Verify WH-002 temperature")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-002",
+            body="Verify WH-002 temperature",
+        )
         engine._track_agent_result(task)
 
         assert engine._state.claim_failure_count["WH-001"] == 1
@@ -400,11 +534,19 @@ class TestComputeVerdictTracking:
     def test_refuted_with_notes_populates_dict(self):
         """REFUTED verification with reasoning includes notes in pending_compute_verdicts."""
         engine = self._make_engine()
-        self._set_verification(engine, "WH-001", "REFUTED",
-                               summary="Expected 1/(8*pi*M) but got 1/(4*pi*M)")
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        self._set_verification(
+            engine,
+            "WH-001",
+            "REFUTED",
+            summary="Expected 1/(8*pi*M) but got 1/(4*pi*M)",
+        )
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_compute_verdicts) == 1
@@ -414,30 +556,42 @@ class TestComputeVerdictTracking:
     def test_context_suffix_renders_notes(self):
         """Context suffix renders notes when present in verdict dict."""
         engine = self._make_engine()
-        engine._state.pending_compute_verdicts = [{
-            "verdict": "REFUTED", "claim": "WH-001", "attempt": 1,
-            "notes": "Factor of 2 discrepancy",
-        }]
+        engine._state.pending_compute_verdicts = [
+            {
+                "verdict": "REFUTED",
+                "claim": "WH-001",
+                "attempt": 1,
+                "notes": "Factor of 2 discrepancy",
+            }
+        ]
         prefix = engine._build_context_suffix()
         assert "Notes: Factor of 2 discrepancy" in prefix
 
     def test_context_suffix_renders_failure_detail(self):
         """Context suffix renders notes when present."""
         engine = self._make_engine()
-        engine._state.pending_compute_verdicts = [{
-            "verdict": "REFUTED", "claim": "WH-001", "attempt": 1,
-            "notes": "Division by zero at r=0",
-        }]
+        engine._state.pending_compute_verdicts = [
+            {
+                "verdict": "REFUTED",
+                "claim": "WH-001",
+                "attempt": 1,
+                "notes": "Division by zero at r=0",
+            }
+        ]
         prefix = engine._build_context_suffix()
         assert "Notes: Division by zero at r=0" in prefix
 
     def test_empty_notes_and_failure_detail_omitted(self):
         """Empty notes are omitted from suffix."""
         engine = self._make_engine()
-        engine._state.pending_compute_verdicts = [{
-            "verdict": "REFUTED", "claim": "WH-001", "attempt": 1,
-            "notes": "",
-        }]
+        engine._state.pending_compute_verdicts = [
+            {
+                "verdict": "REFUTED",
+                "claim": "WH-001",
+                "attempt": 1,
+                "notes": "",
+            }
+        ]
         prefix = engine._build_context_suffix()
         assert "Notes:" not in prefix
 
@@ -445,9 +599,13 @@ class TestComputeVerdictTracking:
         """Non-VERIFIED verdict appears in context suffix with attempt count."""
         engine = self._make_engine()
         self._set_verification(engine, "WH-001", "REFUTED")
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         prefix = engine._build_context_suffix()
@@ -459,11 +617,16 @@ class TestComputeVerdictTracking:
         """No verification on target hypothesis, nothing happens."""
         engine = self._make_engine()
         from open_dirac.research_state import Hypothesis
+
         engine.research_state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
 
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.claim_failure_count) == 0
@@ -482,7 +645,9 @@ class TestRefutedEvidenceClearing:
             id="WH-001",
             evidence=[
                 Evidence(type="compute", result="wrong", iteration=1, refuted=True),
-                Evidence(type="compute", result="also wrong", iteration=2, refuted=True),
+                Evidence(
+                    type="compute", result="also wrong", iteration=2, refuted=True
+                ),
             ],
         )
 
@@ -490,6 +655,7 @@ class TestRefutedEvidenceClearing:
         class _Stub(EvidenceAgent):
             def process_response(self, response, task, iteration):
                 pass
+
             def build_context(self, task, iteration):
                 return ""
 
@@ -519,6 +685,7 @@ class TestRefutedEvidenceClearing:
         class _Stub(EvidenceAgent):
             def process_response(self, response, task, iteration):
                 pass
+
             def build_context(self, task, iteration):
                 return ""
 
@@ -547,6 +714,7 @@ class TestCriticCleanSignal:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -565,12 +733,17 @@ class TestCriticCleanSignal:
         engine.critic.run = MagicMock(return_value=response)
         engine.critic._no_critiques_filed = True
 
-        task = Task(task_id="TASK-005", task_type=TaskType.CRITIQUE, assigned_to="deep_critic")
+        task = Task(
+            task_id="TASK-005", task_type=TaskType.CRITIQUE, assigned_to="deep_critic"
+        )
         engine._dispatch(task)
 
         # No new critiques should have been filed
-        recent = [c for c in engine.research_state.critiques.values()
-                  if c.iteration_filed == engine.iteration]
+        recent = [
+            c
+            for c in engine.research_state.critiques.values()
+            if c.iteration_filed == engine.iteration
+        ]
         assert len(recent) == 0
 
     def test_normal_critique_no_violation(self):
@@ -581,7 +754,9 @@ class TestCriticCleanSignal:
         engine.critic.run = MagicMock(return_value=response)
         engine.critic._no_critiques_filed = False
 
-        task = Task(task_id="TASK-005", task_type=TaskType.CRITIQUE, assigned_to="deep_critic")
+        task = Task(
+            task_id="TASK-005", task_type=TaskType.CRITIQUE, assigned_to="deep_critic"
+        )
         engine._dispatch(task)
 
         assert len(engine._state.pending_violations) == 0
@@ -602,10 +777,12 @@ class TestTerminationGate:
 
             def capture_write(filename, content):
                 written[filename] = content
+
             ws.write_file = MagicMock(side_effect=capture_write)
             ws.read_file = MagicMock(return_value="")
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -619,12 +796,17 @@ class TestTerminationGate:
     def test_terminate_allowed_when_stub(self):
         """Stub can_terminate always returns True, so TERMINATE proceeds."""
         from open_dirac.validation import can_terminate
+
         engine, _ = self._make_engine()
 
         # The stub always allows termination
         allowed, blockers = can_terminate(
-            engine.workspace, engine.config, engine.metrics, engine.problem_meta,
-            research_state=engine.research_state)
+            engine.workspace,
+            engine.config,
+            engine.metrics,
+            engine.problem_meta,
+            research_state=engine.research_state,
+        )
         assert allowed is True
         assert blockers == []
 
@@ -633,7 +815,8 @@ class TestTerminationGate:
         engine, _ = self._make_engine()
         engine._state.pending_violations = [
             Violation(
-                check="test_check", severity=ViolationSeverity.ERROR,
+                check="test_check",
+                severity=ViolationSeverity.ERROR,
                 message="Something wrong",
             ),
         ]
@@ -681,12 +864,14 @@ class TestTerminationGate:
         engine, _ = self._make_engine()
         engine._state.pending_violations = [
             Violation(
-                check="er_demotion_safety", severity=ViolationSeverity.WARNING,
+                check="er_demotion_safety",
+                severity=ViolationSeverity.WARNING,
                 message="ER-001 has REFUTED computation with no VERIFIED — demoted to WH-001",
                 detail="ER-001",
             ),
             Violation(
-                check="phantom_references", severity=ViolationSeverity.ERROR,
+                check="phantom_references",
+                severity=ViolationSeverity.ERROR,
                 message="Phantom reference COMP-999",
             ),
         ]
@@ -713,6 +898,7 @@ class TestCheckStatusField:
             ws.read_file = MagicMock(return_value=state_text)
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.research_state = ResearchState()
@@ -759,9 +945,11 @@ class TestZeroOutputStallHandling:
 
             def capture_write(filename, content):
                 written[filename] = content
+
             ws.write_file = MagicMock(side_effect=capture_write)
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -776,10 +964,14 @@ class TestZeroOutputStallHandling:
         """Enrichment adds prior failure context when claim_failure_count > 0."""
         engine, ws, written = self._make_engine()
         engine._state.claim_failure_count["WH-003"] = 1
-        ws.read_file = MagicMock(return_value="---\ntask_type: compute\n---\n\nCompute WH-003 mass.")
+        ws.read_file = MagicMock(
+            return_value="---\ntask_type: compute\n---\n\nCompute WH-003 mass."
+        )
         task = Task(
-            task_id="TASK-005", task_type=TaskType.COMPUTE,
-            assigned_to="computer", body="Compute WH-003 mass limit",
+            task_id="TASK-005",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            body="Compute WH-003 mass limit",
         )
         engine._enrich_compute_task_with_prior_failures(task)
         assert "CURRENT_TASK.md" in written
@@ -800,6 +992,7 @@ class TestDispatchNewAgents:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -816,29 +1009,49 @@ class TestDispatchNewAgents:
 
     def test_research_dispatch(self):
         engine = self._make_engine()
-        task = Task(task_id="TASK-005", task_type=TaskType.RESEARCH,
-                    assigned_to="researcher", iteration=5, body="Research WH-001")
+        task = Task(
+            task_id="TASK-005",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            iteration=5,
+            body="Research WH-001",
+        )
         name, _ = engine._dispatch(task)
         assert name == "researcher"
 
     def test_compute_dispatch(self):
         engine = self._make_engine()
-        task = Task(task_id="TASK-005", task_type=TaskType.COMPUTE,
-                    assigned_to="computer", iteration=5, body="Compute WH-001")
+        task = Task(
+            task_id="TASK-005",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            iteration=5,
+            body="Compute WH-001",
+        )
         name, _ = engine._dispatch(task)
         assert name == "computer"
 
     def test_verify_dispatch(self):
         engine = self._make_engine()
-        task = Task(task_id="TASK-005", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", iteration=5, body="Verify WH-001")
+        task = Task(
+            task_id="TASK-005",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            iteration=5,
+            body="Verify WH-001",
+        )
         name, _ = engine._dispatch(task)
         assert name == "reviewer"
 
     def test_verify_routes_correctly(self):
         engine = self._make_engine()
-        task = Task(task_id="TASK-005", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", iteration=5, body="Verify something")
+        task = Task(
+            task_id="TASK-005",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            iteration=5,
+            body="Verify something",
+        )
         name, _ = engine._dispatch(task)
         assert name == "reviewer"
 
@@ -848,6 +1061,7 @@ class TestUpdateResearchIteration:
 
     def test_iteration_field_updated(self):
         from open_dirac.engine import OpenDirac
+
         engine = OpenDirac.__new__(OpenDirac)
         engine.config = Config()
         engine.research_state = ResearchState()
@@ -857,6 +1071,7 @@ class TestUpdateResearchIteration:
 
     def test_iteration_starts_at_zero(self):
         from open_dirac.engine import OpenDirac
+
         engine = OpenDirac.__new__(OpenDirac)
         engine.config = Config()
         engine.research_state = ResearchState()
@@ -883,6 +1098,7 @@ class TestDispatchFailureRecovery:
             ws.git_commit = MagicMock()
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config(max_iterations=3)
             engine.workspace = ws
@@ -920,16 +1136,20 @@ class TestDispatchFailureRecovery:
 
         # Orchestrator returns a verify task each time
         task = Task(
-            task_id="TASK-001", task_type=TaskType.REVIEW,
-            assigned_to="reviewer", iteration=1,
+            task_id="TASK-001",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            iteration=1,
             body="Verify something.",
         )
         engine.orchestrator.parse_task = MagicMock(return_value=task)
 
         # First dispatch: transient error; second+third: succeed, then terminate
         task_terminate = Task(
-            task_id="TASK-002", task_type=TaskType.TERMINATE,
-            assigned_to="orchestrator", iteration=2,
+            task_id="TASK-002",
+            task_type=TaskType.TERMINATE,
+            assigned_to="orchestrator",
+            iteration=2,
         )
         engine.orchestrator.parse_task = MagicMock(side_effect=[task, task_terminate])
         engine.reviewer.run = MagicMock(side_effect=exc_504)
@@ -953,14 +1173,17 @@ class TestDispatchFailureRecovery:
         engine = self._make_engine()
 
         task = Task(
-            task_id="TASK-001", task_type=TaskType.RESEARCH,
-            assigned_to="researcher", iteration=1,
+            task_id="TASK-001",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            iteration=1,
             body="Research something.",
         )
         engine.orchestrator.parse_task = MagicMock(return_value=task)
         engine.researcher.run = MagicMock(side_effect=RuntimeError("fatal bug"))
 
         import pytest
+
         with pytest.raises(RuntimeError, match="fatal bug"):
             engine.run()
 
@@ -969,12 +1192,16 @@ class TestDispatchFailureRecovery:
         engine = self._make_engine()
 
         task = Task(
-            task_id="TASK-001", task_type=TaskType.RESEARCH,
-            assigned_to="researcher", iteration=1,
+            task_id="TASK-001",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            iteration=1,
             body="Research something.",
         )
         engine.orchestrator.parse_task = MagicMock(return_value=task)
-        engine.researcher.run = MagicMock(side_effect=TypeError("expected string, got list"))
+        engine.researcher.run = MagicMock(
+            side_effect=TypeError("expected string, got list")
+        )
 
         # Should NOT raise — the engine skips the iteration
         engine.run()
@@ -988,13 +1215,17 @@ class TestDispatchFailureRecovery:
         exc_timeout.status_code = 504
 
         task = Task(
-            task_id="TASK-001", task_type=TaskType.REVIEW,
-            assigned_to="reviewer", iteration=1,
+            task_id="TASK-001",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            iteration=1,
             body="Verify something.",
         )
         task_terminate = Task(
-            task_id="TASK-002", task_type=TaskType.TERMINATE,
-            assigned_to="orchestrator", iteration=2,
+            task_id="TASK-002",
+            task_type=TaskType.TERMINATE,
+            assigned_to="orchestrator",
+            iteration=2,
         )
         engine.orchestrator.parse_task = MagicMock(side_effect=[task, task_terminate])
         engine.reviewer.run = MagicMock(side_effect=exc_timeout)
@@ -1019,6 +1250,7 @@ class TestAgentFailureRouting:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -1034,7 +1266,9 @@ class TestAgentFailureRouting:
         result = MagicMock()
         result.stop_reason = "max_tokens"
         result.output_tokens = 8000
-        task = Task(task_id="TASK-005", task_type=TaskType.RESEARCH, assigned_to="researcher")
+        task = Task(
+            task_id="TASK-005", task_type=TaskType.RESEARCH, assigned_to="researcher"
+        )
 
         engine._record_agent_failures(task, "researcher", result)
 
@@ -1048,9 +1282,12 @@ class TestAgentFailureRouting:
     def test_max_rounds_forced_recorded(self):
         """max_rounds_forced stop_reason records an exhaustion failure."""
         from open_dirac.llm import AgentResult
+
         engine = self._make_engine()
         result = AgentResult(text="partial", rounds=10, stop_reason="max_rounds_forced")
-        task = Task(task_id="TASK-005", task_type=TaskType.REVIEW, assigned_to="reviewer")
+        task = Task(
+            task_id="TASK-005", task_type=TaskType.REVIEW, assigned_to="reviewer"
+        )
 
         engine._record_agent_failures(task, "reviewer", result)
 
@@ -1063,7 +1300,9 @@ class TestAgentFailureRouting:
         engine = self._make_engine()
         result = MagicMock()
         result.stop_reason = "end_turn"
-        task = Task(task_id="TASK-005", task_type=TaskType.RESEARCH, assigned_to="researcher")
+        task = Task(
+            task_id="TASK-005", task_type=TaskType.RESEARCH, assigned_to="researcher"
+        )
 
         engine._record_agent_failures(task, "researcher", result)
 
@@ -1072,17 +1311,19 @@ class TestAgentFailureRouting:
     def test_context_suffix_includes_agent_failures(self):
         """Agent failures appear in context suffix banner."""
         engine = self._make_engine()
-        engine._state.agent_failures = [{
-            "task_id": "TASK-004",
-            "agent": "researcher",
-            "event": "max_tokens_truncation",
-            "detail": (
-                "Output hit token limit (8000 tokens). "
-                "Decompose into smaller subtasks, each targeting a single "
-                "derivation step or sub-claim."
-            ),
-            "iteration": 4,
-        }]
+        engine._state.agent_failures = [
+            {
+                "task_id": "TASK-004",
+                "agent": "researcher",
+                "event": "max_tokens_truncation",
+                "detail": (
+                    "Output hit token limit (8000 tokens). "
+                    "Decompose into smaller subtasks, each targeting a single "
+                    "derivation step or sub-claim."
+                ),
+                "iteration": 4,
+            }
+        ]
         prefix = engine._build_context_suffix()
 
         assert "AGENT FAILURES" in prefix
@@ -1094,13 +1335,15 @@ class TestAgentFailureRouting:
     def test_context_suffix_clears_agent_failures(self):
         """Agent failures are cleared after building context suffix."""
         engine = self._make_engine()
-        engine._state.agent_failures = [{
-            "task_id": "TASK-004",
-            "agent": "researcher",
-            "event": "max_tokens_truncation",
-            "detail": "Task too large.",
-            "iteration": 4,
-        }]
+        engine._state.agent_failures = [
+            {
+                "task_id": "TASK-004",
+                "agent": "researcher",
+                "event": "max_tokens_truncation",
+                "detail": "Task too large.",
+                "iteration": 4,
+            }
+        ]
         engine._build_context_suffix()
         assert len(engine._state.agent_failures) == 0
 
@@ -1112,12 +1355,18 @@ class TestAgentFailureRouting:
         engine.iteration = 5
         engine.research_state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
         engine.research_state.hypotheses["WH-001"].review = ReviewResult(
-            verdict="REFUTED", summary="Mismatch", iteration=5,
+            verdict="REFUTED",
+            summary="Mismatch",
+            iteration=5,
         )
 
-        task = Task(task_id="TASK-005", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-005",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         # Verdict now goes to pending_compute_verdicts, not agent_failures
@@ -1135,12 +1384,18 @@ class TestAgentFailureRouting:
         engine._state.claim_failure_count["WH-001"] = 1  # already at limit-1
         engine.research_state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
         engine.research_state.hypotheses["WH-001"].review = ReviewResult(
-            verdict="INCONCLUSIVE", summary="Unclear", iteration=5,
+            verdict="INCONCLUSIVE",
+            summary="Unclear",
+            iteration=5,
         )
 
-        task = Task(task_id="TASK-005", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001",
-                    body="Verify formula X = Y")
+        task = Task(
+            task_id="TASK-005",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+            body="Verify formula X = Y",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_compute_verdicts) == 1
@@ -1150,16 +1405,21 @@ class TestAgentFailureRouting:
         """Violations appear before agent failures in context suffix."""
         engine = self._make_engine()
         engine._state.pending_violations = [
-            Violation(check="test", severity=ViolationSeverity.WARNING,
-                      message="test violation"),
+            Violation(
+                check="test",
+                severity=ViolationSeverity.WARNING,
+                message="test violation",
+            ),
         ]
-        engine._state.agent_failures = [{
-            "task_id": "TASK-003",
-            "agent": "reviewer",
-            "event": "max_rounds_exhaustion",
-            "detail": "Exhausted 10 tool-use rounds without completing.",
-            "iteration": 4,
-        }]
+        engine._state.agent_failures = [
+            {
+                "task_id": "TASK-003",
+                "agent": "reviewer",
+                "event": "max_rounds_exhaustion",
+                "detail": "Exhausted 10 tool-use rounds without completing.",
+                "iteration": 4,
+            }
+        ]
         prefix = engine._build_context_suffix()
 
         violations_pos = prefix.index("VIOLATIONS")
@@ -1180,6 +1440,7 @@ class TestProblemStatementPopulated:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -1192,7 +1453,10 @@ class TestProblemStatementPopulated:
             engine.research_state.problem_statement = problem.strip()
             engine.research_state.title = ws.root.name
 
-            assert engine.research_state.problem_statement == "Derive the Hawking temperature."
+            assert (
+                engine.research_state.problem_statement
+                == "Derive the Hawking temperature."
+            )
             assert engine.research_state.title == "20260316_test_run"
 
     def test_answer_template_stored_separately(self):
@@ -1206,7 +1470,10 @@ class TestProblemStatementPopulated:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
-            engine = OpenDirac("Derive T_H.", Config(), answer_template="## Answer\n\nT_H = ?")
+
+            engine = OpenDirac(
+                "Derive T_H.", Config(), answer_template="## Answer\n\nT_H = ?"
+            )
 
             assert engine.research_state.problem_statement == "Derive T_H."
             assert engine.research_state.answer_template == "## Answer\n\nT_H = ?"
@@ -1228,6 +1495,7 @@ class TestSyncOnTermination:
             ws.git_commit = MagicMock()
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config(max_iterations=3)
             engine.workspace = ws
@@ -1259,12 +1527,14 @@ class TestSyncOnTermination:
         engine.config.max_iterations = 10
 
         task_terminate = Task(
-            task_id="TASK-001", task_type=TaskType.TERMINATE,
-            assigned_to="orchestrator", iteration=1,
+            task_id="TASK-001",
+            task_type=TaskType.TERMINATE,
+            assigned_to="orchestrator",
+            iteration=1,
         )
         engine.orchestrator.parse_task = MagicMock(return_value=task_terminate)
 
-        with patch.object(engine, '_sync_research_state') as mock_sync:
+        with patch.object(engine, "_sync_research_state") as mock_sync:
             engine.run()
             mock_sync.assert_called()
 
@@ -1281,6 +1551,7 @@ class TestExploreResultSuppression:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -1293,11 +1564,16 @@ class TestExploreResultSuppression:
     def test_no_evidence_not_appended(self):
         """Hypothesis with no evidence NOT appended to pending_explore_results."""
         from open_dirac.research_state import Hypothesis
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
-        task = Task(task_id="TASK-003", task_type=TaskType.RESEARCH,
-                    assigned_to="researcher", target_claim="WH-001",
-                    body="Research WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            target_claim="WH-001",
+            body="Research WH-001",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_explore_results) == 0
@@ -1305,14 +1581,19 @@ class TestExploreResultSuppression:
     def test_empty_result_explore_not_appended(self):
         """Evidence with empty result NOT appended to pending_explore_results."""
         from open_dirac.research_state import Hypothesis, Evidence
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
             id="WH-001",
             evidence=[Evidence(result="", method="test")],
         )
-        task = Task(task_id="TASK-003", task_type=TaskType.COMPUTE,
-                    assigned_to="computer", target_claim="WH-001",
-                    body="Compute WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            target_claim="WH-001",
+            body="Compute WH-001",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_explore_results) == 0
@@ -1320,14 +1601,21 @@ class TestExploreResultSuppression:
     def test_successful_explore_appended(self):
         """Successful evidence IS appended to pending_explore_results."""
         from open_dirac.research_state import Hypothesis, Evidence
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
             id="WH-001",
-            evidence=[Evidence(result="x = 42", method="Compute x", confidence="exact")],
+            evidence=[
+                Evidence(result="x = 42", method="Compute x", confidence="exact")
+            ],
         )
-        task = Task(task_id="TASK-003", task_type=TaskType.COMPUTE,
-                    assigned_to="computer", target_claim="WH-001",
-                    body="Compute WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            target_claim="WH-001",
+            body="Compute WH-001",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_explore_results) == 1
@@ -1335,20 +1623,37 @@ class TestExploreResultSuppression:
 
     def test_critique_evidence_appended(self):
         """Evidence on a critique target IS appended to pending_explore_results."""
-        from open_dirac.research_state import Critique, Evidence, Severity, CritiqueStatus
+        from open_dirac.research_state import (
+            Critique,
+            Evidence,
+            Severity,
+            CritiqueStatus,
+        )
+
         engine = self._make_engine()
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
             argument="Spin prediction may be wrong.",
-            status=CritiqueStatus.ACTIVE, iteration_filed=2,
-            evidence=[Evidence(
-                type="research", method="re-derivation",
-                result="Spin is indeed 1", confidence="exact",
-            )],
+            status=CritiqueStatus.ACTIVE,
+            iteration_filed=2,
+            evidence=[
+                Evidence(
+                    type="research",
+                    method="re-derivation",
+                    result="Spin is indeed 1",
+                    confidence="exact",
+                )
+            ],
         )
-        task = Task(task_id="TASK-006", task_type=TaskType.RESEARCH,
-                    assigned_to="researcher", target_claim="CRIT-001",
-                    body="Investigate CRIT-001")
+        task = Task(
+            task_id="TASK-006",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            target_claim="CRIT-001",
+            body="Investigate CRIT-001",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_explore_results) == 1
@@ -1359,15 +1664,23 @@ class TestExploreResultSuppression:
     def test_critique_no_evidence_not_appended(self):
         """Critique with no evidence NOT appended to pending_explore_results."""
         from open_dirac.research_state import Critique, Severity, CritiqueStatus
+
         engine = self._make_engine()
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
             argument="Spin prediction may be wrong.",
-            status=CritiqueStatus.ACTIVE, iteration_filed=2,
+            status=CritiqueStatus.ACTIVE,
+            iteration_filed=2,
         )
-        task = Task(task_id="TASK-006", task_type=TaskType.RESEARCH,
-                    assigned_to="researcher", target_claim="CRIT-001",
-                    body="Investigate CRIT-001")
+        task = Task(
+            task_id="TASK-006",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            target_claim="CRIT-001",
+            body="Investigate CRIT-001",
+        )
         engine._track_agent_result(task)
 
         assert len(engine._state.pending_explore_results) == 0
@@ -1375,11 +1688,14 @@ class TestExploreResultSuppression:
 
 def unittest_any_string_containing(substring):
     """Helper matcher: matches any string containing the given substring."""
+
     class _Matcher:
         def __eq__(self, other):
             return isinstance(other, str) and substring in other
+
         def __repr__(self):
             return f"<string containing {substring!r}>"
+
     return _Matcher()
 
 
@@ -1393,7 +1709,6 @@ class TestCallWithRetryNoRetry:
     def _make_agent(self, tmp_path):
         """Create a minimal concrete agent for testing _call_with_retry."""
         from open_dirac.agents.base import BaseAgent
-        from open_dirac.llm import LLMResponse
 
         class _StubAgent(BaseAgent):
             name = "test_agent"
@@ -1413,20 +1728,26 @@ class TestCallWithRetryNoRetry:
         ws = MagicMock()
         ws.root = tmp_path
         from open_dirac.metrics import MetricsTracker
+
         metrics = MetricsTracker()
         return _StubAgent(config, ws, metrics), metrics
 
     def test_no_retry_on_max_tokens(self, tmp_path):
         """call_llm is invoked exactly once even when it returns max_tokens."""
         from open_dirac.llm import LLMResponse
+
         agent, metrics = self._make_agent(tmp_path)
 
         response = LLMResponse(
             text="partial output...",
-            input_tokens=5000, output_tokens=8000,
-            stop_reason="max_tokens", duration=1.0,
+            input_tokens=5000,
+            output_tokens=8000,
+            stop_reason="max_tokens",
+            duration=1.0,
         )
-        with patch("open_dirac.agents.base.call_llm", return_value=response) as mock_llm:
+        with patch(
+            "open_dirac.agents.base.call_llm", return_value=response
+        ) as mock_llm:
             result = agent._call_with_retry("long context", iteration=3)
 
         mock_llm.assert_called_once()
@@ -1436,14 +1757,19 @@ class TestCallWithRetryNoRetry:
     def test_normal_stop_returns_immediately(self, tmp_path):
         """Normal end_turn returns without alert or scaffold event."""
         from open_dirac.llm import LLMResponse
+
         agent, metrics = self._make_agent(tmp_path)
 
         response = LLMResponse(
             text="full output",
-            input_tokens=3000, output_tokens=2000,
-            stop_reason="end_turn", duration=0.5,
+            input_tokens=3000,
+            output_tokens=2000,
+            stop_reason="end_turn",
+            duration=0.5,
         )
-        with patch("open_dirac.agents.base.call_llm", return_value=response) as mock_llm:
+        with patch(
+            "open_dirac.agents.base.call_llm", return_value=response
+        ) as mock_llm:
             result = agent._call_with_retry("context", iteration=1)
 
         mock_llm.assert_called_once()
@@ -1453,15 +1779,20 @@ class TestCallWithRetryNoRetry:
     def test_max_tokens_fires_alert_and_scaffold_event(self, tmp_path):
         """max_tokens triggers a metrics alert and scaffold log event."""
         from open_dirac.llm import LLMResponse
+
         agent, metrics = self._make_agent(tmp_path)
 
         response = LLMResponse(
             text="truncated...",
-            input_tokens=5000, output_tokens=8000,
-            stop_reason="max_tokens", duration=1.0,
+            input_tokens=5000,
+            output_tokens=8000,
+            stop_reason="max_tokens",
+            duration=1.0,
         )
-        with patch("open_dirac.agents.base.call_llm", return_value=response), \
-             patch("open_dirac.agents.base.log_scaffold_event") as mock_log:
+        with (
+            patch("open_dirac.agents.base.call_llm", return_value=response),
+            patch("open_dirac.agents.base.log_scaffold_event") as mock_log,
+        ):
             agent._call_with_retry("context", iteration=3)
 
         # Alert fired
@@ -1481,6 +1812,7 @@ class TestCallWithRetryNoRetry:
 # Surveyor integration
 # ===========================================================================
 
+
 class TestSurveyorEngine:
     """Tests for surveyor agent integration in the engine."""
 
@@ -1496,6 +1828,7 @@ class TestSurveyorEngine:
             ws.file_size = MagicMock(return_value=0)
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.research_state = ResearchState(
@@ -1530,6 +1863,7 @@ class TestSurveyorEngine:
         engine._apply_survey()
         assert engine.research_state.survey_background == ""
 
+
 class TestTerminationCircuitBreaker:
     """Test the circuit breaker that auto-abandons WHs after repeated termination blocks."""
 
@@ -1543,6 +1877,7 @@ class TestTerminationCircuitBreaker:
             ws.write_file = MagicMock()
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.research_state = ResearchState()
@@ -1555,23 +1890,38 @@ class TestTerminationCircuitBreaker:
     def test_force_abandon_working_hypotheses(self):
         """Auto-abandon all remaining WHs when circuit breaker fires."""
         from open_dirac.research_state import Hypothesis, HypothesisStatus
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING, statement="Claim A",
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
+            statement="Claim A",
         )
         engine.research_state.hypotheses["WH-004"] = Hypothesis(
-            id="WH-004", status=HypothesisStatus.WORKING, statement="Claim B",
+            id="WH-004",
+            status=HypothesisStatus.WORKING,
+            statement="Claim B",
         )
         engine.research_state.hypotheses["ER-002"] = Hypothesis(
-            id="ER-002", status=HypothesisStatus.ESTABLISHED,
+            id="ER-002",
+            status=HypothesisStatus.ESTABLISHED,
         )
         engine._state.consecutive_termination_blocks = 3
 
         engine._force_abandon_working_hypotheses()
 
-        assert engine.research_state.hypotheses["WH-001"].status == HypothesisStatus.ABANDONED
-        assert engine.research_state.hypotheses["WH-004"].status == HypothesisStatus.ABANDONED
-        assert engine.research_state.hypotheses["ER-002"].status == HypothesisStatus.ESTABLISHED
+        assert (
+            engine.research_state.hypotheses["WH-001"].status
+            == HypothesisStatus.ABANDONED
+        )
+        assert (
+            engine.research_state.hypotheses["WH-004"].status
+            == HypothesisStatus.ABANDONED
+        )
+        assert (
+            engine.research_state.hypotheses["ER-002"].status
+            == HypothesisStatus.ESTABLISHED
+        )
         assert len(engine.research_state.failed_approaches) == 2
         assert engine._state.consecutive_termination_blocks == 0
 
@@ -1593,15 +1943,20 @@ class TestTerminationCircuitBreaker:
     def test_no_abandon_when_no_working_hypotheses(self):
         """Force-abandon is a no-op when all hypotheses are already established/abandoned."""
         from open_dirac.research_state import Hypothesis, HypothesisStatus
+
         engine = self._make_engine()
         engine.research_state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         engine._state.consecutive_termination_blocks = 5
 
         engine._force_abandon_working_hypotheses()
 
-        assert engine.research_state.hypotheses["ER-001"].status == HypothesisStatus.ESTABLISHED
+        assert (
+            engine.research_state.hypotheses["ER-001"].status
+            == HypothesisStatus.ESTABLISHED
+        )
         assert len(engine.research_state.failed_approaches) == 0
 
 
@@ -1617,6 +1972,7 @@ class TestRedundantCriticPassFix:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -1647,7 +2003,9 @@ class TestRedundantCriticPassFix:
         """_should_trigger_critic returns False when no verified review this iteration."""
         engine = self._make_engine()
         engine.metrics.last_critic_iteration = 0
-        engine._state.last_verified_review_iteration = 3  # different from current iteration
+        engine._state.last_verified_review_iteration = (
+            3  # different from current iteration
+        )
 
         assert engine._should_trigger_critic() is False
 
@@ -1664,6 +2022,7 @@ class TestDispatchHistory:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -1679,8 +2038,15 @@ class TestDispatchHistory:
         """DispatchRecords render in orchestrator.dispatch_history_text."""
         engine = self._make_engine()
         engine._state.dispatch_history = [
-            DispatchRecord(iteration=1, task_type="compute", target="RQ-001", outcome="evidence (exact)"),
-            DispatchRecord(iteration=2, task_type="review", target="WH-001", outcome="REFUTED"),
+            DispatchRecord(
+                iteration=1,
+                task_type="compute",
+                target="RQ-001",
+                outcome="evidence (exact)",
+            ),
+            DispatchRecord(
+                iteration=2, task_type="review", target="WH-001", outcome="REFUTED"
+            ),
         ]
         engine._build_context_suffix()
         dh = engine.orchestrator.dispatch_history_text
@@ -1693,7 +2059,12 @@ class TestDispatchHistory:
         """Dispatch history is NOT consumed — persists across _build_context_suffix calls."""
         engine = self._make_engine()
         engine._state.dispatch_history = [
-            DispatchRecord(iteration=1, task_type="compute", target="RQ-001", outcome="evidence (exact)"),
+            DispatchRecord(
+                iteration=1,
+                task_type="compute",
+                target="RQ-001",
+                outcome="evidence (exact)",
+            ),
         ]
         engine._build_context_suffix()
         dh1 = engine.orchestrator.dispatch_history_text
@@ -1713,7 +2084,9 @@ class TestDispatchHistory:
         """Records with no target omit the arrow."""
         engine = self._make_engine()
         engine._state.dispatch_history = [
-            DispatchRecord(iteration=4, task_type="critique", target=None, outcome="3 critique(s)"),
+            DispatchRecord(
+                iteration=4, task_type="critique", target=None, outcome="3 critique(s)"
+            ),
         ]
         engine._build_context_suffix()
         dh = engine.orchestrator.dispatch_history_text
@@ -1724,14 +2097,25 @@ class TestDispatchHistory:
         """Compute task with evidence on target RQ records confidence."""
         engine = self._make_engine()
         from open_dirac.research_state import ResearchQuestion, Evidence
+
         engine.research_state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is T?",
+            id="RQ-001",
+            question="What is T?",
         )
-        engine.research_state.research_questions["RQ-001"].evidence = [Evidence(
-            type="compute", result="T = 1/(8*pi*M)", confidence="exact", iteration=1,
-        )]
-        task = Task(task_id="TASK-001", task_type=TaskType.COMPUTE,
-                    assigned_to="computer", target_claim="RQ-001")
+        engine.research_state.research_questions["RQ-001"].evidence = [
+            Evidence(
+                type="compute",
+                result="T = 1/(8*pi*M)",
+                confidence="exact",
+                iteration=1,
+            )
+        ]
+        task = Task(
+            task_id="TASK-001",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            target_claim="RQ-001",
+        )
         engine._append_dispatch_record(task)
 
         assert len(engine._state.dispatch_history) == 1
@@ -1744,11 +2128,17 @@ class TestDispatchHistory:
         """Compute task with no evidence on target records 'no evidence'."""
         engine = self._make_engine()
         from open_dirac.research_state import ResearchQuestion
+
         engine.research_state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is T?",
+            id="RQ-001",
+            question="What is T?",
         )
-        task = Task(task_id="TASK-001", task_type=TaskType.COMPUTE,
-                    assigned_to="computer", target_claim="RQ-001")
+        task = Task(
+            task_id="TASK-001",
+            task_type=TaskType.COMPUTE,
+            assigned_to="computer",
+            target_claim="RQ-001",
+        )
         engine._append_dispatch_record(task)
 
         assert engine._state.dispatch_history[0].outcome == "no evidence"
@@ -1757,12 +2147,24 @@ class TestDispatchHistory:
         """Research task targeting a WH reads evidence from hypothesis."""
         engine = self._make_engine()
         from open_dirac.research_state import Hypothesis, Evidence
+
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
             id="WH-001",
-            evidence=[Evidence(type="research", result="derived", confidence="approximate", iteration=2)],
+            evidence=[
+                Evidence(
+                    type="research",
+                    result="derived",
+                    confidence="approximate",
+                    iteration=2,
+                )
+            ],
         )
-        task = Task(task_id="TASK-002", task_type=TaskType.RESEARCH,
-                    assigned_to="researcher", target_claim="WH-001")
+        task = Task(
+            task_id="TASK-002",
+            task_type=TaskType.RESEARCH,
+            assigned_to="researcher",
+            target_claim="WH-001",
+        )
         engine._append_dispatch_record(task)
 
         assert engine._state.dispatch_history[0].outcome == "evidence (approximate)"
@@ -1771,12 +2173,17 @@ class TestDispatchHistory:
         """Review task captures the reviewer's verdict."""
         engine = self._make_engine()
         from open_dirac.research_state import Hypothesis, ReviewResult
+
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
             id="WH-001",
             review=ReviewResult(verdict="VERIFIED", summary="Correct.", iteration=3),
         )
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+        )
         engine._append_dispatch_record(task)
 
         rec = engine._state.dispatch_history[0]
@@ -1788,13 +2195,19 @@ class TestDispatchHistory:
         """Review task finds promoted WH via ER- fallback."""
         engine = self._make_engine()
         from open_dirac.research_state import Hypothesis, ReviewResult, HypothesisStatus
+
         # Simulate post-promotion state: WH-001 gone, ER-001 present
         engine.research_state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(verdict="VERIFIED", summary="OK.", iteration=2),
         )
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+        )
         engine._append_dispatch_record(task)
 
         rec = engine._state.dispatch_history[0]
@@ -1804,9 +2217,14 @@ class TestDispatchHistory:
         """Review task with no review result records 'no review produced'."""
         engine = self._make_engine()
         from open_dirac.research_state import Hypothesis
+
         engine.research_state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
-        task = Task(task_id="TASK-003", task_type=TaskType.REVIEW,
-                    assigned_to="reviewer", target_claim="WH-001")
+        task = Task(
+            task_id="TASK-003",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
+        )
         engine._append_dispatch_record(task)
 
         assert engine._state.dispatch_history[0].outcome == "no review produced"
@@ -1814,16 +2232,21 @@ class TestDispatchHistory:
     def test_append_dispatch_record_critique_with_critiques(self):
         """Critique task counts recent critiques from research state."""
         from open_dirac.research_state import Critique, Severity, CritiqueStatus
+
         engine = self._make_engine()
         # Add 3 critiques filed this iteration
         for i in range(1, 4):
             engine.research_state.critiques[f"CRIT-{i:03d}"] = Critique(
-                id=f"CRIT-{i:03d}", severity=Severity.HIGH,
-                status=CritiqueStatus.ACTIVE, targets=["WH-001"],
-                argument=f"Issue {i}", iteration_filed=engine.iteration,
+                id=f"CRIT-{i:03d}",
+                severity=Severity.HIGH,
+                status=CritiqueStatus.ACTIVE,
+                targets=["WH-001"],
+                argument=f"Issue {i}",
+                iteration_filed=engine.iteration,
             )
-        task = Task(task_id="TASK-004", task_type=TaskType.CRITIQUE,
-                    assigned_to="deep_critic")
+        task = Task(
+            task_id="TASK-004", task_type=TaskType.CRITIQUE, assigned_to="deep_critic"
+        )
         engine._append_dispatch_record(task)
 
         rec = engine._state.dispatch_history[0]
@@ -1835,8 +2258,9 @@ class TestDispatchHistory:
         """Critique task with no critiques filed records 'no critiques'."""
         engine = self._make_engine()
         # No critiques in research state
-        task = Task(task_id="TASK-004", task_type=TaskType.CRITIQUE,
-                    assigned_to="deep_critic")
+        task = Task(
+            task_id="TASK-004", task_type=TaskType.CRITIQUE, assigned_to="deep_critic"
+        )
         engine._append_dispatch_record(task)
 
         assert engine._state.dispatch_history[0].outcome == "no critiques"
@@ -1844,8 +2268,9 @@ class TestDispatchHistory:
     def test_append_dispatch_record_terminate_blocked(self):
         """Terminate task records 'blocked'."""
         engine = self._make_engine()
-        task = Task(task_id="TASK-005", task_type=TaskType.TERMINATE,
-                    assigned_to="orchestrator")
+        task = Task(
+            task_id="TASK-005", task_type=TaskType.TERMINATE, assigned_to="orchestrator"
+        )
         engine._append_dispatch_record(task)
 
         rec = engine._state.dispatch_history[0]
@@ -1855,8 +2280,9 @@ class TestDispatchHistory:
     def test_append_dispatch_record_format_completed(self):
         """Format task records 'completed'."""
         engine = self._make_engine()
-        task = Task(task_id="FORMAT-003", task_type=TaskType.FORMAT,
-                    assigned_to="formatter")
+        task = Task(
+            task_id="FORMAT-003", task_type=TaskType.FORMAT, assigned_to="formatter"
+        )
         engine._append_dispatch_record(task)
 
         assert engine._state.dispatch_history[0].outcome == "completed"
@@ -1865,7 +2291,12 @@ class TestDispatchHistory:
         """Dispatch history is set on orchestrator, not in suffix with violations."""
         engine = self._make_engine()
         engine._state.dispatch_history = [
-            DispatchRecord(iteration=1, task_type="compute", target="RQ-001", outcome="evidence (exact)"),
+            DispatchRecord(
+                iteration=1,
+                task_type="compute",
+                target="RQ-001",
+                outcome="evidence (exact)",
+            ),
         ]
         engine._state.pending_violations = [
             Violation(check="test", severity=ViolationSeverity.WARNING, message="oops"),
@@ -1883,11 +2314,30 @@ class TestDispatchHistory:
         engine = self._make_engine()
         engine.iteration = 10
         engine._state.dispatch_history = [
-            DispatchRecord(iteration=1, task_type="compute", target="RQ-001", outcome="evidence (exact)"),
-            DispatchRecord(iteration=3, task_type="review", target="WH-001", outcome="VERIFIED"),
-            DispatchRecord(iteration=6, task_type="compute", target="RQ-002", outcome="evidence (approx)"),
-            DispatchRecord(iteration=8, task_type="review", target="WH-002", outcome="REFUTED"),
-            DispatchRecord(iteration=10, task_type="compute", target="RQ-003", outcome="evidence (exact)"),
+            DispatchRecord(
+                iteration=1,
+                task_type="compute",
+                target="RQ-001",
+                outcome="evidence (exact)",
+            ),
+            DispatchRecord(
+                iteration=3, task_type="review", target="WH-001", outcome="VERIFIED"
+            ),
+            DispatchRecord(
+                iteration=6,
+                task_type="compute",
+                target="RQ-002",
+                outcome="evidence (approx)",
+            ),
+            DispatchRecord(
+                iteration=8, task_type="review", target="WH-002", outcome="REFUTED"
+            ),
+            DispatchRecord(
+                iteration=10,
+                task_type="compute",
+                target="RQ-003",
+                outcome="evidence (exact)",
+            ),
         ]
         engine._build_context_suffix()
         dh = engine.orchestrator.dispatch_history_text
@@ -1906,9 +2356,15 @@ class TestDispatchHistory:
         engine = self._make_engine()
         engine.iteration = 3
         engine._state.dispatch_history = [
-            DispatchRecord(iteration=1, task_type="compute", target="RQ-001", outcome="evidence"),
-            DispatchRecord(iteration=2, task_type="review", target="WH-001", outcome="VERIFIED"),
-            DispatchRecord(iteration=3, task_type="compute", target="RQ-002", outcome="evidence"),
+            DispatchRecord(
+                iteration=1, task_type="compute", target="RQ-001", outcome="evidence"
+            ),
+            DispatchRecord(
+                iteration=2, task_type="review", target="WH-001", outcome="VERIFIED"
+            ),
+            DispatchRecord(
+                iteration=3, task_type="compute", target="RQ-002", outcome="evidence"
+            ),
         ]
         engine._build_context_suffix()
         dh = engine.orchestrator.dispatch_history_text
@@ -1930,7 +2386,7 @@ class TestAutoPromoteCascade:
             ws.logs_dir = "/tmp/logs"
 
             from open_dirac.engine import OpenDirac
-            from open_dirac.research_state import HypothesisStatus
+
             engine = OpenDirac.__new__(OpenDirac)
             engine.config = Config()
             engine.workspace = ws
@@ -1943,9 +2399,11 @@ class TestAutoPromoteCascade:
     def test_simple_promotion(self):
         """VERIFIED WH with no deps is promoted."""
         from open_dirac.research_state import Hypothesis, HypothesisStatus, Verdict
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine._auto_promote("WH-001")
@@ -1955,12 +2413,16 @@ class TestAutoPromoteCascade:
     def test_skipped_when_deps_unestablished(self):
         """VERIFIED WH with unestablished dep is NOT promoted."""
         from open_dirac.research_state import Hypothesis, HypothesisStatus, Verdict
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
         )
         engine.research_state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING, depends_on=["WH-001"],
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
+            depends_on=["WH-001"],
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine._auto_promote("WH-002")
@@ -1970,14 +2432,20 @@ class TestAutoPromoteCascade:
     def test_cascade_promotes_dependent(self):
         """Promoting WH-001 cascades to promote WH-002 that depends on it."""
         from open_dirac.research_state import Hypothesis, HypothesisStatus, Verdict
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine.research_state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING, depends_on=["WH-001"],
-            review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK too", iteration=4),
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
+            depends_on=["WH-001"],
+            review=ReviewResult(
+                verdict=Verdict.VERIFIED, summary="OK too", iteration=4
+            ),
         )
         engine._auto_promote("WH-001")
         # Both should be promoted
@@ -1989,17 +2457,23 @@ class TestAutoPromoteCascade:
     def test_cascade_chain_three_deep(self):
         """Cascade works through a chain: WH-001 -> WH-002 -> WH-003."""
         from open_dirac.research_state import Hypothesis, HypothesisStatus, Verdict
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine.research_state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING, depends_on=["WH-001"],
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
+            depends_on=["WH-001"],
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine.research_state.hypotheses["WH-003"] = Hypothesis(
-            id="WH-003", status=HypothesisStatus.WORKING, depends_on=["WH-002"],
+            id="WH-003",
+            status=HypothesisStatus.WORKING,
+            depends_on=["WH-002"],
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine._auto_promote("WH-001")
@@ -2010,17 +2484,23 @@ class TestAutoPromoteCascade:
     def test_cascade_stops_at_unverified(self):
         """Cascade does not promote unverified WHs in the chain."""
         from open_dirac.research_state import Hypothesis, HypothesisStatus, Verdict
+
         engine = self._make_engine()
         engine.research_state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine.research_state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING, depends_on=["WH-001"],
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
+            depends_on=["WH-001"],
             # No review — not promotable
         )
         engine.research_state.hypotheses["WH-003"] = Hypothesis(
-            id="WH-003", status=HypothesisStatus.WORKING, depends_on=["WH-002"],
+            id="WH-003",
+            status=HypothesisStatus.WORKING,
+            depends_on=["WH-002"],
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="OK", iteration=4),
         )
         engine._auto_promote("WH-001")
@@ -2033,11 +2513,13 @@ class TestAutoPromoteCascade:
 # Auto-expire critiques (Tier 1c)
 # ---------------------------------------------------------------------------
 
+
 class TestAutoExpireCritiques:
     """Test _auto_expire_critiques expiration logic."""
 
     def _make_engine(self, auto_expire_iterations=3):
         from open_dirac.engine import OpenDirac
+
         engine = OpenDirac.__new__(OpenDirac)
         engine.config = Config()
         engine.config.auto_expire_iterations = auto_expire_iterations
@@ -2049,11 +2531,15 @@ class TestAutoExpireCritiques:
     def test_medium_critique_expires(self):
         """MEDIUM critique auto-expires after TTL iterations."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         engine = self._make_engine(auto_expire_iterations=3)
         engine.iteration = 8
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.MEDIUM,
-            status=CritiqueStatus.ACTIVE, argument="Minor.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.MEDIUM,
+            status=CritiqueStatus.ACTIVE,
+            argument="Minor.",
             iteration_filed=5,
         )
         engine._auto_expire_critiques()
@@ -2065,68 +2551,98 @@ class TestAutoExpireCritiques:
     def test_low_critique_expires(self):
         """LOW critique auto-expires after TTL iterations."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         engine = self._make_engine(auto_expire_iterations=3)
         engine.iteration = 10
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["STRATEGY"], severity=Severity.LOW,
-            status=CritiqueStatus.ACTIVE, argument="Cosmetic.",
+            id="CRIT-001",
+            targets=["STRATEGY"],
+            severity=Severity.LOW,
+            status=CritiqueStatus.ACTIVE,
+            argument="Cosmetic.",
             iteration_filed=5,
         )
         engine._auto_expire_critiques()
-        assert engine.research_state.critiques["CRIT-001"].status == CritiqueStatus.RESOLVED
+        assert (
+            engine.research_state.critiques["CRIT-001"].status
+            == CritiqueStatus.RESOLVED
+        )
 
     def test_high_critique_never_expires(self):
         """HIGH critique is never auto-expired regardless of age."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         engine = self._make_engine(auto_expire_iterations=3)
         engine.iteration = 100
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
-            status=CritiqueStatus.ACTIVE, argument="Critical flaw.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
+            status=CritiqueStatus.ACTIVE,
+            argument="Critical flaw.",
             iteration_filed=5,
         )
         engine._auto_expire_critiques()
-        assert engine.research_state.critiques["CRIT-001"].status == CritiqueStatus.ACTIVE
+        assert (
+            engine.research_state.critiques["CRIT-001"].status == CritiqueStatus.ACTIVE
+        )
 
     def test_young_critique_not_expired(self):
         """MEDIUM critique younger than TTL is not expired."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         engine = self._make_engine(auto_expire_iterations=3)
         engine.iteration = 7
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.MEDIUM,
-            status=CritiqueStatus.ACTIVE, argument="Minor.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.MEDIUM,
+            status=CritiqueStatus.ACTIVE,
+            argument="Minor.",
             iteration_filed=5,
         )
         engine._auto_expire_critiques()
-        assert engine.research_state.critiques["CRIT-001"].status == CritiqueStatus.ACTIVE
+        assert (
+            engine.research_state.critiques["CRIT-001"].status == CritiqueStatus.ACTIVE
+        )
 
     def test_disabled_when_ttl_zero(self):
         """No expiry when auto_expire_iterations is 0."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         engine = self._make_engine(auto_expire_iterations=0)
         engine.iteration = 100
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.MEDIUM,
-            status=CritiqueStatus.ACTIVE, argument="Minor.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.MEDIUM,
+            status=CritiqueStatus.ACTIVE,
+            argument="Minor.",
             iteration_filed=5,
         )
         engine._auto_expire_critiques()
-        assert engine.research_state.critiques["CRIT-001"].status == CritiqueStatus.ACTIVE
+        assert (
+            engine.research_state.critiques["CRIT-001"].status == CritiqueStatus.ACTIVE
+        )
 
     def test_already_resolved_not_touched(self):
         """Already-resolved critiques are not re-expired."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         engine = self._make_engine(auto_expire_iterations=3)
         engine.iteration = 100
         engine.research_state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.MEDIUM,
-            status=CritiqueStatus.RESOLVED, argument="Minor.",
-            resolution_type="dismissed", resolution="Already handled.",
-            iteration_filed=5, iteration_resolved=6,
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.MEDIUM,
+            status=CritiqueStatus.RESOLVED,
+            argument="Minor.",
+            resolution_type="dismissed",
+            resolution="Already handled.",
+            iteration_filed=5,
+            iteration_resolved=6,
         )
         engine._auto_expire_critiques()
         crit = engine.research_state.critiques["CRIT-001"]
         assert crit.resolution_type == "dismissed"  # unchanged
         assert crit.iteration_resolved == 6  # unchanged
-

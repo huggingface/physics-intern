@@ -18,8 +18,10 @@ from ...research_state import (
 def _render_entity_detail(h: Hypothesis, is_er: bool = False) -> str:
     """Render enriched entity description for planner revision context."""
     summary_limit = 300 if is_er else 150
-    status_tag = "VERIFIED" if h.status == HypothesisStatus.ESTABLISHED else (
-        h.review.verdict if h.review else "PENDING REVIEW"
+    status_tag = (
+        "VERIFIED"
+        if h.status == HypothesisStatus.ESTABLISHED
+        else (h.review.verdict if h.review else "PENDING REVIEW")
     )
     lines = [f"{h.id}: {h.statement}, {status_tag}"]
     deps = ", ".join(h.depends_on) if h.depends_on else "none"
@@ -38,7 +40,9 @@ def _render_entity_detail(h: Hypothesis, is_er: bool = False) -> str:
 def _render_rq_detail(rq) -> str:
     """Render enriched RQ description for planner revision context."""
     n_ev = len(rq.evidence)
-    lines = [f"{rq.id}: {rq.question}, {rq.status.value.upper()}, {n_ev} evidence item{'s' if n_ev != 1 else ''}"]
+    lines = [
+        f"{rq.id}: {rq.question}, {rq.status.value.upper()}, {n_ev} evidence item{'s' if n_ev != 1 else ''}"
+    ]
     for ev in rq.evidence:
         summary = (ev.summary or "")[:150]
         lines.append(f"  evidence: [{ev.id}] {ev.type} — {summary}")
@@ -55,7 +59,9 @@ def render_planner_revise_context(state: ResearchState, trigger_text: str) -> st
     parts: list[str] = []
 
     # Problem Statement
-    parts.append(f"<problem-statement>\n{state.problem_statement or '(No problem statement.)'}\n</problem-statement>")
+    parts.append(
+        f"<problem-statement>\n{state.problem_statement or '(No problem statement.)'}\n</problem-statement>"
+    )
 
     if state.answer_template:
         parts.append(f"<answer-template>\n{state.answer_template}\n</answer-template>")
@@ -77,7 +83,11 @@ def render_planner_revise_context(state: ResearchState, trigger_text: str) -> st
         if h.status == HypothesisStatus.ESTABLISHED:
             er_lines.append(_render_entity_detail(h, is_er=True))
     if er_lines:
-        rs_parts.append("<established-results>\n" + "\n\n".join(er_lines) + "\n</established-results>")
+        rs_parts.append(
+            "<established-results>\n"
+            + "\n\n".join(er_lines)
+            + "\n</established-results>"
+        )
 
     # Dead Ends
     de_lines: list[str] = []
@@ -97,7 +107,9 @@ def render_planner_revise_context(state: ResearchState, trigger_text: str) -> st
         rs_parts.append("<dead-ends>\n" + "\n".join(de_lines) + "\n</dead-ends>")
 
     if rs_parts:
-        parts.append("<research-state>\n" + "\n\n".join(rs_parts) + "\n</research-state>")
+        parts.append(
+            "<research-state>\n" + "\n\n".join(rs_parts) + "\n</research-state>"
+        )
 
     # Current strategy (top-level, planner's own output being revised)
     strat = state.strategy or "(No strategy set.)"
@@ -105,7 +117,9 @@ def render_planner_revise_context(state: ResearchState, trigger_text: str) -> st
 
     # Current sanity checks (editable by the planner)
     if state.sanity_checks:
-        parts.append(_render_sanity_checks(state.sanity_checks, tag="current-sanity-checks"))
+        parts.append(
+            _render_sanity_checks(state.sanity_checks, tag="current-sanity-checks")
+        )
 
     # Revision Trigger
     parts.append(f"<revision-trigger>\n{trigger_text}\n</revision-trigger>")

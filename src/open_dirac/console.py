@@ -68,9 +68,7 @@ def replay_log(path: str | Path, tail: int | None = 50) -> None:
     )
     for line in show:
         sys.stdout.write(line + "\n")
-    sys.stdout.write(
-        "\033[2m--- end of replay ---\033[0m\n"
-    )
+    sys.stdout.write("\033[2m--- end of replay ---\033[0m\n")
     sys.stdout.flush()
 
 

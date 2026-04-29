@@ -28,6 +28,7 @@ You will write Python code to perform the requested computation. Follow these ru
 @dataclass
 class SubAgentResult:
     """Result from a sub-agent dispatch."""
+
     reasoning_text: str
     code: str
     execution_output: str
@@ -37,13 +38,11 @@ class SubAgentResult:
 
     def format_for_manager(self) -> str:
         """Format as a string to return to the Manager."""
-        parts = [
-            f"<subagent_reasoning>\n{self.reasoning_text}\n</subagent_reasoning>"
-        ]
+        parts = [f"<subagent_reasoning>\n{self.reasoning_text}\n</subagent_reasoning>"]
         if self.code:
             parts.append(f"\n\n<code>\n{self.code}\n</code>")
             parts.append(
-                f"\n\n<execution_output status=\"{self.execution_status}\">\n"
+                f'\n\n<execution_output status="{self.execution_status}">\n'
                 f"{self.execution_output}\n</execution_output>"
             )
         return "\n".join(parts)
@@ -118,8 +117,11 @@ def dispatch_subagent(
     # Strip the code block from reasoning to avoid duplication in format_for_manager
     if code:
         reasoning_text = re.sub(
-            r"```(?:python)?\s*\n.*?```", "", resp.text,
-            count=1, flags=re.DOTALL,
+            r"```(?:python)?\s*\n.*?```",
+            "",
+            resp.text,
+            count=1,
+            flags=re.DOTALL,
         ).strip()
     else:
         reasoning_text = resp.text
@@ -146,7 +148,9 @@ def dispatch_subagent(
         script_path.write_text(code)
 
         result = execute_python(
-            script_path, timeout=sandbox_timeout, cwd=str(computations_dir),
+            script_path,
+            timeout=sandbox_timeout,
+            cwd=str(computations_dir),
         )
 
         if result.returncode == 0 and not result.timed_out:

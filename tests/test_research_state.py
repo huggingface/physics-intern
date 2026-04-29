@@ -1,7 +1,6 @@
 """Tests for the formal ResearchState module."""
 
 import json
-import pytest
 
 from open_dirac.research_state import (
     ResearchState,
@@ -9,7 +8,6 @@ from open_dirac.research_state import (
     HypothesisStatus,
     Evidence,
     ReviewResult,
-    SanityCheck,
     Verdict,
     Critique,
     Severity,
@@ -64,8 +62,8 @@ Nothing yet.
 # Hypothesis section extraction
 # ---------------------------------------------------------------------------
 
-class TestExtractHypothesisSections:
 
+class TestExtractHypothesisSections:
     def test_extracts_wh_and_er(self):
         sections = _extract_hypothesis_sections(SAMPLE_RESEARCH_STATE)
         ids = [s[0] for s in sections]
@@ -94,25 +92,30 @@ class TestExtractHypothesisSections:
 # Query methods
 # ---------------------------------------------------------------------------
 
-class TestQueryMethods:
 
+class TestQueryMethods:
     def _make_state(self) -> ResearchState:
         state = ResearchState(iteration=5)
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Test",
+            id="WH-001",
+            statement="Test",
             status=HypothesisStatus.WORKING,
             critiques=["CRIT-001"],
             evidence=[Evidence(type="compute", method="numerical", result="42")],
         )
         state.hypotheses["ER-002"] = Hypothesis(
-            id="ER-002", statement="Verified",
+            id="ER-002",
+            statement="Verified",
             status=HypothesisStatus.ESTABLISHED,
             evidence=[Evidence(type="compute", method="symbolic", result="ok")],
             review=ReviewResult(verdict=Verdict.VERIFIED, summary="Confirmed."),
         )
-        state.critiques["CRIT-001"] = Critique(id="CRIT-001", targets=["WH-001"],
-                                                severity=Severity.HIGH,
-                                                status=CritiqueStatus.ACTIVE)
+        state.critiques["CRIT-001"] = Critique(
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
+            status=CritiqueStatus.ACTIVE,
+        )
         return state
 
     def test_has_verified_evidence(self):
@@ -147,24 +150,33 @@ class TestQueryMethods:
 # Serialization round-trip
 # ---------------------------------------------------------------------------
 
-class TestSerialization:
 
+class TestSerialization:
     def test_json_round_trip(self):
         state = ResearchState(iteration=3)
-        state.hypotheses["WH-001"] = Hypothesis(id="WH-001", statement="Test",
-                                                  status=HypothesisStatus.WORKING)
-        state.hypotheses["WH-001"].evidence = [Evidence(
-            type="compute", method="numerical", result="42",
-            confidence="exact", iteration=2,
-        )]
-        state.critiques["CRIT-001"] = Critique(id="CRIT-001", targets=["WH-001"],
-                                                severity=Severity.HIGH)
-        state.failed_approaches.append(FailedApproach(
-            description="Tried perturbation theory",
-            reason="Divergent series",
-            related_entities=["WH-001"],
-            iteration=2,
-        ))
+        state.hypotheses["WH-001"] = Hypothesis(
+            id="WH-001", statement="Test", status=HypothesisStatus.WORKING
+        )
+        state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="compute",
+                method="numerical",
+                result="42",
+                confidence="exact",
+                iteration=2,
+            )
+        ]
+        state.critiques["CRIT-001"] = Critique(
+            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH
+        )
+        state.failed_approaches.append(
+            FailedApproach(
+                description="Tried perturbation theory",
+                reason="Divergent series",
+                related_entities=["WH-001"],
+                iteration=2,
+            )
+        )
 
         json_str = state.to_json()
         restored = ResearchState.from_json(json_str)
@@ -180,8 +192,9 @@ class TestSerialization:
 
     def test_save_and_load(self, tmp_path):
         state = ResearchState(iteration=7)
-        state.hypotheses["ER-001"] = Hypothesis(id="ER-001", statement="E=mc2",
-                                                  status=HypothesisStatus.ESTABLISHED)
+        state.hypotheses["ER-001"] = Hypothesis(
+            id="ER-001", statement="E=mc2", status=HypothesisStatus.ESTABLISHED
+        )
         state.save(tmp_path)
 
         loaded = ResearchState.load(tmp_path)
@@ -206,34 +219,40 @@ class TestSerialization:
 # Phase 4: Failure tracking
 # ---------------------------------------------------------------------------
 
-class TestFailureTracking:
 
+class TestFailureTracking:
     def test_failures_for_hypothesis(self):
         state = ResearchState()
-        state.failed_approaches.append(FailedApproach(
-            description="REFUTED on: WH-001 spin prediction",
-            reason="Got spin-0 instead of spin-1",
-            related_entities=["WH-001"],
-            iteration=3,
-        ))
-        state.failed_approaches.append(FailedApproach(
-            description="INCONCLUSIVE on: WH-002 entropy",
-            reason="Timeout",
-            related_entities=["WH-002"],
-            iteration=4,
-        ))
+        state.failed_approaches.append(
+            FailedApproach(
+                description="REFUTED on: WH-001 spin prediction",
+                reason="Got spin-0 instead of spin-1",
+                related_entities=["WH-001"],
+                iteration=3,
+            )
+        )
+        state.failed_approaches.append(
+            FailedApproach(
+                description="INCONCLUSIVE on: WH-002 entropy",
+                reason="Timeout",
+                related_entities=["WH-002"],
+                iteration=4,
+            )
+        )
         wh1_failures = state.failures_for_hypothesis("WH-001")
         assert len(wh1_failures) == 1
         assert "spin prediction" in wh1_failures[0].description
 
     def test_failures_round_trip(self):
         state = ResearchState(iteration=5)
-        state.failed_approaches.append(FailedApproach(
-            description="REFUTED on: WH-001",
-            reason="Wrong coefficient",
-            related_entities=["WH-001"],
-            iteration=4,
-        ))
+        state.failed_approaches.append(
+            FailedApproach(
+                description="REFUTED on: WH-001",
+                reason="Wrong coefficient",
+                related_entities=["WH-001"],
+                iteration=4,
+            )
+        )
         restored = ResearchState.from_json(state.to_json())
         assert len(restored.failed_approaches) == 1
         assert restored.failed_approaches[0].reason == "Wrong coefficient"
@@ -246,13 +265,16 @@ class TestFailureTracking:
     def test_abandoned_hypotheses_query(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.ABANDONED,
+            id="WH-001",
+            status=HypothesisStatus.ABANDONED,
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING,
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
         )
         state.hypotheses["ER-003"] = Hypothesis(
-            id="ER-003", status=HypothesisStatus.ESTABLISHED,
+            id="ER-003",
+            status=HypothesisStatus.ESTABLISHED,
         )
         assert len(state.abandoned_hypotheses()) == 1
         assert state.abandoned_hypotheses()[0].id == "WH-001"
@@ -260,8 +282,10 @@ class TestFailureTracking:
     def test_abandoned_status_round_trip(self):
         state = ResearchState(iteration=5)
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Bad idea",
-            status=HypothesisStatus.ABANDONED, iteration_modified=3,
+            id="WH-001",
+            statement="Bad idea",
+            status=HypothesisStatus.ABANDONED,
+            iteration_modified=3,
         )
         restored = ResearchState.from_json(state.to_json())
         assert restored.hypotheses["WH-001"].status == HypothesisStatus.ABANDONED
@@ -272,8 +296,8 @@ class TestFailureTracking:
 # New ResearchState fields
 # ---------------------------------------------------------------------------
 
-class TestNewResearchStateFields:
 
+class TestNewResearchStateFields:
     def test_defaults(self):
         state = ResearchState()
         assert state.problem_statement == ""
@@ -300,18 +324,22 @@ class TestNewResearchStateFields:
         assert restored.problem_statement == "Derive Hawking temperature."
         assert restored.conventions == "Natural units: hbar = c = k_B = 1."
         assert restored.strategy == "Focus on surface gravity approach."
-        assert restored.research_notes == [{"text": "Surface gravity confirmed.", "iteration": 1}]
+        assert restored.research_notes == [
+            {"text": "Surface gravity confirmed.", "iteration": 1}
+        ]
         assert restored.status == "complete"
         assert restored.title == "Hawking Temperature"
 
     def test_backward_compat_missing_fields(self):
         """Loading old JSON without new fields should use defaults."""
-        old_json = json.dumps({
-            "iteration": 5,
-            "hypotheses": {},
-            "critiques": {},
-            "failed_approaches": [],
-        })
+        old_json = json.dumps(
+            {
+                "iteration": 5,
+                "hypotheses": {},
+                "critiques": {},
+                "failed_approaches": [],
+            }
+        )
         state = ResearchState.from_json(old_json)
         assert state.iteration == 5
         assert state.problem_statement == ""
@@ -322,19 +350,20 @@ class TestNewResearchStateFields:
 
     def test_backward_compat_open_questions_ignored(self):
         """Old JSON with open_questions field loads fine (silently ignored)."""
-        old_json = json.dumps({
-            "iteration": 3,
-            "open_questions": "What about grey-body factors?",
-            "hypotheses": {},
-            "critiques": {},
-            "failed_approaches": [],
-        })
+        old_json = json.dumps(
+            {
+                "iteration": 3,
+                "open_questions": "What about grey-body factors?",
+                "hypotheses": {},
+                "critiques": {},
+                "failed_approaches": [],
+            }
+        )
         state = ResearchState.from_json(old_json)
         assert state.iteration == 3
 
 
 class TestSurveyFieldSerialization:
-
     def test_survey_fields_default_empty(self):
         state = ResearchState()
         assert state.survey_background == ""
@@ -356,12 +385,14 @@ class TestSurveyFieldSerialization:
 
     def test_missing_survey_fields_load_as_empty(self):
         """JSON without survey fields loads fine with empty defaults."""
-        old_json = json.dumps({
-            "iteration": 5,
-            "hypotheses": {},
-            "critiques": {},
-            "failed_approaches": [],
-        })
+        old_json = json.dumps(
+            {
+                "iteration": 5,
+                "hypotheses": {},
+                "critiques": {},
+                "failed_approaches": [],
+            }
+        )
         state = ResearchState.from_json(old_json)
         assert state.survey_background == ""
         assert state.survey_methods == ""
@@ -369,14 +400,21 @@ class TestSurveyFieldSerialization:
 
     def test_problem_summary_round_trip(self):
         state = ResearchState(iteration=1)
-        state.problem_summary = "Derive the Hawking temperature for a Schwarzschild black hole."
+        state.problem_summary = (
+            "Derive the Hawking temperature for a Schwarzschild black hole."
+        )
         json_str = state.to_json()
         restored = ResearchState.from_json(json_str)
-        assert restored.problem_summary == "Derive the Hawking temperature for a Schwarzschild black hole."
+        assert (
+            restored.problem_summary
+            == "Derive the Hawking temperature for a Schwarzschild black hole."
+        )
 
     def test_missing_problem_summary_loads_as_empty(self):
         """JSON without problem_summary loads fine with empty default."""
-        old_json = json.dumps({"iteration": 5, "hypotheses": {}, "critiques": {}, "failed_approaches": []})
+        old_json = json.dumps(
+            {"iteration": 5, "hypotheses": {}, "critiques": {}, "failed_approaches": []}
+        )
         state = ResearchState.from_json(old_json)
         assert state.problem_summary == ""
 
@@ -387,12 +425,13 @@ class TestSurveyFieldSerialization:
         assert data["survey_methods"] == ""
         assert data["known_pitfalls"] == ""
 
+
 # ---------------------------------------------------------------------------
 # Evidence and ReviewResult on Hypothesis
 # ---------------------------------------------------------------------------
 
-class TestEvidenceOnHypothesis:
 
+class TestEvidenceOnHypothesis:
     def test_evidence_defaults(self):
         ev = Evidence()
         assert ev.type == ""
@@ -410,16 +449,18 @@ class TestEvidenceOnHypothesis:
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
             id="WH-001",
-            evidence=[Evidence(
-                type="compute",
-                approach="Direct numerical computation",
-                scripts=["001_verify.py"],
-                output="Result: 0.785",
-                method="numerical integration",
-                result="pi/4 ~ 0.785",
-                confidence="approximate",
-                iteration=3,
-            )],
+            evidence=[
+                Evidence(
+                    type="compute",
+                    approach="Direct numerical computation",
+                    scripts=["001_verify.py"],
+                    output="Result: 0.785",
+                    method="numerical integration",
+                    result="pi/4 ~ 0.785",
+                    confidence="approximate",
+                    iteration=3,
+                )
+            ],
         )
         restored = ResearchState.from_json(state.to_json())
         ev_list = restored.hypotheses["WH-001"].evidence
@@ -438,15 +479,17 @@ class TestEvidenceOnHypothesis:
         state = ResearchState()
         state.hypotheses["WH-002"] = Hypothesis(
             id="WH-002",
-            evidence=[Evidence(
-                type="research",
-                reasoning="Full derivation...",
-                method="contour integration",
-                result="I = 2*pi*i",
-                confidence="exact",
-                summary="Residue theorem gives I = 2*pi*i",
-                iteration=2,
-            )],
+            evidence=[
+                Evidence(
+                    type="research",
+                    reasoning="Full derivation...",
+                    method="contour integration",
+                    result="I = 2*pi*i",
+                    confidence="exact",
+                    summary="Residue theorem gives I = 2*pi*i",
+                    iteration=2,
+                )
+            ],
         )
         restored = ResearchState.from_json(state.to_json())
         ev_list = restored.hypotheses["WH-002"].evidence
@@ -458,15 +501,21 @@ class TestEvidenceOnHypothesis:
     def test_evidence_summary_on_rq_round_trip(self):
         """Evidence.summary on RQ survives JSON serialization."""
         from open_dirac.research_state import ResearchQuestion
+
         state = ResearchState()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is X?",
-            evidence=[Evidence(
-                type="research", method="analysis",
-                result="X = 42", confidence="exact",
-                summary="Found X by direct calculation",
-                iteration=1,
-            )],
+            id="RQ-001",
+            question="What is X?",
+            evidence=[
+                Evidence(
+                    type="research",
+                    method="analysis",
+                    result="X = 42",
+                    confidence="exact",
+                    summary="Found X by direct calculation",
+                    iteration=1,
+                )
+            ],
         )
         restored = ResearchState.from_json(state.to_json())
         ev_list = restored.research_questions["RQ-001"].evidence
@@ -503,7 +552,8 @@ class TestEvidenceOnHypothesis:
         """refuted_count on Hypothesis survives serialization."""
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", refuted_count=2,
+            id="WH-001",
+            refuted_count=2,
             review=ReviewResult(verdict="REFUTED", summary="Wrong", iteration=3),
         )
         restored = ResearchState.from_json(state.to_json())
@@ -511,12 +561,14 @@ class TestEvidenceOnHypothesis:
 
     def test_refuted_count_backward_compat(self):
         """Old JSON without refuted_count defaults to 0."""
-        old_json = json.dumps({
-            "iteration": 1,
-            "hypotheses": {
-                "WH-001": {"id": "WH-001", "status": "working"},
-            },
-        })
+        old_json = json.dumps(
+            {
+                "iteration": 1,
+                "hypotheses": {
+                    "WH-001": {"id": "WH-001", "status": "working"},
+                },
+            }
+        )
         restored = ResearchState.from_json(old_json)
         assert restored.hypotheses["WH-001"].refuted_count == 0
 
@@ -529,18 +581,20 @@ class TestEvidenceOnHypothesis:
 
     def test_backward_compat_missing_evidence_fields(self):
         """Old JSON without evidence/review on hypotheses uses empty list / None."""
-        old_json = json.dumps({
-            "iteration": 1,
-            "hypotheses": {
-                "WH-001": {
-                    "id": "WH-001",
-                    "statement": "Test hypothesis",
-                    "status": "working",
-                }
-            },
-            "critiques": {},
-            "failed_approaches": [],
-        })
+        old_json = json.dumps(
+            {
+                "iteration": 1,
+                "hypotheses": {
+                    "WH-001": {
+                        "id": "WH-001",
+                        "statement": "Test hypothesis",
+                        "status": "working",
+                    }
+                },
+                "critiques": {},
+                "failed_approaches": [],
+            }
+        )
         state = ResearchState.from_json(old_json)
         h = state.hypotheses["WH-001"]
         assert not h.evidence
@@ -551,8 +605,8 @@ class TestEvidenceOnHypothesis:
 # has_verified_evidence and hypotheses_with_evidence
 # ---------------------------------------------------------------------------
 
-class TestNewQueryMethods:
 
+class TestNewQueryMethods:
     def test_has_verified_evidence_true(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
@@ -604,8 +658,8 @@ class TestNewQueryMethods:
 # next_*_num methods
 # ---------------------------------------------------------------------------
 
-class TestNextNumMethods:
 
+class TestNextNumMethods:
     def test_next_hypothesis_num_basic(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
@@ -643,8 +697,8 @@ class TestNextNumMethods:
 # _extract_h1_section
 # ---------------------------------------------------------------------------
 
-class TestExtractH1Section:
 
+class TestExtractH1Section:
     MULTI_SECTION_DOC = """\
 # Problem Statement
 
@@ -706,6 +760,7 @@ Nothing yet.
 # Phase 3: Justification graph (B4) tests
 # ---------------------------------------------------------------------------
 
+
 class TestHypothesisDependsOn:
     """Tests for depends_on field."""
 
@@ -713,7 +768,8 @@ class TestHypothesisDependsOn:
         """depends_on survives JSON serialization round-trip."""
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="A depends on B",
+            id="WH-001",
+            statement="A depends on B",
             depends_on=["ER-001", "WH-002"],
         )
         json_str = state.to_json()
@@ -739,17 +795,20 @@ class TestUnestablishedDependencies:
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", depends_on=["WH-001"],
+            id="WH-002",
+            depends_on=["WH-001"],
         )
         assert state.unestablished_dependencies("WH-002") == ["WH-001"]
 
     def test_returns_empty_when_dependency_established(self):
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", depends_on=["ER-001"],
+            id="WH-002",
+            depends_on=["ER-001"],
         )
         assert state.unestablished_dependencies("WH-002") == []
 
@@ -762,7 +821,8 @@ class TestUnestablishedDependencies:
         """Dependency pointing to non-existent ID is unestablished."""
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", depends_on=["WH-099"],
+            id="WH-001",
+            depends_on=["WH-099"],
         )
         assert state.unestablished_dependencies("WH-001") == ["WH-099"]
 
@@ -775,11 +835,13 @@ class TestUnestablishedDependencies:
 # Phase 4b: Research Questions (B1+B3) tests
 # ---------------------------------------------------------------------------
 
+
 class TestResearchQuestionLifecycle:
     """Tests for ResearchQuestion entity and queries."""
 
     def test_json_round_trip(self):
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         state = ResearchState()
         state.research_questions["RQ-001"] = ResearchQuestion(
             id="RQ-001",
@@ -805,39 +867,54 @@ class TestResearchQuestionLifecycle:
 
     def test_open_research_questions(self):
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         state = ResearchState()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Open one", status=RQStatus.OPEN,
+            id="RQ-001",
+            question="Open one",
+            status=RQStatus.OPEN,
         )
         state.research_questions["RQ-002"] = ResearchQuestion(
-            id="RQ-002", question="Resolved one", status=RQStatus.RESOLVED,
+            id="RQ-002",
+            question="Resolved one",
+            status=RQStatus.RESOLVED,
         )
         assert len(state.open_research_questions()) == 1
         assert state.open_research_questions()[0].id == "RQ-001"
 
     def test_next_rq_num(self):
         from open_dirac.research_state import ResearchQuestion
+
         state = ResearchState()
         assert state.next_rq_num() == 1
         state.research_questions["RQ-001"] = ResearchQuestion(id="RQ-001")
         assert state.next_rq_num() == 2
 
+
 # ---------------------------------------------------------------------------
 # Evidence on ResearchQuestion
 # ---------------------------------------------------------------------------
+
 
 class TestResearchQuestionEvidence:
     """Evidence can be attached to research questions."""
 
     def test_rq_evidence_round_trip(self):
         from open_dirac.research_state import ResearchQuestion
+
         state = ResearchState()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is F?",
-            evidence=[Evidence(
-                type="research", method="analysis",
-                result="F = pi/4", confidence="exact", iteration=2,
-            )],
+            id="RQ-001",
+            question="What is F?",
+            evidence=[
+                Evidence(
+                    type="research",
+                    method="analysis",
+                    result="F = pi/4",
+                    confidence="exact",
+                    iteration=2,
+                )
+            ],
         )
         restored = ResearchState.from_json(state.to_json())
         rq = restored.research_questions["RQ-001"]
@@ -847,6 +924,7 @@ class TestResearchQuestionEvidence:
 
     def test_rq_no_evidence_default(self):
         from open_dirac.research_state import ResearchQuestion
+
         rq = ResearchQuestion(id="RQ-001", question="Test")
         assert not rq.evidence
 
@@ -855,20 +933,30 @@ class TestResearchQuestionEvidence:
 # Evidence on Critique
 # ---------------------------------------------------------------------------
 
+
 class TestCritiqueEvidence:
     """Evidence can be attached to critiques."""
 
     def test_critique_evidence_round_trip(self):
         from open_dirac.research_state import Critique, Severity, CritiqueStatus
+
         state = ResearchState()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
             argument="Spin prediction may be wrong.",
-            status=CritiqueStatus.ACTIVE, iteration_filed=3,
-            evidence=[Evidence(
-                type="research", method="re-derivation",
-                result="Spin is indeed 1", confidence="exact", iteration=4,
-            )],
+            status=CritiqueStatus.ACTIVE,
+            iteration_filed=3,
+            evidence=[
+                Evidence(
+                    type="research",
+                    method="re-derivation",
+                    result="Spin is indeed 1",
+                    confidence="exact",
+                    iteration=4,
+                )
+            ],
         )
         restored = ResearchState.from_json(state.to_json())
         crit = restored.critiques["CRIT-001"]
@@ -879,16 +967,21 @@ class TestCritiqueEvidence:
 
     def test_critique_no_evidence_default(self):
         from open_dirac.research_state import Critique
+
         crit = Critique(id="CRIT-001")
         assert not crit.evidence
 
     def test_critique_no_evidence_round_trip(self):
         """Critique without evidence survives round-trip (backward compat)."""
         from open_dirac.research_state import Critique, Severity, CritiqueStatus
+
         state = ResearchState()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["STRATEGY"], severity=Severity.MEDIUM,
-            argument="Strategy is vague.", status=CritiqueStatus.ACTIVE,
+            id="CRIT-001",
+            targets=["STRATEGY"],
+            severity=Severity.MEDIUM,
+            argument="Strategy is vague.",
+            status=CritiqueStatus.ACTIVE,
             iteration_filed=2,
         )
         restored = ResearchState.from_json(state.to_json())

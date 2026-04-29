@@ -61,7 +61,6 @@ class TestParseTask:
         assert task.iteration == 42
 
 
-
 class TestConventionReminder:
     """Test the gentle nudge when the Conventions section is still placeholder."""
 
@@ -73,7 +72,9 @@ class TestConventionReminder:
 
     def test_no_reminder_when_conventions_populated(self, orchestrator, workspace):
         rs = ResearchState()
-        rs.conventions = "- Natural units: h = c = k_B = 1\n- Metric signature: (-, +, +, +)"
+        rs.conventions = (
+            "- Natural units: h = c = k_B = 1\n- Metric signature: (-, +, +, +)"
+        )
         orchestrator.research_state = rs
         context = orchestrator.build_context(_EMPTY_TASK, iteration=5)
         assert "REMINDER" not in context

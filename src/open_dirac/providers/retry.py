@@ -19,37 +19,44 @@ from .base import LLMProvider, ProviderResponse
 TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504, 520, 521, 522, 523, 524}
 
 TRANSIENT_EXC_NAMES = {
-    "ConnectionError", "TimeoutError", "ReadTimeout",
-    "ConnectTimeout", "ConnectionResetError",
-    "RemoteDisconnected", "BrokenPipeError",
-    "APITimeoutError", "APIConnectionError",
-    "APIStatusError", "ServerError",
+    "ConnectionError",
+    "TimeoutError",
+    "ReadTimeout",
+    "ConnectTimeout",
+    "ConnectionResetError",
+    "RemoteDisconnected",
+    "BrokenPipeError",
+    "APITimeoutError",
+    "APIConnectionError",
+    "APIStatusError",
+    "ServerError",
     "RemoteProtocolError",
 }
 
 _PROVIDER_SIDE_400_PATTERNS = {
-    "post processor",       # HuggingFace "gpt oss post processor" internal error
+    "post processor",  # HuggingFace "gpt oss post processor" internal error
     "internal error",
     "backend error",
-    "input validation",     # HuggingFace context-length / format rejection
+    "input validation",  # HuggingFace context-length / format rejection
 }
 
 _CONTEXT_TOO_LONG_PATTERNS = (
-    "maximum context length",     # OpenAI / vLLM
-    "prompt is too long",         # Anthropic
-    "input is too long",          # HuggingFace
-    "context window",             # generic
-    "token limit",                # generic
-    "reduce the length",          # OpenAI suggestion text
-    "prompt_too_long",            # Google Gemini error code
-    "context_length_exceeded",    # OpenAI error code
-    "max_tokens",                 # vLLM variants
+    "maximum context length",  # OpenAI / vLLM
+    "prompt is too long",  # Anthropic
+    "input is too long",  # HuggingFace
+    "context window",  # generic
+    "token limit",  # generic
+    "reduce the length",  # OpenAI suggestion text
+    "prompt_too_long",  # Google Gemini error code
+    "context_length_exceeded",  # OpenAI error code
+    "max_tokens",  # vLLM variants
 )
 
 
 # ---------------------------------------------------------------------------
 # Exception type
 # ---------------------------------------------------------------------------
+
 
 class ContextTooLongError(Exception):
     """Raised when a provider rejects a request because the context is too long.
@@ -73,6 +80,7 @@ class ContextTooLongError(Exception):
 # ---------------------------------------------------------------------------
 # Classifiers
 # ---------------------------------------------------------------------------
+
 
 def extract_status_code(exc: Exception) -> int | None:
     """Extract a numeric HTTP status code from an exception, or None.
@@ -107,12 +115,15 @@ def is_tool_call_failure(exc: Exception) -> bool:
     Covers both JSON parse failures and OSS models ignoring tool_choice=none.
     """
     msg = str(exc).lower()
-    return any(p in msg for p in (
-        "tool_use_failed",
-        "failed to parse tool call arguments",
-        "output_parse_failed",      # HF backend can't parse non-tool output
-        "tool choice",              # "Tool choice is none, but model called a tool"
-    ))
+    return any(
+        p in msg
+        for p in (
+            "tool_use_failed",
+            "failed to parse tool call arguments",
+            "output_parse_failed",  # HF backend can't parse non-tool output
+            "tool choice",  # "Tool choice is none, but model called a tool"
+        )
+    )
 
 
 def is_provider_side_400(exc: Exception) -> bool:
@@ -145,7 +156,9 @@ def parse_context_error(exc: Exception) -> tuple[int, int]:
     input_tokens = 0
     max_context = 0
     # OpenAI / vLLM: "contains at least 65537 input tokens"
-    m = re.search(r"(?:contains|has)\s+(?:at\s+least\s+)?(\d+)\s+(?:input[_ ])?tokens", msg)
+    m = re.search(
+        r"(?:contains|has)\s+(?:at\s+least\s+)?(\d+)\s+(?:input[_ ])?tokens", msg
+    )
     if m:
         input_tokens = int(m.group(1))
     # OpenAI / vLLM: "maximum context length is 131072 tokens"

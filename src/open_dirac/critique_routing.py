@@ -52,7 +52,8 @@ def route_critiques(
     from .research_state import CritiqueStatus
 
     new_critiques = [
-        c for c in research_state.critiques.values()
+        c
+        for c in research_state.critiques.values()
         if c.iteration_filed == iteration and c.status == CritiqueStatus.ACTIVE
     ]
     if not new_critiques:
@@ -60,8 +61,16 @@ def route_critiques(
 
     # Separate by target_type
     er_critiques = [c for c in new_critiques if c.target_type == "er"]
-    strategy_critiques = [c for c in new_critiques if c.target_type in ("strategy", "coordination", "sanity_check")]
-    untyped = [c for c in new_critiques if c.target_type not in ("er", "strategy", "coordination", "sanity_check")]
+    strategy_critiques = [
+        c
+        for c in new_critiques
+        if c.target_type in ("strategy", "coordination", "sanity_check")
+    ]
+    untyped = [
+        c
+        for c in new_critiques
+        if c.target_type not in ("er", "strategy", "coordination", "sanity_check")
+    ]
 
     # Warn and auto-resolve untyped critiques
     for c in untyped:
@@ -76,29 +85,47 @@ def route_critiques(
     for crit in er_critiques:
         try:
             result = adjudicate_er_critique(
-                crit, research_state, loop_state, iteration, workspace, adjudicator, on_round,
+                crit,
+                research_state,
+                loop_state,
+                iteration,
+                workspace,
+                adjudicator,
+                on_round,
             )
             if result and result.get("demoted"):
                 er_demotions.append(result)
         except Exception as exc:
             console.print(f"  [red]Adjudication failed for {crit.id}: {exc}[/red]")
             log_scaffold_event(
-                workspace.root, iteration, CC.STATE_INVARIANTS,
-                "adjudication_error", f"{crit.id}: {exc}",
+                workspace.root,
+                iteration,
+                CC.STATE_INVARIANTS,
+                "adjudication_error",
+                f"{crit.id}: {exc}",
             )
 
     # Phase 2: Strategy assessment (if demotions or strategy critiques)
     if er_demotions or strategy_critiques:
         try:
             invoke_planner_revision(
-                strategy_critiques, er_demotions, research_state, loop_state,
-                iteration, workspace, planner, on_round,
+                strategy_critiques,
+                er_demotions,
+                research_state,
+                loop_state,
+                iteration,
+                workspace,
+                planner,
+                on_round,
             )
         except Exception as exc:
             console.print(f"  [red]Planner revision failed: {exc}[/red]")
             log_scaffold_event(
-                workspace.root, iteration, CC.STATE_INVARIANTS,
-                "planner_revision_error", str(exc),
+                workspace.root,
+                iteration,
+                CC.STATE_INVARIANTS,
+                "planner_revision_error",
+                str(exc),
             )
 
 
@@ -119,14 +146,18 @@ def adjudicate_er_critique(
 
     target_id = crit.targets[0] if crit.targets else None
     if not target_id or target_id not in research_state.hypotheses:
-        console.print(f"  [dim]{crit.id} targets unknown entity {target_id} — dismissing[/dim]")
+        console.print(
+            f"  [dim]{crit.id} targets unknown entity {target_id} — dismissing[/dim]"
+        )
         crit.status = CritiqueStatus.RESOLVED
         crit.resolution = f"Target {target_id} not found"
         crit.resolution_type = "dismissed"
         crit.iteration_resolved = iteration
         return None
 
-    console.print(f"  [cyan]Adjudicator[/cyan] evaluating {crit.id} against {target_id}...")
+    console.print(
+        f"  [cyan]Adjudicator[/cyan] evaluating {crit.id} against {target_id}..."
+    )
     adjud_task = Task(
         task_id=f"ADJUD-{iteration:03d}-{crit.id}",
         task_type=TaskType.ADJUDICATE,
@@ -148,12 +179,13 @@ def adjudicate_er_critique(
 
     if adjudication == "valid":
         from .research_state import FailedApproach
+
         # Collect dependents before first demotion (normalize_references
         # rewrites depends_on from ER-NNN to WH-NNN after demotion)
         dependent_ids = [
-            hid for hid, h in research_state.hypotheses.items()
-            if h.status == HypothesisStatus.ESTABLISHED
-            and target_id in h.depends_on
+            hid
+            for hid, h in research_state.hypotheses.items()
+            if h.status == HypothesisStatus.ESTABLISHED and target_id in h.depends_on
         ]
         # Demote ER → WH and auto-abandon
         console.print(f"  [red]{crit.id} VALID — demoting {target_id}[/red]")
@@ -163,28 +195,34 @@ def adjudicate_er_critique(
             h.status = HypothesisStatus.ABANDONED
             h.review = None  # stale VERIFIED review must not trigger re-promotion
             h.iteration_modified = iteration
-            research_state.failed_approaches.append(FailedApproach(
-                description=f"Overturned {target_id} — {h.statement}",
-                reason=f"Adjudicator ruled critique {crit.id} valid: {reasoning}",
-                related_entities=[new_id],
-                derivation_excerpt=(h.derivation[:300] if h.derivation else ""),
-                iteration=iteration,
-            ))
+            research_state.failed_approaches.append(
+                FailedApproach(
+                    description=f"Overturned {target_id} — {h.statement}",
+                    reason=f"Adjudicator ruled critique {crit.id} valid: {reasoning}",
+                    related_entities=[new_id],
+                    derivation_excerpt=(h.derivation[:300] if h.derivation else ""),
+                    iteration=iteration,
+                )
+            )
         # Cascade: demote and auto-abandon dependents
         for dep_id in dependent_ids:
-            console.print(f"  [red]Cascade: demoting {dep_id} (depends on {target_id})[/red]")
+            console.print(
+                f"  [red]Cascade: demoting {dep_id} (depends on {target_id})[/red]"
+            )
             dep_new_id = demote_hypothesis(research_state, dep_id)
             if dep_new_id:
                 dep_h = research_state.hypotheses[dep_new_id]
                 dep_h.status = HypothesisStatus.ABANDONED
                 dep_h.review = None  # prevent stale re-promotion
                 dep_h.iteration_modified = iteration
-                research_state.failed_approaches.append(FailedApproach(
-                    description=f"Cascade from overturned {target_id} — {dep_h.statement}",
-                    reason=f"Depends on {target_id} which was overturned",
-                    related_entities=[dep_new_id],
-                    iteration=iteration,
-                ))
+                research_state.failed_approaches.append(
+                    FailedApproach(
+                        description=f"Cascade from overturned {target_id} — {dep_h.statement}",
+                        reason=f"Depends on {target_id} which was overturned",
+                        related_entities=[dep_new_id],
+                        iteration=iteration,
+                    )
+                )
             loop_state.pending_system_events.append(
                 f"{dep_id} DEMOTED and ABANDONED (depends on overturned {target_id})"
             )
@@ -196,8 +234,11 @@ def adjudicate_er_critique(
             f"{target_id} OVERTURNED and ABANDONED: {crit.id} ruled valid by adjudicator."
         )
         log_scaffold_event(
-            workspace.root, iteration, CC.STATE_INVARIANTS,
-            "er_demotion", f"{target_id} overturned by {crit.id}",
+            workspace.root,
+            iteration,
+            CC.STATE_INVARIANTS,
+            "er_demotion",
+            f"{target_id} overturned by {crit.id}",
         )
         return {"demoted": target_id, "critique": crit.id, "reasoning": reasoning}
 
@@ -256,7 +297,7 @@ def invoke_planner_revision(
         )
     trigger_text = "\n\n".join(trigger_parts)
 
-    console.print(f"  [cyan]Planner[/cyan] revising strategy...")
+    console.print("  [cyan]Planner[/cyan] revising strategy...")
     revise_task = Task(
         task_id=f"PLAN-REVISE-{iteration:03d}",
         task_type=TaskType.PLAN_REVISE,
@@ -274,6 +315,7 @@ def invoke_planner_revision(
 
     if planner.parsed_sanity_checks is not None:
         from .research_state import SanityCheck
+
         new_checks: list[SanityCheck] = []
         for item in planner.parsed_sanity_checks:
             if isinstance(item, dict):
@@ -281,18 +323,30 @@ def invoke_planner_revision(
                 predicate = item.get("predicate", str(item))
                 rationale = item.get("rationale", "")
                 if existing_id and existing_id.startswith("SC-"):
-                    new_checks.append(SanityCheck(id=existing_id, predicate=predicate, rationale=rationale))
+                    new_checks.append(
+                        SanityCheck(
+                            id=existing_id, predicate=predicate, rationale=rationale
+                        )
+                    )
                 else:
                     sc_num = research_state.next_sc_num()
                     # Account for checks already added in this batch
                     while any(c.id == f"SC-{sc_num:03d}" for c in new_checks):
                         sc_num += 1
-                    new_checks.append(SanityCheck(id=f"SC-{sc_num:03d}", predicate=predicate, rationale=rationale))
+                    new_checks.append(
+                        SanityCheck(
+                            id=f"SC-{sc_num:03d}",
+                            predicate=predicate,
+                            rationale=rationale,
+                        )
+                    )
             elif isinstance(item, str) and item.strip():
                 sc_num = research_state.next_sc_num()
                 while any(c.id == f"SC-{sc_num:03d}" for c in new_checks):
                     sc_num += 1
-                new_checks.append(SanityCheck(id=f"SC-{sc_num:03d}", predicate=item.strip()))
+                new_checks.append(
+                    SanityCheck(id=f"SC-{sc_num:03d}", predicate=item.strip())
+                )
         research_state.sanity_checks = new_checks
         console.print(f"  [dim]Sanity checks updated ({len(new_checks)} checks)[/dim]")
 
@@ -309,19 +363,22 @@ def invoke_planner_revision(
                     )
             elif act == "abandon" and eid in research_state.hypotheses:
                 from .research_state import FailedApproach
+
                 h = research_state.hypotheses[eid]
                 if h.status == HypothesisStatus.ABANDONED:
                     console.print(f"  [dim]{eid} already abandoned, skipping[/dim]")
                     continue
                 h.status = HypothesisStatus.ABANDONED
                 h.iteration_modified = iteration
-                research_state.failed_approaches.append(FailedApproach(
-                    description=f"Abandoned {eid} — {h.statement}",
-                    reason=f"Planner revision: {reason}",
-                    related_entities=[eid],
-                    derivation_excerpt=(h.derivation[:300] if h.derivation else ""),
-                    iteration=iteration,
-                ))
+                research_state.failed_approaches.append(
+                    FailedApproach(
+                        description=f"Abandoned {eid} — {h.statement}",
+                        reason=f"Planner revision: {reason}",
+                        related_entities=[eid],
+                        derivation_excerpt=(h.derivation[:300] if h.derivation else ""),
+                        iteration=iteration,
+                    )
+                )
                 loop_state.pending_system_events.append(
                     f"{eid} ABANDONED by planner revision: {reason}"
                 )
@@ -344,27 +401,36 @@ def invoke_planner_revision(
             dismiss_reason = assessment.get("reason", "Dismissed by planner")[:200]
             c.resolution = f"Dismissed by planner: {dismiss_reason}"
             c.resolution_type = "dismissed"
-            console.print(f"  [yellow]{c.id} dismissed by planner: {dismiss_reason[:60]}[/yellow]")
+            console.print(
+                f"  [yellow]{c.id} dismissed by planner: {dismiss_reason[:60]}[/yellow]"
+            )
         else:
             c.resolution = f"Addressed in strategy revision: {rationale[:120]}"
             c.resolution_type = "accepted"
             console.print(f"  [green]{c.id} accepted by planner[/green]")
 
     accepted_ids = [c.id for c in strategy_critiques if c.resolution_type == "accepted"]
-    dismissed_ids = [c.id for c in strategy_critiques if c.resolution_type == "dismissed"]
+    dismissed_ids = [
+        c.id for c in strategy_critiques if c.resolution_type == "dismissed"
+    ]
     label_parts: list[str] = []
     if accepted_ids:
         label_parts.append(f"accepted: {', '.join(accepted_ids)}")
     if dismissed_ids:
         label_parts.append(f"dismissed: {', '.join(dismissed_ids)}")
-    event_label = f"STRATEGY REVISED ({'; '.join(label_parts)})" if label_parts else "STRATEGY REVISED"
-    loop_state.pending_system_events.append(
-        f"{event_label}: {rationale}"
+    event_label = (
+        f"STRATEGY REVISED ({'; '.join(label_parts)})"
+        if label_parts
+        else "STRATEGY REVISED"
     )
+    loop_state.pending_system_events.append(f"{event_label}: {rationale}")
 
     log_scaffold_event(
-        workspace.root, iteration, CC.STATE_INVARIANTS,
-        "strategy_revision", rationale[:200],
+        workspace.root,
+        iteration,
+        CC.STATE_INVARIANTS,
+        "strategy_revision",
+        rationale[:200],
     )
 
 
@@ -402,8 +468,11 @@ def auto_promote(
             continue
         er_id = promote_hypothesis(research_state, current_id, iteration)
         log_scaffold_event(
-            workspace.root, iteration, CC.STATE_INVARIANTS,
-            "auto_promote", f"{current_id} → {er_id}",
+            workspace.root,
+            iteration,
+            CC.STATE_INVARIANTS,
+            "auto_promote",
+            f"{current_id} → {er_id}",
         )
         console.print(f"  [bold green]{current_id} → {er_id}[/] auto-promoted")
         # Cascade: find VERIFIED WHs that might now have all deps met

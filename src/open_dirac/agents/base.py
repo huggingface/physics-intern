@@ -9,7 +9,14 @@ from typing import ClassVar, TYPE_CHECKING
 
 from ..config import Config
 from ..console import console
-from ..llm import AgentResult, ContextTooLongError, LLMResponse, ParseFailureError, call_llm, call_llm_continuation
+from ..llm import (
+    AgentResult,
+    ContextTooLongError,
+    LLMResponse,
+    ParseFailureError,
+    call_llm,
+    call_llm_continuation,
+)
 from ..metrics import MetricsTracker
 from ..tool_call import ToolCall
 from ..utils.categories import CompensationCategory as CC
@@ -29,7 +36,9 @@ class BaseAgent(ABC):
     raise_on_parse_failure: ClassVar[bool] = False
     # parse_retries is now read from self.config.parse_retries (config.default.yaml)
 
-    def __init__(self, config: Config, workspace: WorkspaceManager, metrics: MetricsTracker):
+    def __init__(
+        self, config: Config, workspace: WorkspaceManager, metrics: MetricsTracker
+    ):
         self.config = config
         self.workspace = workspace
         self.metrics = metrics
@@ -40,6 +49,7 @@ class BaseAgent(ABC):
     def system_prompt(self) -> str:
         if self._system_prompt is None:
             import inspect
+
             subclass_dir = Path(inspect.getfile(type(self))).parent
             path = subclass_dir / self.prompt_file
             self._system_prompt = path.read_text()
@@ -51,7 +61,9 @@ class BaseAgent(ABC):
         ...
 
     @abstractmethod
-    def process_response(self, response: LLMResponse | AgentResult, task: Task, iteration: int):
+    def process_response(
+        self, response: LLMResponse | AgentResult, task: Task, iteration: int
+    ):
         """Process the LLM response: write files, execute code, etc."""
         ...
 
@@ -59,12 +71,15 @@ class BaseAgent(ABC):
         self,
         task: Task,
         iteration: int,
-        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None] | None = None,
+        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None]
+        | None = None,
     ) -> LLMResponse | AgentResult:
         """Template method: build context -> call LLM -> process response."""
         context = self.build_context(task, iteration)
         if self.tools:
-            response = self._call_with_tools(context, task, iteration, on_round=on_round)
+            response = self._call_with_tools(
+                context, task, iteration, on_round=on_round
+            )
         else:
             response = self._call_with_retry(context, iteration)
         self.process_response(response, task, iteration)
@@ -75,7 +90,8 @@ class BaseAgent(ABC):
         context: str,
         task: Task,
         iteration: int,
-        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None] | None = None,
+        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None]
+        | None = None,
     ) -> AgentResult:
         """Run the tool-use agent loop. Subclasses with ``tools`` must override."""
         raise NotImplementedError(
@@ -123,8 +139,13 @@ class BaseAgent(ABC):
 
         max_retries = self.config.parse_retries
 
-        response = call_llm(self.system_prompt, context, self.config,
-                            agent_name=self.name, iteration=iteration)
+        response = call_llm(
+            self.system_prompt,
+            context,
+            self.config,
+            agent_name=self.name,
+            iteration=iteration,
+        )
 
         self.metrics.record_call(
             iteration=iteration,
@@ -181,8 +202,10 @@ class BaseAgent(ABC):
                 f"[yellow]          retrying {phase} ({attempt + 1}/{max_retries})...[/yellow]"
             )
             log_scaffold_event(
-                self.workspace.root, iteration,
-                category=CC.OUTPUT_NORMALIZATION, event="parse_retry",
+                self.workspace.root,
+                iteration,
+                category=CC.OUTPUT_NORMALIZATION,
+                event="parse_retry",
                 detail=(
                     f"agent={self.name}, trigger={response.stop_reason}, "
                     f"phase={phase}, attempt={attempt + 1}/{max_retries}, "
@@ -193,14 +216,12 @@ class BaseAgent(ABC):
             # Build the correction message
             error_line = (
                 f"Your JSON output failed to parse: {parse_error}\n\n"
-                if parse_error else
-                "Your response did not contain valid structured JSON.\n\n"
+                if parse_error
+                else "Your response did not contain valid structured JSON.\n\n"
             )
             correction = (
-                error_line
-                + "Do not repeat the analysis. Output ONLY the corrected "
-                "fenced ```json``` block.\n\n"
-                + hint
+                error_line + "Do not repeat the analysis. Output ONLY the corrected "
+                "fenced ```json``` block.\n\n" + hint
             )
 
             try:
@@ -212,20 +233,22 @@ class BaseAgent(ABC):
                         {"role": "user", "content": correction},
                     ]
                     retry = call_llm_continuation(
-                        self.system_prompt, messages, self.config,
-                        agent_name=self.name, iteration=iteration,
+                        self.system_prompt,
+                        messages,
+                        self.config,
+                        agent_name=self.name,
+                        iteration=iteration,
                         append_to_log=response.log_path,
                     )
                 else:
                     # Phase 2: fresh call with error context
-                    retry_context = (
-                        f"{context}\n\n"
-                        "---\n\n"
-                        + correction
-                    )
+                    retry_context = f"{context}\n\n---\n\n" + correction
                     retry = call_llm(
-                        self.system_prompt, retry_context, self.config,
-                        agent_name=self.name, iteration=iteration,
+                        self.system_prompt,
+                        retry_context,
+                        self.config,
+                        agent_name=self.name,
+                        iteration=iteration,
                     )
             except ContextTooLongError:
                 console.print(
@@ -234,7 +257,8 @@ class BaseAgent(ABC):
                     f"response so far[/yellow]"
                 )
                 log_scaffold_event(
-                    self.workspace.root, iteration,
+                    self.workspace.root,
+                    iteration,
                     category=CC.OUTPUT_NORMALIZATION,
                     event="parse_retry_context_too_long",
                     detail=f"agent={self.name}, attempt={attempt + 1}",
@@ -277,7 +301,8 @@ class BaseAgent(ABC):
                     f"(attempt {attempt + 1})[/green]"
                 )
                 log_scaffold_event(
-                    self.workspace.root, iteration,
+                    self.workspace.root,
+                    iteration,
                     category=CC.OUTPUT_NORMALIZATION,
                     event="parse_retry_success",
                     detail=f"agent={self.name}, phase={phase}, attempt={attempt + 1}",
@@ -291,7 +316,8 @@ class BaseAgent(ABC):
                 f"({max_retries}/{max_retries})[/red]"
             )
             log_scaffold_event(
-                self.workspace.root, iteration,
+                self.workspace.root,
+                iteration,
                 category=CC.OUTPUT_NORMALIZATION,
                 event="parse_retry_failed",
                 detail=f"agent={self.name}",
@@ -302,7 +328,7 @@ class BaseAgent(ABC):
             raise ParseFailureError(
                 agent_name=self.name,
                 detail=f"stop_reason={response.stop_reason}, "
-                       f"text_len={len(response.text or '')}",
+                f"text_len={len(response.text or '')}",
             )
 
         return response
@@ -312,10 +338,12 @@ class BaseAgent(ABC):
         self.metrics.alert(
             iteration,
             f"max_tokens_reached on {self.name} "
-            f"(input={response.input_tokens}, output={response.output_tokens})"
+            f"(input={response.input_tokens}, output={response.output_tokens})",
         )
         log_scaffold_event(
-            self.workspace.root, iteration,
-            category=CC.LOOP_CONTROL, event="max_tokens_unrecoverable",
+            self.workspace.root,
+            iteration,
+            category=CC.LOOP_CONTROL,
+            event="max_tokens_unrecoverable",
             detail=f"agent={self.name}, output_tokens={response.output_tokens}",
         )

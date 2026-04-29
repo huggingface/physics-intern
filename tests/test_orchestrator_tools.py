@@ -4,15 +4,22 @@ from unittest.mock import MagicMock
 
 from open_dirac.agents.orchestrator.tools import OrchestratorToolExecutor
 from open_dirac.research_state import (
-    ResearchState, Hypothesis, HypothesisStatus, Verdict,
-    Critique, Severity, CritiqueStatus, FailedApproach,
-    Evidence, ReviewResult,
+    ResearchState,
+    Hypothesis,
+    HypothesisStatus,
+    Verdict,
+    Critique,
+    Severity,
+    CritiqueStatus,
+    Evidence,
+    ReviewResult,
 )
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_workspace():
     ws = MagicMock()
@@ -25,14 +32,20 @@ def _make_state() -> ResearchState:
     """ResearchState with two working hypotheses, no computations or critiques."""
     state = ResearchState()
     state.hypotheses["WH-001"] = Hypothesis(
-        id="WH-001", statement="First hypothesis",
-        status=HypothesisStatus.WORKING, derivation="Photon has spin-1.",
-        iteration_created=1, iteration_modified=1,
+        id="WH-001",
+        statement="First hypothesis",
+        status=HypothesisStatus.WORKING,
+        derivation="Photon has spin-1.",
+        iteration_created=1,
+        iteration_modified=1,
     )
     state.hypotheses["WH-002"] = Hypothesis(
-        id="WH-002", statement="Second hypothesis",
-        status=HypothesisStatus.WORKING, derivation="Entropy increases in isolated systems.",
-        iteration_created=2, iteration_modified=2,
+        id="WH-002",
+        statement="Second hypothesis",
+        status=HypothesisStatus.WORKING,
+        derivation="Entropy increases in isolated systems.",
+        iteration_created=2,
+        iteration_modified=2,
     )
     return state
 
@@ -41,7 +54,9 @@ def _make_state_with_verified(target: str = "WH-001") -> ResearchState:
     """State with a VERIFIED review result on *target*."""
     state = _make_state()
     state.hypotheses[target].review = ReviewResult(
-        verdict=Verdict.VERIFIED, summary=f"Verified {target}", iteration=3,
+        verdict=Verdict.VERIFIED,
+        summary=f"Verified {target}",
+        iteration=3,
     )
     return state
 
@@ -50,7 +65,9 @@ def _make_state_with_refuted(target: str = "WH-001") -> ResearchState:
     """State with a REFUTED review result on *target*."""
     state = _make_state()
     state.hypotheses[target].review = ReviewResult(
-        verdict=Verdict.REFUTED, summary=f"Refuted {target}", iteration=3,
+        verdict=Verdict.REFUTED,
+        summary=f"Refuted {target}",
+        iteration=3,
     )
     return state
 
@@ -59,7 +76,9 @@ def _make_state_with_refuted_and_verified(target: str = "WH-001") -> ResearchSta
     """State with a VERIFIED review result on *target* (supersedes earlier refutation)."""
     state = _make_state()
     state.hypotheses[target].review = ReviewResult(
-        verdict=Verdict.VERIFIED, summary=f"Verified {target} (corrected)", iteration=4,
+        verdict=Verdict.VERIFIED,
+        summary=f"Verified {target} (corrected)",
+        iteration=4,
     )
     return state
 
@@ -68,8 +87,11 @@ def _make_state_with_high_critique(target: str = "WH-001") -> ResearchState:
     """State with VERIFIED review + unresolved HIGH critique targeting *target*."""
     state = _make_state_with_verified(target)
     state.critiques["CRIT-001"] = Critique(
-        id="CRIT-001", targets=[target], severity=Severity.HIGH,
-        status=CritiqueStatus.ACTIVE, argument="Spin prediction may be wrong.",
+        id="CRIT-001",
+        targets=[target],
+        severity=Severity.HIGH,
+        status=CritiqueStatus.ACTIVE,
+        argument="Spin prediction may be wrong.",
     )
     return state
 
@@ -78,22 +100,28 @@ def _make_state_with_high_critique(target: str = "WH-001") -> ResearchState:
 # add_hypothesis
 # ---------------------------------------------------------------------------
 
+
 class TestAddHypothesis:
     def test_creates_wh003_in_state(self):
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ws = _make_workspace()
         state = _make_state()
         state.hypotheses["WH-002"].status = HypothesisStatus.ESTABLISHED
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="What is the third result?",
+            id="RQ-003",
+            question="What is the third result?",
             iteration_created=2,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("add_hypothesis", {
-            "statement": "Third hypothesis",
-            "derivation": "Some derivation.",
-            "from_rq": "RQ-003",
-        })
+        tc = ex.execute(
+            "add_hypothesis",
+            {
+                "statement": "Third hypothesis",
+                "derivation": "Some derivation.",
+                "from_rq": "RQ-003",
+            },
+        )
         assert not tc.is_error
         assert "WH-003" in tc.output
         assert "WH-003" in state.hypotheses
@@ -112,44 +140,69 @@ class TestAddHypothesis:
         state = _make_state()
         state.hypotheses["WH-002"].status = HypothesisStatus.ESTABLISHED
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("add_hypothesis", {
-            "statement": "Third hypothesis",
-            "derivation": "Some derivation.",
-        })
+        tc = ex.execute(
+            "add_hypothesis",
+            {
+                "statement": "Third hypothesis",
+                "derivation": "Some derivation.",
+            },
+        )
         assert "from_rq is required" in tc.output
 
     def test_blocked_by_wh_cap(self):
         """Cannot create WH when >= 2 working hypotheses exist."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = _make_state()  # 2 working WHs
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="Q?", iteration_created=1,
+            id="RQ-003",
+            question="Q?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("add_hypothesis", {
-            "statement": "Blocked", "from_rq": "RQ-003",
-        })
+        tc = ex.execute(
+            "add_hypothesis",
+            {
+                "statement": "Blocked",
+                "from_rq": "RQ-003",
+            },
+        )
         assert "already 2 working hypotheses" in tc.output
         assert "WH-003" not in state.hypotheses
 
     def test_blocked_by_unresolved_critiques(self):
         """Cannot create WH when unresolved critiques exist."""
-        from open_dirac.research_state import Critique, CritiqueStatus, ResearchQuestion, Severity
+        from open_dirac.research_state import (
+            Critique,
+            CritiqueStatus,
+            ResearchQuestion,
+            Severity,
+        )
+
         ws = _make_workspace()
         state = _make_state()
         state.hypotheses["WH-002"].status = HypothesisStatus.ESTABLISHED
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
-            status=CritiqueStatus.ACTIVE, argument="Issue.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
+            status=CritiqueStatus.ACTIVE,
+            argument="Issue.",
         )
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="Q?", iteration_created=1,
+            id="RQ-003",
+            question="Q?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("add_hypothesis", {
-            "statement": "Blocked", "from_rq": "RQ-003",
-        })
+        tc = ex.execute(
+            "add_hypothesis",
+            {
+                "statement": "Blocked",
+                "from_rq": "RQ-003",
+            },
+        )
         assert "blocked" in tc.output
         assert "strategic review" in tc.output
 
@@ -158,24 +211,34 @@ class TestAddHypothesis:
 # RQ evidence cap (dispatch blocked when saturated)
 # ---------------------------------------------------------------------------
 
+
 class TestRqEvidenceCap:
     def _make_rq_with_evidence(self, rq_id: str, n_evidence: int) -> "ResearchQuestion":
         from open_dirac.research_state import ResearchQuestion, Evidence
+
         rq = ResearchQuestion(id=rq_id, question="Q?", iteration_created=1)
         for i in range(n_evidence):
-            rq.evidence.append(Evidence(id=f"EV-{i+1:03d}", type="compute", result="r"))
+            rq.evidence.append(
+                Evidence(id=f"EV-{i + 1:03d}", type="compute", result="r")
+            )
         return rq
 
     def test_dispatch_blocked_when_rq_saturated(self):
         """dispatch_computer is rejected when an open RQ has >= cap evidence."""
-        from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         state.research_questions["RQ-001"] = self._make_rq_with_evidence("RQ-001", 3)
-        ex = OrchestratorToolExecutor(ws, iteration=5, research_state=state, rq_evidence_cap=3)
-        tc = ex.execute("dispatch_computer", {
-            "target_claim": "RQ-001", "description": "More work",
-        })
+        ex = OrchestratorToolExecutor(
+            ws, iteration=5, research_state=state, rq_evidence_cap=3
+        )
+        tc = ex.execute(
+            "dispatch_computer",
+            {
+                "target_claim": "RQ-001",
+                "description": "More work",
+            },
+        )
         assert "dispatch blocked" in tc.output
         assert "RQ-001" in tc.output
         assert ex.task_data is None  # dispatch did NOT go through
@@ -185,10 +248,16 @@ class TestRqEvidenceCap:
         ws = _make_workspace()
         state = ResearchState()
         state.research_questions["RQ-001"] = self._make_rq_with_evidence("RQ-001", 2)
-        ex = OrchestratorToolExecutor(ws, iteration=5, research_state=state, rq_evidence_cap=3)
-        tc = ex.execute("dispatch_computer", {
-            "target_claim": "RQ-001", "description": "More work",
-        })
+        ex = OrchestratorToolExecutor(
+            ws, iteration=5, research_state=state, rq_evidence_cap=3
+        )
+        tc = ex.execute(
+            "dispatch_computer",
+            {
+                "target_claim": "RQ-001",
+                "description": "More work",
+            },
+        )
         assert not tc.is_error
         assert ex.task_data is not None
 
@@ -197,29 +266,47 @@ class TestRqEvidenceCap:
         ws = _make_workspace()
         state = ResearchState()
         state.research_questions["RQ-001"] = self._make_rq_with_evidence("RQ-001", 4)
-        ex = OrchestratorToolExecutor(ws, iteration=5, research_state=state, rq_evidence_cap=3)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-001", "description": "Analyze",
-        })
+        ex = OrchestratorToolExecutor(
+            ws, iteration=5, research_state=state, rq_evidence_cap=3
+        )
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-001",
+                "description": "Analyze",
+            },
+        )
         assert "dispatch blocked" in tc.output
 
     def test_refuted_evidence_not_counted(self):
         """Refuted evidence does not count toward the cap."""
         from open_dirac.research_state import ResearchQuestion, Evidence
+
         ws = _make_workspace()
         state = ResearchState()
         rq = ResearchQuestion(id="RQ-001", question="Q?", iteration_created=1)
         for i in range(4):
-            rq.evidence.append(Evidence(
-                id=f"EV-{i+1:03d}", type="compute", result="r", refuted=True,
-            ))
+            rq.evidence.append(
+                Evidence(
+                    id=f"EV-{i + 1:03d}",
+                    type="compute",
+                    result="r",
+                    refuted=True,
+                )
+            )
         # One non-refuted — below cap
         rq.evidence.append(Evidence(id="EV-005", type="compute", result="r"))
         state.research_questions["RQ-001"] = rq
-        ex = OrchestratorToolExecutor(ws, iteration=5, research_state=state, rq_evidence_cap=3)
-        tc = ex.execute("dispatch_computer", {
-            "target_claim": "RQ-001", "description": "More work",
-        })
+        ex = OrchestratorToolExecutor(
+            ws, iteration=5, research_state=state, rq_evidence_cap=3
+        )
+        tc = ex.execute(
+            "dispatch_computer",
+            {
+                "target_claim": "RQ-001",
+                "description": "More work",
+            },
+        )
         assert not tc.is_error
 
 
@@ -227,15 +314,19 @@ class TestRqEvidenceCap:
 # abandon_hypothesis
 # ---------------------------------------------------------------------------
 
+
 class TestAbandonHypothesis:
     def test_sets_abandoned_and_creates_failed_approach(self):
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("abandon_hypothesis", {
-            "id": "WH-001",
-            "reason": "Spin prediction was wrong.",
-        })
+        tc = ex.execute(
+            "abandon_hypothesis",
+            {
+                "id": "WH-001",
+                "reason": "Spin prediction was wrong.",
+            },
+        )
         assert not tc.is_error
         assert state.hypotheses["WH-001"].status == HypothesisStatus.ABANDONED
         assert state.hypotheses["WH-001"].iteration_modified == 3
@@ -252,9 +343,13 @@ class TestAbandonHypothesis:
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        ex.execute("abandon_hypothesis", {
-            "id": "WH-001", "reason": "Refuted.",
-        })
+        ex.execute(
+            "abandon_hypothesis",
+            {
+                "id": "WH-001",
+                "reason": "Refuted.",
+            },
+        )
         fa = state.failed_approaches[0]
         assert fa.related_entities == ["WH-001"]
 
@@ -264,9 +359,13 @@ class TestAbandonHypothesis:
         state = _make_state()
         state.hypotheses["WH-001"].derivation = "A" * 500
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        ex.execute("abandon_hypothesis", {
-            "id": "WH-001", "reason": "Too long.",
-        })
+        ex.execute(
+            "abandon_hypothesis",
+            {
+                "id": "WH-001",
+                "reason": "Too long.",
+            },
+        )
         fa = state.failed_approaches[0]
         assert len(fa.derivation_excerpt) == 300
 
@@ -283,10 +382,13 @@ class TestAbandonHypothesis:
         # WH-002 depends on WH-001
         state.hypotheses["WH-002"].depends_on = ["WH-001"]
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("abandon_hypothesis", {
-            "id": "WH-001",
-            "reason": "Dead end.",
-        })
+        tc = ex.execute(
+            "abandon_hypothesis",
+            {
+                "id": "WH-001",
+                "reason": "Dead end.",
+            },
+        )
         assert not tc.is_error
         assert state.hypotheses["WH-001"].status == HypothesisStatus.ABANDONED
         assert "Warning" in tc.output
@@ -298,10 +400,13 @@ class TestAbandonHypothesis:
         state.hypotheses["WH-002"].depends_on = ["WH-001"]
         state.hypotheses["WH-002"].status = HypothesisStatus.ABANDONED
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("abandon_hypothesis", {
-            "id": "WH-001",
-            "reason": "Dead end.",
-        })
+        tc = ex.execute(
+            "abandon_hypothesis",
+            {
+                "id": "WH-001",
+                "reason": "Dead end.",
+            },
+        )
         assert not tc.is_error
         assert "Warning" not in tc.output
 
@@ -310,14 +415,18 @@ class TestAbandonHypothesis:
 # append_convention
 # ---------------------------------------------------------------------------
 
+
 class TestAppendConvention:
     def test_appends_conventions(self):
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("append_convention", {
-            "content": "- Natural units: h-bar = c = k_B = 1\n- Metric signature: (-,+,+,+)",
-        })
+        tc = ex.execute(
+            "append_convention",
+            {
+                "content": "- Natural units: h-bar = c = k_B = 1\n- Metric signature: (-,+,+,+)",
+            },
+        )
         assert not tc.is_error
         assert "Natural units" in state.conventions
         assert ex.mutations_applied
@@ -328,9 +437,12 @@ class TestAppendConvention:
         state = _make_state()
         state.conventions = "Existing conventions."
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("append_convention", {
-            "content": "New convention added.",
-        })
+        tc = ex.execute(
+            "append_convention",
+            {
+                "content": "New convention added.",
+            },
+        )
         assert not tc.is_error
         assert "Existing conventions." in state.conventions
         assert "New convention added." in state.conventions
@@ -347,14 +459,18 @@ class TestAppendConvention:
 # append_note
 # ---------------------------------------------------------------------------
 
+
 class TestAppendNote:
     def test_appends_note_to_state(self):
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=4, research_state=state)
-        tc = ex.execute("append_note", {
-            "text": "The sign convention must be checked.",
-        })
+        tc = ex.execute(
+            "append_note",
+            {
+                "text": "The sign convention must be checked.",
+            },
+        )
         assert not tc.is_error
         assert len(state.research_notes) == 1
         assert state.research_notes[0]["text"] == "The sign convention must be checked."
@@ -380,66 +496,81 @@ class TestAppendNote:
 # Target claim validation — immutable entity guards
 # ---------------------------------------------------------------------------
 
+
 class TestTargetClaimValidation:
     def test_block_dispatch_on_er(self):
         """ERs are immutable — dispatch should be rejected."""
         ws = _make_workspace()
         state = _make_state()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", statement="Established.",
-            status=HypothesisStatus.ESTABLISHED, iteration_created=1,
+            id="ER-001",
+            statement="Established.",
+            status=HypothesisStatus.ESTABLISHED,
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "ER-001", "description": "Re-derive."
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {"target_claim": "ER-001", "description": "Re-derive."},
+        )
         assert tc.is_error
         assert "immutable" in tc.output.lower() or "Established Results" in tc.output
 
     def test_block_dispatch_on_resolved_rq(self):
         """Resolved RQs should not receive new evidence."""
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ws = _make_workspace()
         state = _make_state()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Test?", status=RQStatus.RESOLVED,
-            resolved_to=["WH-001"], iteration_created=1,
+            id="RQ-001",
+            question="Test?",
+            status=RQStatus.RESOLVED,
+            resolved_to=["WH-001"],
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-001", "description": "More work."
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {"target_claim": "RQ-001", "description": "More work."},
+        )
         assert tc.is_error
         assert "resolved" in tc.output.lower()
 
     def test_block_dispatch_on_abandoned_rq(self):
         """Abandoned RQs should not receive new evidence."""
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ws = _make_workspace()
         state = _make_state()
         state.research_questions["RQ-002"] = ResearchQuestion(
-            id="RQ-002", question="Dead end?", status=RQStatus.ABANDONED,
+            id="RQ-002",
+            question="Dead end?",
+            status=RQStatus.ABANDONED,
             iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_computer", {
-            "target_claim": "RQ-002", "description": "Try again."
-        })
+        tc = ex.execute(
+            "dispatch_computer", {"target_claim": "RQ-002", "description": "Try again."}
+        )
         assert tc.is_error
         assert "abandoned" in tc.output.lower()
 
     def test_allow_dispatch_on_open_rq(self):
         """Open RQs are valid dispatch targets."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = _make_state()
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="Investigate?", iteration_created=1,
+            id="RQ-003",
+            question="Investigate?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-003", "description": "Derive."
-        })
+        tc = ex.execute(
+            "dispatch_researcher", {"target_claim": "RQ-003", "description": "Derive."}
+        )
         assert not tc.is_error
 
     def test_allow_dispatch_on_working_wh(self):
@@ -447,9 +578,9 @@ class TestTargetClaimValidation:
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_computer", {
-            "target_claim": "WH-001", "description": "Compute."
-        })
+        tc = ex.execute(
+            "dispatch_computer", {"target_claim": "WH-001", "description": "Compute."}
+        )
         assert not tc.is_error
 
 
@@ -457,24 +588,31 @@ class TestTargetClaimValidation:
 # Dispatch tools
 # ---------------------------------------------------------------------------
 
+
 class TestDispatchTools:
     def test_dispatch_researcher_stores_task_data(self):
         ws = _make_workspace()
         ex = OrchestratorToolExecutor(ws, iteration=3)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001",
-            "description": "Derive result.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Derive result.",
+            },
+        )
         assert not tc.is_error
         assert ex.task_data["task_type"] == "research"
 
     def test_dispatch_computer_stores_task_data(self):
         ws = _make_workspace()
         ex = OrchestratorToolExecutor(ws, iteration=3)
-        tc = ex.execute("dispatch_computer", {
-            "target_claim": "WH-001",
-            "description": "Compute numerically.",
-        })
+        tc = ex.execute(
+            "dispatch_computer",
+            {
+                "target_claim": "WH-001",
+                "description": "Compute numerically.",
+            },
+        )
         assert not tc.is_error
         assert ex.task_data["task_type"] == "compute"
 
@@ -482,10 +620,13 @@ class TestDispatchTools:
         ws = _make_workspace()
         ex = OrchestratorToolExecutor(ws, iteration=3)
         assert not ex.stop_after_round
-        ex.execute("request_termination", {
-            "reason": "Done.",
-            "answer_ers": ["ER-001", "ER-003"],
-        })
+        ex.execute(
+            "request_termination",
+            {
+                "reason": "Done.",
+                "answer_ers": ["ER-001", "ER-003"],
+            },
+        )
         assert ex.stop_after_round
         assert ex.task_data["task_type"] == "terminate"
         assert ex.task_data["answer_ers"] == ["ER-001", "ER-003"]
@@ -498,9 +639,11 @@ class TestDispatchTools:
         assert ex.stop_after_round
         assert ex.task_data["description"] == "Research complete."
 
+
 # ---------------------------------------------------------------------------
 # Unknown tool
 # ---------------------------------------------------------------------------
+
 
 class TestUnknownTool:
     def test_unknown_tool_returns_error(self):
@@ -514,6 +657,7 @@ class TestUnknownTool:
 # ---------------------------------------------------------------------------
 # No research_state
 # ---------------------------------------------------------------------------
+
 
 class TestNoResearchState:
     def test_mutation_tools_return_error_without_state(self):
@@ -534,10 +678,13 @@ class TestNoResearchState:
     def test_dispatch_works_without_state(self):
         ws = _make_workspace()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=None)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-001",
-            "description": "Continue.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-001",
+                "description": "Continue.",
+            },
+        )
         assert not tc.is_error
         assert ex.task_data is not None
         assert ex.stop_after_round
@@ -555,23 +702,29 @@ class TestDependencyGraph:
 
     def test_add_hypothesis_with_depends_on(self):
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = _make_state()
         state.hypotheses["WH-002"].status = HypothesisStatus.ESTABLISHED
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="Derived from WH-001?",
+            id="RQ-003",
+            question="Derived from WH-001?",
             iteration_created=2,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("add_hypothesis", {
-            "statement": "Depends on WH-001",
-            "depends_on": ["WH-001"],
-            "from_rq": "RQ-003",
-        })
+        tc = ex.execute(
+            "add_hypothesis",
+            {
+                "statement": "Depends on WH-001",
+                "depends_on": ["WH-001"],
+                "from_rq": "RQ-003",
+            },
+        )
         assert not tc.is_error
         new_id = "WH-003"
         assert new_id in state.hypotheses
         assert state.hypotheses[new_id].depends_on == ["WH-001"]
+
 
 class TestResearchQuestionTools:
     """Tests for add_research_question and abandon_research_question tools."""
@@ -580,10 +733,13 @@ class TestResearchQuestionTools:
         ws = _make_workspace()
         state = _make_state()  # has WH-001, WH-002
         ex = OrchestratorToolExecutor(ws, iteration=2, research_state=state)
-        tc = ex.execute("add_research_question", {
-            "question": "What is the entropy correction?",
-            "context": "Needed for WH-002",
-        })
+        tc = ex.execute(
+            "add_research_question",
+            {
+                "question": "What is the entropy correction?",
+                "context": "Needed for WH-002",
+            },
+        )
         assert not tc.is_error
         # Shared counter: next number after WH-001/WH-002 is 003
         assert "RQ-003" in tc.output
@@ -595,17 +751,22 @@ class TestResearchQuestionTools:
 
     def test_abandon_research_question(self):
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ws = _make_workspace()
         state = _make_state()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is F(p)?",
+            id="RQ-001",
+            question="What is F(p)?",
             iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("abandon_research_question", {
-            "id": "RQ-001",
-            "reason": "Dead end after 2 attempts",
-        })
+        tc = ex.execute(
+            "abandon_research_question",
+            {
+                "id": "RQ-001",
+                "reason": "Dead end after 2 attempts",
+            },
+        )
         assert not tc.is_error
         rq = state.research_questions["RQ-001"]
         assert rq.status == RQStatus.ABANDONED
@@ -616,28 +777,37 @@ class TestResearchQuestionTools:
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("abandon_research_question", {
-            "id": "RQ-999", "reason": "gone",
-        })
+        tc = ex.execute(
+            "abandon_research_question",
+            {
+                "id": "RQ-999",
+                "reason": "gone",
+            },
+        )
         assert "not found" in tc.output
 
     def test_abandon_already_abandoned_rq_is_idempotent(self):
         """Re-abandoning an already-abandoned RQ returns early without mutation."""
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ws = _make_workspace()
         state = _make_state()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is F(p)?",
+            id="RQ-001",
+            question="What is F(p)?",
             status=RQStatus.ABANDONED,
             iteration_created=1,
             iteration_resolved=2,
             resolution_reason="Dead end",
         )
         ex = OrchestratorToolExecutor(ws, iteration=5, research_state=state)
-        tc = ex.execute("abandon_research_question", {
-            "id": "RQ-001",
-            "reason": "Trying to abandon again",
-        })
+        tc = ex.execute(
+            "abandon_research_question",
+            {
+                "id": "RQ-001",
+                "reason": "Trying to abandon again",
+            },
+        )
         assert "already abandoned" in tc.output
         rq = state.research_questions["RQ-001"]
         assert rq.iteration_resolved == 2
@@ -647,32 +817,40 @@ class TestResearchQuestionTools:
     def test_abandon_resolved_rq_returns_error(self):
         """Cannot abandon an RQ that was auto-resolved by add_hypothesis."""
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ws = _make_workspace()
         state = _make_state()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is F(p)?",
+            id="RQ-001",
+            question="What is F(p)?",
             status=RQStatus.RESOLVED,
             iteration_created=1,
             iteration_resolved=2,
             resolution_reason="Promoted to WH-001",
         )
         ex = OrchestratorToolExecutor(ws, iteration=5, research_state=state)
-        tc = ex.execute("abandon_research_question", {
-            "id": "RQ-001",
-            "reason": "Trying to abandon a resolved RQ",
-        })
+        tc = ex.execute(
+            "abandon_research_question",
+            {
+                "id": "RQ-001",
+                "reason": "Trying to abandon a resolved RQ",
+            },
+        )
         assert "already resolved" in tc.output
         assert not ex.mutations_applied
 
     def test_add_rq_blocked_by_cap(self):
         """Cannot create RQ when >= max_open_rqs open RQs exist."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = _make_state()
         for i in range(3, 6):
             rq_id = f"RQ-{i:03d}"
             state.research_questions[rq_id] = ResearchQuestion(
-                id=rq_id, question=f"Q{i}?", iteration_created=1,
+                id=rq_id,
+                question=f"Q{i}?",
+                iteration_created=1,
             )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
         tc = ex.execute("add_research_question", {"question": "One more?"})
@@ -682,11 +860,15 @@ class TestResearchQuestionTools:
     def test_add_rq_blocked_by_unresolved_critiques(self):
         """Cannot create RQ when unresolved critiques exist."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         ws = _make_workspace()
         state = _make_state()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
-            status=CritiqueStatus.ACTIVE, argument="Issue.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
+            status=CritiqueStatus.ACTIVE,
+            argument="Issue.",
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
         tc = ex.execute("add_research_question", {"question": "Blocked?"})
@@ -695,32 +877,51 @@ class TestResearchQuestionTools:
 
     def test_add_hypothesis_not_blocked_by_medium_critique(self):
         """MEDIUM critique does not block WH creation (severity-gated)."""
-        from open_dirac.research_state import Critique, CritiqueStatus, ResearchQuestion, Severity
+        from open_dirac.research_state import (
+            Critique,
+            CritiqueStatus,
+            ResearchQuestion,
+            Severity,
+        )
+
         ws = _make_workspace()
         state = _make_state()
         state.hypotheses["WH-002"].status = HypothesisStatus.ESTABLISHED
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.MEDIUM,
-            status=CritiqueStatus.ACTIVE, argument="Minor concern.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.MEDIUM,
+            status=CritiqueStatus.ACTIVE,
+            argument="Minor concern.",
         )
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="Q?", iteration_created=1,
+            id="RQ-003",
+            question="Q?",
+            iteration_created=1,
             evidence=[Evidence(id="EV-001", type="research", result="r")],
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("add_hypothesis", {
-            "statement": "Allowed", "from_rq": "RQ-003",
-        })
+        tc = ex.execute(
+            "add_hypothesis",
+            {
+                "statement": "Allowed",
+                "from_rq": "RQ-003",
+            },
+        )
         assert "Error" not in tc.output or "critique" not in tc.output
 
     def test_add_rq_not_blocked_by_low_critique(self):
         """LOW critique does not block RQ creation (severity-gated)."""
         from open_dirac.research_state import Critique, CritiqueStatus, Severity
+
         ws = _make_workspace()
         state = ResearchState()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["STRATEGY"], severity=Severity.LOW,
-            status=CritiqueStatus.ACTIVE, argument="Cosmetic issue.",
+            id="CRIT-001",
+            targets=["STRATEGY"],
+            severity=Severity.LOW,
+            status=CritiqueStatus.ACTIVE,
+            argument="Cosmetic issue.",
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
         tc = ex.execute("add_research_question", {"question": "Allowed?"})
@@ -729,21 +930,26 @@ class TestResearchQuestionTools:
     def test_add_hypothesis_from_already_resolved_rq_blocked(self):
         """Creating a WH from an already-resolved RQ is rejected."""
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ws = _make_workspace()
         state = _make_state()
         state.hypotheses["WH-002"].status = HypothesisStatus.ESTABLISHED
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="What is the entropy?",
+            id="RQ-003",
+            question="What is the entropy?",
             status=RQStatus.RESOLVED,
             iteration_created=1,
             iteration_resolved=2,
             resolution_reason="Answered during exploration",
         )
         ex = OrchestratorToolExecutor(ws, iteration=5, research_state=state)
-        tc = ex.execute("add_hypothesis", {
-            "statement": "S = 4 pi M^2",
-            "from_rq": "RQ-003",
-        })
+        tc = ex.execute(
+            "add_hypothesis",
+            {
+                "statement": "S = 4 pi M^2",
+                "from_rq": "RQ-003",
+            },
+        )
         assert "already resolved" in tc.output
         # No WH created
         assert "WH-003" not in state.hypotheses
@@ -753,6 +959,7 @@ class TestResearchQuestionTools:
 # Dispatch gate
 # ---------------------------------------------------------------------------
 
+
 class TestDispatchGate:
     """Tests for dispatch tool behavior with mutations."""
 
@@ -760,10 +967,12 @@ class TestDispatchGate:
     def _state_with_open_rq():
         """State with WH-001 (working), WH-002 (established), and an open RQ-003 for add_hypothesis calls."""
         from open_dirac.research_state import ResearchQuestion
+
         state = _make_state()
         state.hypotheses["WH-002"].status = HypothesisStatus.ESTABLISHED
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="Placeholder for dispatch test",
+            id="RQ-003",
+            question="Placeholder for dispatch test",
             iteration_created=2,
         )
         return state
@@ -774,7 +983,9 @@ class TestDispatchGate:
         state = self._state_with_open_rq()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
 
-        tc = ex.execute("add_hypothesis", {"statement": "New claim", "from_rq": "RQ-003"})
+        tc = ex.execute(
+            "add_hypothesis", {"statement": "New claim", "from_rq": "RQ-003"}
+        )
         assert not tc.is_error
         assert "WH-003" in state.hypotheses
         assert ex.stop_after_round
@@ -802,10 +1013,13 @@ class TestDispatchGate:
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
 
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001",
-            "description": "Derive result.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Derive result.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.task_data is not None
         assert ex.stop_after_round
@@ -821,10 +1035,13 @@ class TestDispatchGate:
 
         # Round 2: dispatch
         ex.begin_round()
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001",
-            "description": "Derive result.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Derive result.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
         assert ex.task_data["target_claim"] == "WH-001"
@@ -842,10 +1059,13 @@ class TestDispatchGate:
         # Round 2: new response, dispatch only
         ex.begin_round()
         assert ex._calls_this_round == 0
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001",
-            "description": "Derive result.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Derive result.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
@@ -856,13 +1076,19 @@ class TestDispatchGate:
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
 
         ex.execute("append_convention", {"content": "Natural units."})
-        ex.execute("append_convention", {
-            "content": "Natural units.",
-        })
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001",
-            "description": "Derive result.",
-        })
+        ex.execute(
+            "append_convention",
+            {
+                "content": "Natural units.",
+            },
+        )
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Derive result.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
         assert ex.task_data is not None
@@ -874,10 +1100,13 @@ class TestDispatchGate:
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
 
         ex.execute("append_note", {"text": "Test note"})
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-002",
-            "description": "Derive result.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-002",
+                "description": "Derive result.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
@@ -885,6 +1114,7 @@ class TestDispatchGate:
 # ---------------------------------------------------------------------------
 # State injection
 # ---------------------------------------------------------------------------
+
 
 class TestStateInjection:
     """Tests for the state injection rendered by end_round()."""
@@ -917,9 +1147,13 @@ class TestStateInjection:
         """WH with evidence + no review → guidance line in injection."""
         ws = _make_workspace()
         state = _make_state()
-        state.hypotheses["WH-001"].evidence = [Evidence(
-            type="research", summary="Some evidence", iteration=2,
-        )]
+        state.hypotheses["WH-001"].evidence = [
+            Evidence(
+                type="research",
+                summary="Some evidence",
+                iteration=2,
+            )
+        ]
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
 
         # Trigger a mutation so injection fires
@@ -947,16 +1181,22 @@ class TestStateInjection:
         state = ResearchState()
         # Set up ER directly
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", statement="Second",
+            id="WH-002",
+            statement="Second",
             status=HypothesisStatus.WORKING,
-            iteration_created=2, iteration_modified=2,
+            iteration_created=2,
+            iteration_modified=2,
         )
         ex = OrchestratorToolExecutor(
-            ws, iteration=18, research_state=state,
-            max_iterations=20, budget_synthesis_margin=3,
+            ws,
+            iteration=18,
+            research_state=state,
+            max_iterations=20,
+            budget_synthesis_margin=3,
         )
 
         ex.execute("append_note", {"text": "Budget check"})
@@ -971,10 +1211,13 @@ class TestStateInjection:
         state = ResearchState()
         for i in range(1, 4):
             state.hypotheses[f"ER-{i:03d}"] = Hypothesis(
-                id=f"ER-{i:03d}", status=HypothesisStatus.ESTABLISHED,
+                id=f"ER-{i:03d}",
+                status=HypothesisStatus.ESTABLISHED,
             )
         ex = OrchestratorToolExecutor(
-            ws, iteration=5, research_state=state,
+            ws,
+            iteration=5,
+            research_state=state,
             min_er_for_completion=3,
         )
 
@@ -1003,6 +1246,7 @@ class TestStateInjection:
 # Target claim validation
 # ---------------------------------------------------------------------------
 
+
 class TestTargetClaimValidation:
     """Tests for target_claim validation in dispatch tools."""
 
@@ -1010,25 +1254,34 @@ class TestTargetClaimValidation:
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001",
-            "description": "Derive result.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Derive result.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
     def test_valid_rq_target_passes(self):
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = _make_state()
         state.research_questions["RQ-003"] = ResearchQuestion(
-            id="RQ-003", question="Test?", iteration_created=1,
+            id="RQ-003",
+            question="Test?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-003",
-            "description": "Explore.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-003",
+                "description": "Explore.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
@@ -1036,10 +1289,13 @@ class TestTargetClaimValidation:
         ws = _make_workspace()
         state = _make_state()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-099",
-            "description": "Verify.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-099",
+                "description": "Verify.",
+            },
+        )
         assert "Error" in tc.output
         assert "WH-099" in tc.output
         assert "WH-001" in tc.output  # listed as valid
@@ -1060,14 +1316,20 @@ class TestTargetClaimValidation:
         ws = _make_workspace()
         state = _make_state()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
-            status=CritiqueStatus.ACTIVE, argument="Spin prediction may be wrong.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
+            status=CritiqueStatus.ACTIVE,
+            argument="Spin prediction may be wrong.",
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "CRIT-001",
-            "description": "Investigate critique.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "CRIT-001",
+                "description": "Investigate critique.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
@@ -1076,14 +1338,20 @@ class TestTargetClaimValidation:
         ws = _make_workspace()
         state = _make_state()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"], severity=Severity.HIGH,
-            status=CritiqueStatus.ACTIVE, argument="Spin prediction may be wrong.",
+            id="CRIT-001",
+            targets=["WH-001"],
+            severity=Severity.HIGH,
+            status=CritiqueStatus.ACTIVE,
+            argument="Spin prediction may be wrong.",
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "CRIT-099",
-            "description": "Investigate critique.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "CRIT-099",
+                "description": "Investigate critique.",
+            },
+        )
         # CRIT prefix is no longer in the regex — passes as unknown prefix
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
@@ -1091,10 +1359,13 @@ class TestTargetClaimValidation:
     def test_skipped_when_research_state_is_none(self):
         ws = _make_workspace()
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=None)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-099",
-            "description": "Derive result.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-099",
+                "description": "Derive result.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
@@ -1103,27 +1374,36 @@ class TestTargetClaimValidation:
 # Focus guard (_check_focus)
 # ---------------------------------------------------------------------------
 
+
 class TestFocusGuard:
     """Tests for serial RQ focus, dangling WH blocking, and refuted retry cap."""
 
     def test_dangling_refuted_wh_blocks_rq_dispatch(self):
         """A REFUTED WH blocks dispatch to any RQ."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Claim",
+            id="WH-001",
+            statement="Claim",
             status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict="REFUTED", summary="Wrong", iteration=2),
             refuted_count=1,
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Q?", iteration_created=1,
+            id="RQ-001",
+            question="Q?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-001", "description": "Investigate.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-001",
+                "description": "Investigate.",
+            },
+        )
         assert "Error" in tc.output
         assert "WH-001" in tc.output
         assert "unresolved WH" in tc.output
@@ -1132,20 +1412,28 @@ class TestFocusGuard:
     def test_dangling_inconclusive_wh_blocks_rq_dispatch(self):
         """An INCONCLUSIVE WH blocks dispatch to any RQ."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Claim",
+            id="WH-001",
+            statement="Claim",
             status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict="INCONCLUSIVE", summary="Unclear", iteration=2),
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Q?", iteration_created=1,
+            id="RQ-001",
+            question="Q?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_computer", {
-            "target_claim": "RQ-001", "description": "Compute.",
-        })
+        tc = ex.execute(
+            "dispatch_computer",
+            {
+                "target_claim": "RQ-001",
+                "description": "Compute.",
+            },
+        )
         assert "Error" in tc.output
         assert "WH-001" in tc.output
         assert not ex.stop_after_round
@@ -1155,34 +1443,47 @@ class TestFocusGuard:
         ws = _make_workspace()
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Claim",
+            id="WH-001",
+            statement="Claim",
             status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict="REFUTED", summary="Wrong", iteration=2),
             refuted_count=1,
         )
-        ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state,
-                                       max_refuted_retries=3)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001", "description": "Retry.",
-        })
+        ex = OrchestratorToolExecutor(
+            ws, iteration=3, research_state=state, max_refuted_retries=3
+        )
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Retry.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
     def test_serial_rq_blocks_second_rq_with_evidence(self):
         """Cannot dispatch to RQ-002 when RQ-001 already has evidence."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         rq1 = ResearchQuestion(id="RQ-001", question="Q1?", iteration_created=1)
         rq1.evidence.append(Evidence(type="compute", result="r"))
         state.research_questions["RQ-001"] = rq1
         state.research_questions["RQ-002"] = ResearchQuestion(
-            id="RQ-002", question="Q2?", iteration_created=1,
+            id="RQ-002",
+            question="Q2?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-002", "description": "Investigate.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-002",
+                "description": "Investigate.",
+            },
+        )
         assert "Error" in tc.output
         assert "serial RQ focus" in tc.output
         assert "RQ-001" in tc.output
@@ -1191,33 +1492,47 @@ class TestFocusGuard:
     def test_serial_rq_allows_same_rq(self):
         """Dispatch to RQ-001 allowed when RQ-001 already has evidence."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         rq1 = ResearchQuestion(id="RQ-001", question="Q1?", iteration_created=1)
         rq1.evidence.append(Evidence(type="compute", result="r"))
         state.research_questions["RQ-001"] = rq1
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-001", "description": "More evidence.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-001",
+                "description": "More evidence.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
     def test_serial_rq_allows_when_no_evidence(self):
         """Two open RQs with no evidence — dispatch to either is fine."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Q1?", iteration_created=1,
+            id="RQ-001",
+            question="Q1?",
+            iteration_created=1,
         )
         state.research_questions["RQ-002"] = ResearchQuestion(
-            id="RQ-002", question="Q2?", iteration_created=1,
+            id="RQ-002",
+            question="Q2?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-002", "description": "Investigate.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-002",
+                "description": "Investigate.",
+            },
+        )
         assert "Dispatched" in tc.output
 
     def test_refuted_retry_cap_blocks_dispatch(self):
@@ -1225,16 +1540,22 @@ class TestFocusGuard:
         ws = _make_workspace()
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Claim",
+            id="WH-001",
+            statement="Claim",
             status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict="REFUTED", summary="Wrong", iteration=2),
             refuted_count=2,
         )
-        ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state,
-                                       max_refuted_retries=2)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001", "description": "Retry.",
-        })
+        ex = OrchestratorToolExecutor(
+            ws, iteration=3, research_state=state, max_refuted_retries=2
+        )
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Retry.",
+            },
+        )
         assert "Error" in tc.output
         assert "refuted" in tc.output
         assert "abandon" in tc.output.lower()
@@ -1245,52 +1566,74 @@ class TestFocusGuard:
         ws = _make_workspace()
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Claim",
+            id="WH-001",
+            statement="Claim",
             status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict="REFUTED", summary="Wrong", iteration=2),
             refuted_count=1,
         )
-        ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state,
-                                       max_refuted_retries=2)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "WH-001", "description": "Retry.",
-        })
+        ex = OrchestratorToolExecutor(
+            ws, iteration=3, research_state=state, max_refuted_retries=2
+        )
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "WH-001",
+                "description": "Retry.",
+            },
+        )
         assert "Dispatched" in tc.output
         assert ex.stop_after_round
 
     def test_verified_wh_does_not_block_rq_dispatch(self):
         """VERIFIED WHs are not dangling — don't block RQ dispatch."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Claim",
+            id="WH-001",
+            statement="Claim",
             status=HypothesisStatus.WORKING,
             review=ReviewResult(verdict="VERIFIED", summary="Good", iteration=2),
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Q?", iteration_created=1,
+            id="RQ-001",
+            question="Q?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-001", "description": "Investigate.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-001",
+                "description": "Investigate.",
+            },
+        )
         assert "Dispatched" in tc.output
 
     def test_no_review_wh_does_not_block_rq_dispatch(self):
         """WH without any review is not dangling — doesn't block RQ dispatch."""
         from open_dirac.research_state import ResearchQuestion
+
         ws = _make_workspace()
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Claim",
+            id="WH-001",
+            statement="Claim",
             status=HypothesisStatus.WORKING,
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Q?", iteration_created=1,
+            id="RQ-001",
+            question="Q?",
+            iteration_created=1,
         )
         ex = OrchestratorToolExecutor(ws, iteration=3, research_state=state)
-        tc = ex.execute("dispatch_researcher", {
-            "target_claim": "RQ-001", "description": "Investigate.",
-        })
+        tc = ex.execute(
+            "dispatch_researcher",
+            {
+                "target_claim": "RQ-001",
+                "description": "Investigate.",
+            },
+        )
         assert "Dispatched" in tc.output

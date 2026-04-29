@@ -129,7 +129,9 @@ class TestTaskFromFrontmatterEdgeCases:
 class TestTaskTypeAgentMap:
     def test_all_task_types_mapped(self):
         for tt in TaskType:
-            assert tt in TASK_TYPE_AGENT_MAP, f"TaskType.{tt} not in TASK_TYPE_AGENT_MAP"
+            assert tt in TASK_TYPE_AGENT_MAP, (
+                f"TaskType.{tt} not in TASK_TYPE_AGENT_MAP"
+            )
 
     def test_review_maps_to_reviewer(self):
         assert TASK_TYPE_AGENT_MAP[TaskType.REVIEW] == "reviewer"
@@ -157,8 +159,10 @@ class TestSurveyTaskType:
 class TestTaskTargetClaim:
     def test_target_claim_in_markdown(self):
         task = Task(
-            task_id="TASK-005", task_type=TaskType.REVIEW,
-            assigned_to="reviewer", target_claim="WH-001",
+            task_id="TASK-005",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="WH-001",
             body="Verify WH-001.",
         )
         md = task.to_markdown()
@@ -166,7 +170,8 @@ class TestTaskTargetClaim:
 
     def test_target_claim_omitted_when_empty(self):
         task = Task(
-            task_id="TASK-005", task_type=TaskType.REVIEW,
+            task_id="TASK-005",
+            task_type=TaskType.REVIEW,
             assigned_to="reviewer",
             body="Verify something.",
         )
@@ -175,8 +180,10 @@ class TestTaskTargetClaim:
 
     def test_target_claim_round_trip(self):
         task = Task(
-            task_id="TASK-005", task_type=TaskType.REVIEW,
-            assigned_to="reviewer", target_claim="ER-003",
+            task_id="TASK-005",
+            task_type=TaskType.REVIEW,
+            assigned_to="reviewer",
+            target_claim="ER-003",
             body="Verify ER-003.",
         )
         restored = Task.from_frontmatter(task.to_markdown())

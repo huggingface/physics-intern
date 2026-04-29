@@ -20,9 +20,11 @@ def _fake_response():
 
 def _spy_client(captured: dict):
     """Build a provider whose responses.create records kwargs and returns a fake."""
+
     def fake_create(**kwargs):
         captured.update(kwargs)
         return _fake_response()
+
     return SimpleNamespace(responses=SimpleNamespace(create=fake_create))
 
 
@@ -33,18 +35,20 @@ def _make_provider(reasoning_effort: str, captured: dict) -> OpenAIProvider:
     return provider
 
 
-TOOLS = [{
-    "type": "function",
-    "function": {
-        "name": "add",
-        "description": "Add two integers.",
-        "parameters": {
-            "type": "object",
-            "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-            "required": ["a", "b"],
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "add",
+            "description": "Add two integers.",
+            "parameters": {
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
         },
-    },
-}]
+    }
+]
 
 
 class TestReasoningEffortPropagation:
@@ -57,7 +61,9 @@ class TestReasoningEffortPropagation:
         captured: dict = {}
         provider = _make_provider("low", captured)
         provider.call(
-            model="gpt-5.4", max_tokens=256, system="sys",
+            model="gpt-5.4",
+            max_tokens=256,
+            system="sys",
             messages=[{"role": "user", "content": "hi"}],
         )
         assert captured["reasoning"] == {"effort": "low"}
@@ -66,7 +72,9 @@ class TestReasoningEffortPropagation:
         captured: dict = {}
         provider = _make_provider("low", captured)
         provider.call(
-            model="gpt-5.4", max_tokens=256, system="sys",
+            model="gpt-5.4",
+            max_tokens=256,
+            system="sys",
             messages=[{"role": "user", "content": "hi"}],
             tools=TOOLS,
         )
@@ -77,7 +85,9 @@ class TestReasoningEffortPropagation:
         captured: dict = {}
         provider = _make_provider("", captured)
         provider.call(
-            model="gpt-5.4", max_tokens=256, system="sys",
+            model="gpt-5.4",
+            max_tokens=256,
+            system="sys",
             messages=[{"role": "user", "content": "hi"}],
             tools=TOOLS,
         )
@@ -92,7 +102,9 @@ class TestResponsesApiKwargs:
         captured: dict = {}
         provider = _make_provider("", captured)
         provider.call(
-            model="gpt-5.4", max_tokens=123, system="you are helpful",
+            model="gpt-5.4",
+            max_tokens=123,
+            system="you are helpful",
             messages=[{"role": "user", "content": "hi"}],
         )
         assert captured["model"] == "gpt-5.4"
@@ -105,7 +117,9 @@ class TestResponsesApiKwargs:
         captured: dict = {}
         provider = _make_provider("", captured)
         provider.call(
-            model="gpt-5.4", max_tokens=256, system="sys",
+            model="gpt-5.4",
+            max_tokens=256,
+            system="sys",
             messages=[{"role": "user", "content": "hi"}],
             tools=TOOLS,
         )

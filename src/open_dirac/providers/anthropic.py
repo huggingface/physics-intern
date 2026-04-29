@@ -17,20 +17,36 @@ _EFFORT_FALLBACK = {"max": "high", "high": "medium", "medium": "low"}
 class AnthropicProvider(LLMProvider):
     """Anthropic Claude API provider."""
 
-    def __init__(self, api_key: str = "", reasoning_budget: int = 0,
-                 thinking: bool = False, effort: str = "",
-                 timeout: float = 600.0, **kwargs):
+    def __init__(
+        self,
+        api_key: str = "",
+        reasoning_budget: int = 0,
+        thinking: bool = False,
+        effort: str = "",
+        timeout: float = 600.0,
+        **kwargs,
+    ):
         self._client = anthropic.Anthropic(api_key=api_key)
         self._thinking = thinking or reasoning_budget > 0  # backward compat
         self._reasoning_budget = reasoning_budget
         self._effort = effort
         self._timeout = timeout
 
-    def call(self, model: str, max_tokens: int, system: str,
-             messages: list[dict], tools: list[dict] | None = None) -> ProviderResponse:
+    def call(
+        self,
+        model: str,
+        max_tokens: int,
+        system: str,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+    ) -> ProviderResponse:
         if self._thinking:
             return self._call_with_thinking_recovery(
-                model, max_tokens, system, messages, tools,
+                model,
+                max_tokens,
+                system,
+                messages,
+                tools,
                 effort=self._effort,
             )
 
@@ -45,8 +61,12 @@ class AnthropicProvider(LLMProvider):
         return self._stream_call(kwargs)
 
     def _call_with_thinking_recovery(
-        self, model: str, max_tokens: int, system: str,
-        messages: list[dict], tools: list[dict] | None,
+        self,
+        model: str,
+        max_tokens: int,
+        system: str,
+        messages: list[dict],
+        tools: list[dict] | None,
         effort: str,
     ) -> ProviderResponse:
         """Call with adaptive thinking; retry at lower effort on token exhaustion.
@@ -72,9 +92,11 @@ class AnthropicProvider(LLMProvider):
 
         # Detect thinking exhaustion: all tokens went to thinking,
         # nothing left for the answer or tool calls.
-        if (resp.stop_reason == "max_tokens"
-                and not resp.text.strip()
-                and not resp.tool_calls):
+        if (
+            resp.stop_reason == "max_tokens"
+            and not resp.text.strip()
+            and not resp.tool_calls
+        ):
             fallback_effort = _EFFORT_FALLBACK.get(effort or "high")
             if fallback_effort:
                 kwargs["output_config"] = {"effort": fallback_effort}
@@ -109,17 +131,21 @@ class AnthropicProvider(LLMProvider):
             tool_calls = []
             for block in response.content:
                 if block.type == "tool_use":
-                    tool_calls.append({
-                        "id": block.id,
-                        "name": block.name,
-                        "input": block.input,
-                    })
+                    tool_calls.append(
+                        {
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input,
+                        }
+                    )
 
         # Anthropic output_tokens includes thinking; remainder after visible
         # answer is reasoning.
         output_tokens = response.usage.output_tokens
         reasoning_tokens, answer_tokens = split_reasoning_tokens(
-            output_tokens, text, tool_calls,
+            output_tokens,
+            text,
+            tool_calls,
         )
 
         return ProviderResponse(
@@ -152,7 +178,8 @@ class AnthropicProvider(LLMProvider):
             if not content or not isinstance(content, list):
                 return msg
             filtered = [
-                block for block in content
+                block
+                for block in content
                 if getattr(block, "type", None) not in ("thinking", "redacted_thinking")
             ]
             # All blocks were thinking — keep original to avoid empty content
@@ -166,12 +193,14 @@ class AnthropicProvider(LLMProvider):
         """Anthropic: single user message with tool_result content blocks."""
         content = []
         for tr in tool_results:
-            content.append({
-                "type": "tool_result",
-                "tool_use_id": tr["tool_call_id"],
-                "content": tr["output"],
-                "is_error": tr["is_error"],
-            })
+            content.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tr["tool_call_id"],
+                    "content": tr["output"],
+                    "is_error": tr["is_error"],
+                }
+            )
         return [{"role": "user", "content": content}]
 
     @staticmethod
@@ -180,9 +209,11 @@ class AnthropicProvider(LLMProvider):
         result = []
         for tool in tools:
             func = tool["function"]
-            result.append({
-                "name": func["name"],
-                "description": func["description"],
-                "input_schema": func["parameters"],
-            })
+            result.append(
+                {
+                    "name": func["name"],
+                    "description": func["description"],
+                    "input_schema": func["parameters"],
+                }
+            )
         return result

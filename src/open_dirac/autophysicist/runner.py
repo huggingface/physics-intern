@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import yaml  # noqa: E402
@@ -33,7 +34,9 @@ from ..console import console  # noqa: E402
 from ..llm import run_agent_loop, AgentResult  # noqa: E402
 from ..metrics import MetricsTracker  # noqa: E402
 from ..verification import (  # noqa: E402
-    run_formal_evaluation, render_formal_evaluation, write_formal_eval_report,
+    run_formal_evaluation,
+    render_formal_evaluation,
+    write_formal_eval_report,
 )
 from ..workspace import log_scaffold_event  # noqa: E402
 
@@ -84,15 +87,9 @@ def _build_user_content(
         )
 
     if scratch_text:
-        parts.append(
-            f"\n\n<scratchpad>\n{scratch_text}\n</scratchpad>"
-        )
+        parts.append(f"\n\n<scratchpad>\n{scratch_text}\n</scratchpad>")
     else:
-        parts.append(
-            "\n\n<scratchpad>\n"
-            "(Empty — no working notes yet.)\n"
-            "</scratchpad>"
-        )
+        parts.append("\n\n<scratchpad>\n(Empty — no working notes yet.)\n</scratchpad>")
 
     return "".join(parts)
 
@@ -115,8 +112,12 @@ def _run_iteration(
 ) -> tuple[AgentResult, ManagerToolExecutor]:
     """Run one iteration of the Research Manager."""
     user_content = _build_user_content(
-        problem_text, answer_template, permanent_memory, scratchpad,
-        iteration, max_iterations,
+        problem_text,
+        answer_template,
+        permanent_memory,
+        scratchpad,
+        iteration,
+        max_iterations,
     )
 
     executor = ManagerToolExecutor(
@@ -131,9 +132,14 @@ def _run_iteration(
     )
 
     def on_round(
-        round_num, stop_reason, round_tool_calls,
-        total_input, total_output,
-        round_input, round_output, **kwargs,
+        round_num,
+        stop_reason,
+        round_tool_calls,
+        total_input,
+        total_output,
+        round_input,
+        round_output,
+        **kwargs,
     ):
         executor.update_manager_tokens(total_input, total_output)
 
@@ -169,13 +175,16 @@ def _run_iteration(
 # Workspace helpers
 # ---------------------------------------------------------------------------
 
+
 def _git_commit(workspace_root: Path, iteration: int, result: AgentResult) -> None:
     """Stage all and commit after each iteration."""
     if not (workspace_root / ".git").exists():
         return
     subprocess.run(
-        ["git", "add", "-A"], cwd=str(workspace_root),
-        capture_output=True, check=False,
+        ["git", "add", "-A"],
+        cwd=str(workspace_root),
+        capture_output=True,
+        check=False,
     )
     msg = (
         f"Iteration {iteration}: "
@@ -183,7 +192,9 @@ def _git_commit(workspace_root: Path, iteration: int, result: AgentResult) -> No
     )
     subprocess.run(
         ["git", "commit", "-m", msg, "--allow-empty"],
-        cwd=str(workspace_root), capture_output=True, check=False,
+        cwd=str(workspace_root),
+        capture_output=True,
+        check=False,
     )
 
 
@@ -212,45 +223,58 @@ def _run_formal_verification(workspace_root: Path, problem_path: Path) -> None:
     """
     problem_yaml = workspace_root / "problem.yaml"
     if not problem_yaml.exists():
-        console.print("[dim]Formal verification skipped: no problem.yaml in workspace[/]")
+        console.print(
+            "[dim]Formal verification skipped: no problem.yaml in workspace[/]"
+        )
         return
 
     try:
         with open(problem_yaml) as f:
             problem_def = yaml.safe_load(f)
     except Exception as exc:
-        console.print(f"[yellow]Formal verification skipped: could not read problem.yaml: {exc}[/]")
+        console.print(
+            f"[yellow]Formal verification skipped: could not read problem.yaml: {exc}[/]"
+        )
         return
 
     # Build reference lookup path from problem name
     problem_name = problem_def.get("name") if problem_def else None
     ref_lookup_path = Path(problem_name + ".yaml") if problem_name else None
 
-    console.print(f"\n[bold]Formal answer evaluation...[/]")
+    console.print("\n[bold]Formal answer evaluation...[/]")
 
     try:
         result = run_formal_evaluation(
-            str(workspace_root), problem_def, problem_path=ref_lookup_path,
+            str(workspace_root),
+            problem_def,
+            problem_path=ref_lookup_path,
         )
         render_formal_evaluation(result)
         write_formal_eval_report(result, str(workspace_root))
         # Git commit the evaluation results
         if (workspace_root / ".git").exists():
             subprocess.run(
-                ["git", "add", "-A"], cwd=str(workspace_root),
-                capture_output=True, check=False,
+                ["git", "add", "-A"],
+                cwd=str(workspace_root),
+                capture_output=True,
+                check=False,
             )
             subprocess.run(
                 ["git", "commit", "-m", "Formal answer evaluation"],
-                cwd=str(workspace_root), capture_output=True, check=False,
+                cwd=str(workspace_root),
+                capture_output=True,
+                check=False,
             )
     except Exception as exc:
-        console.print(f"[yellow]Formal verification failed: {type(exc).__name__}: {exc}[/]")
+        console.print(
+            f"[yellow]Formal verification failed: {type(exc).__name__}: {exc}[/]"
+        )
 
 
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -259,43 +283,63 @@ def main() -> None:
     )
     parser.add_argument("problem", type=Path, help="Path to problem YAML file")
     parser.add_argument(
-        "--model", type=str, default=None,
+        "--model",
+        type=str,
+        default=None,
         help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
     )
     parser.add_argument(
-        "--config", type=Path, default=None,
+        "--config",
+        type=Path,
+        default=None,
         help="Path to config YAML file",
     )
     parser.add_argument(
-        "--max-iterations", type=int, default=50,
+        "--max-iterations",
+        type=int,
+        default=50,
         help="Maximum number of Manager iterations (default: 50)",
     )
     parser.add_argument(
-        "--token-budget", type=int, default=64_000,
+        "--token-budget",
+        type=int,
+        default=64_000,
         help="Token budget per iteration for wind-down trigger (default: 64000)",
     )
     parser.add_argument(
-        "--tool-call-cap", type=int, default=15,
+        "--tool-call-cap",
+        type=int,
+        default=15,
         help="Max tool calls per iteration (default: 15)",
     )
     parser.add_argument(
-        "--max-rounds", type=int, default=30,
+        "--max-rounds",
+        type=int,
+        default=30,
         help="Max LLM rounds per iteration (default: 30)",
     )
     parser.add_argument(
-        "--scratchpad-window", type=int, default=5,
+        "--scratchpad-window",
+        type=int,
+        default=5,
         help="Number of recent scratchpad entries to show (default: 5)",
     )
     parser.add_argument(
-        "--sandbox-timeout", type=int, default=60,
+        "--sandbox-timeout",
+        type=int,
+        default=60,
         help="Code execution timeout in seconds (default: 60)",
     )
     parser.add_argument(
-        "--workspace-dir", type=str, default=None,
+        "--workspace-dir",
+        type=str,
+        default=None,
         help="Workspace directory (default: auto-generated)",
     )
     parser.add_argument(
-        "--resume", type=Path, default=None,
+        "--resume",
+        type=Path,
+        default=None,
         help="Resume from an existing workspace directory",
     )
     args = parser.parse_args()
@@ -345,24 +389,28 @@ def main() -> None:
     # --- Git init (new workspace only) ---
     if not args.resume:
         subprocess.run(
-            ["git", "init"], cwd=str(workspace_root),
-            capture_output=True, check=False,
+            ["git", "init"],
+            cwd=str(workspace_root),
+            capture_output=True,
+            check=False,
         )
-        (workspace_root / "PROBLEM.md").write_text(
-            f"# Problem\n\n{problem_text}\n"
-        )
+        (workspace_root / "PROBLEM.md").write_text(f"# Problem\n\n{problem_text}\n")
         # Persist problem.yaml (with name field) for formal evaluation
         problem_data = dict(problem_def)
         problem_data["name"] = args.problem.stem
         with open(workspace_root / "problem.yaml", "w") as f:
             yaml.dump(problem_data, f, default_flow_style=False, sort_keys=False)
         subprocess.run(
-            ["git", "add", "-A"], cwd=str(workspace_root),
-            capture_output=True, check=False,
+            ["git", "add", "-A"],
+            cwd=str(workspace_root),
+            capture_output=True,
+            check=False,
         )
         subprocess.run(
             ["git", "commit", "-m", "Initial workspace setup"],
-            cwd=str(workspace_root), capture_output=True, check=False,
+            cwd=str(workspace_root),
+            capture_output=True,
+            check=False,
         )
 
     # --- Header ---
@@ -405,8 +453,11 @@ def main() -> None:
             console.print(f"[red]Iteration {iteration} failed: {exc}[/red]")
             if config.workspace_dir:
                 log_scaffold_event(
-                    config.workspace_dir, iteration, "error",
-                    "iteration_failed", str(exc)[:500],
+                    config.workspace_dir,
+                    iteration,
+                    "error",
+                    "iteration_failed",
+                    str(exc)[:500],
                 )
             scratchpad.append(
                 f"SYSTEM NOTE: Iteration {iteration} failed with error: {exc}",
@@ -437,8 +488,7 @@ def main() -> None:
 
         if executor.problem_solved:
             console.print(
-                "[bold green]Problem solved![/bold green] "
-                "Final answer submitted."
+                "[bold green]Problem solved![/bold green] Final answer submitted."
             )
             (workspace_root / "ANSWER.md").write_text(
                 f"# Final Answer\n\n{executor.final_answer}\n"

@@ -36,7 +36,9 @@ def render_critic_previous_critiques(state: ResearchState) -> str:
         )
 
     # Resolved/withdrawn critiques — concise, with resolution
-    resolved = [c for c in state.critiques.values() if c.status != CritiqueStatus.ACTIVE]
+    resolved = [
+        c for c in state.critiques.values() if c.status != CritiqueStatus.ACTIVE
+    ]
     for c in sorted(resolved, key=lambda c: c.id):
         target_str = ", ".join(c.targets) if c.targets else "general"
         res_type = c.resolution_type or "unknown"
@@ -53,9 +55,15 @@ def render_critic_previous_critiques(state: ResearchState) -> str:
     # Clean reviews
     if state.critic_clean_reviews:
         review_lines: list[str] = []
-        for rev in sorted(state.critic_clean_reviews, key=lambda r: r.get("iteration", 0)):
-            review_lines.append(f"Iteration {rev.get('iteration', '?')}: {rev.get('summary', '')}")
-        parts.append("<clean-reviews>\n" + "\n".join(review_lines) + "\n</clean-reviews>")
+        for rev in sorted(
+            state.critic_clean_reviews, key=lambda r: r.get("iteration", 0)
+        ):
+            review_lines.append(
+                f"Iteration {rev.get('iteration', '?')}: {rev.get('summary', '')}"
+            )
+        parts.append(
+            "<clean-reviews>\n" + "\n".join(review_lines) + "\n</clean-reviews>"
+        )
 
     return "\n".join(parts)
 
@@ -93,19 +101,27 @@ def render_critic_context(state: ResearchState, iteration: int) -> str:
     if state.research_questions:
         rq_lines: list[str] = []
         for rq in sorted(state.research_questions.values(), key=lambda r: r.id):
-            rq_lines.append(f'<rq id="{rq.id}" status="{rq.status.upper()}">{rq.question}</rq>')
-        rs_parts.append("<research-questions>\n" + "\n".join(rq_lines) + "\n</research-questions>")
+            rq_lines.append(
+                f'<rq id="{rq.id}" status="{rq.status.upper()}">{rq.question}</rq>'
+            )
+        rs_parts.append(
+            "<research-questions>\n" + "\n".join(rq_lines) + "\n</research-questions>"
+        )
 
     # Compute last critic iteration from clean reviews and filed critiques
     last_critic_iter = 0
     if state.critic_clean_reviews:
-        last_critic_iter = max(r.get("iteration", 0) for r in state.critic_clean_reviews)
+        last_critic_iter = max(
+            r.get("iteration", 0) for r in state.critic_clean_reviews
+        )
     for c in state.critiques.values():
         if c.iteration_filed > last_critic_iter:
             last_critic_iter = c.iteration_filed
 
     # Collect hypothesis IDs targeted by critiques (used for survived-critic check)
-    critic_targets_since: dict[str, int] = {}  # hid -> latest critique iteration targeting it
+    critic_targets_since: dict[
+        str, int
+    ] = {}  # hid -> latest critique iteration targeting it
     for c in state.critiques.values():
         for t in c.targets:
             if c.iteration_filed > critic_targets_since.get(t, 0):
@@ -119,8 +135,14 @@ def render_critic_context(state: ResearchState, iteration: int) -> str:
             h_parts.append(f"Depends on: {', '.join(h.depends_on)}")
         if h.evidence:
             for ev in h.evidence:
-                result_short = (ev.result[:300] + "...") if ev.result and len(ev.result) > 300 else (ev.result or "")
-                h_parts.append(f"Evidence ({ev.type}): {ev.method or 'not specified'}, confidence={ev.confidence or '?'}, Result: {result_short}")
+                result_short = (
+                    (ev.result[:300] + "...")
+                    if ev.result and len(ev.result) > 300
+                    else (ev.result or "")
+                )
+                h_parts.append(
+                    f"Evidence ({ev.type}): {ev.method or 'not specified'}, confidence={ev.confidence or '?'}, Result: {result_short}"
+                )
         if h.review:
             v = h.review
             h_parts.append(f"Review: {v.verdict} — {v.summary}")
@@ -129,7 +151,9 @@ def render_critic_context(state: ResearchState, iteration: int) -> str:
                 and critic_targets_since.get(h.id, 0) < h.iteration_modified
             )
             if not survived_critic and v.details:
-                details_truncated = (v.details[:1000] + "...") if len(v.details) > 1000 else v.details
+                details_truncated = (
+                    (v.details[:1000] + "...") if len(v.details) > 1000 else v.details
+                )
                 h_parts.append(f"Review details: {details_truncated}")
         return h_parts
 
@@ -141,19 +165,33 @@ def render_critic_context(state: ResearchState, iteration: int) -> str:
     if whs:
         hyp_lines: list[str] = []
         for h in whs:
-            hyp_lines.append(f'<hypothesis id="{h.id}">\n' + "\n".join(_critic_hyp_parts(h)) + "\n</hypothesis>")
+            hyp_lines.append(
+                f'<hypothesis id="{h.id}">\n'
+                + "\n".join(_critic_hyp_parts(h))
+                + "\n</hypothesis>"
+            )
         rs_parts.append("<hypotheses>\n" + "\n".join(hyp_lines) + "\n</hypotheses>")
 
     # Established Results
     ers = sorted(
-        [h for h in state.hypotheses.values() if h.status == HypothesisStatus.ESTABLISHED],
+        [
+            h
+            for h in state.hypotheses.values()
+            if h.status == HypothesisStatus.ESTABLISHED
+        ],
         key=lambda h: h.id,
     )
     if ers:
         er_lines: list[str] = []
         for h in ers:
-            er_lines.append(f'<result id="{h.id}">\n' + "\n".join(_critic_hyp_parts(h)) + "\n</result>")
-        rs_parts.append("<established-results>\n" + "\n".join(er_lines) + "\n</established-results>")
+            er_lines.append(
+                f'<result id="{h.id}">\n'
+                + "\n".join(_critic_hyp_parts(h))
+                + "\n</result>"
+            )
+        rs_parts.append(
+            "<established-results>\n" + "\n".join(er_lines) + "\n</established-results>"
+        )
 
     parts.append("<research-state>\n" + "\n\n".join(rs_parts) + "\n</research-state>")
 

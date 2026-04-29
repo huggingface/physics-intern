@@ -25,6 +25,7 @@ from open_dirac.task import Task, TaskType
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def state_with_er_and_wh():
     """State with one ER, one WH, one open RQ, dead ends, and strategy."""
@@ -39,13 +40,15 @@ def state_with_er_and_wh():
         statement="T_H = 1/(8 pi M)",
         status=HypothesisStatus.ESTABLISHED,
         derivation="Surface gravity kappa = 1/(4M), then T = kappa/(2 pi).",
-        evidence=[Evidence(
-            type="compute",
-            method="Symbolic computation",
-            result="T = 1/(8*pi*M)",
-            confidence="exact",
-            iteration=3,
-        )],
+        evidence=[
+            Evidence(
+                type="compute",
+                method="Symbolic computation",
+                result="T = 1/(8*pi*M)",
+                confidence="exact",
+                iteration=3,
+            )
+        ],
         review=ReviewResult(
             verdict=Verdict.VERIFIED,
             summary="Confirmed.",
@@ -57,12 +60,14 @@ def state_with_er_and_wh():
         statement="Entropy S = 4 pi M^2",
         status=HypothesisStatus.WORKING,
         derivation="Integration of dS = dM/T.",
-        evidence=[Evidence(
-            type="research",
-            method="Analytical",
-            result="S ~ 4*pi*M**2",
-            confidence="approximate",
-        )],
+        evidence=[
+            Evidence(
+                type="research",
+                method="Analytical",
+                result="S ~ 4*pi*M**2",
+                confidence="approximate",
+            )
+        ],
     )
     state.hypotheses["WH-003"] = Hypothesis(
         id="WH-003",
@@ -74,10 +79,12 @@ def state_with_er_and_wh():
         question="What is the greybody factor?",
         status=RQStatus.OPEN,
     )
-    state.failed_approaches.append(FailedApproach(
-        description="Euclidean path integral",
-        reason="Regularization issues",
-    ))
+    state.failed_approaches.append(
+        FailedApproach(
+            description="Euclidean path integral",
+            reason="Regularization issues",
+        )
+    )
     state.survey_background = "Some background."
     return state
 
@@ -91,8 +98,8 @@ def empty_state():
 # render_formatter_context
 # ===========================================================================
 
-class TestRenderFormatterContext:
 
+class TestRenderFormatterContext:
     def test_contains_problem_statement(self, state_with_er_and_wh):
         ctx = render_formatter_context(state_with_er_and_wh)
         assert "<problem-statement>" in ctx
@@ -203,20 +210,28 @@ class TestRenderFormatterContext:
 # FormatterAgent.build_context
 # ===========================================================================
 
-class TestFormatterBuildContext:
 
+class TestFormatterBuildContext:
     def _make_agent(self, research_state, answer_template=""):
         config = MagicMock()
         workspace = MagicMock()
         metrics = MagicMock()
-        agent = FormatterAgent(config, workspace, metrics, answer_template=answer_template)
+        agent = FormatterAgent(
+            config, workspace, metrics, answer_template=answer_template
+        )
         agent.research_state = research_state
         return agent
 
     def test_build_context_uses_render_formatter_context(self, state_with_er_and_wh):
         agent = self._make_agent(state_with_er_and_wh)
-        task = Task(task_id="T-1", task_type=TaskType.FORMAT, assigned_to="formatter",
-                    priority="normal", iteration=5, body="Format.")
+        task = Task(
+            task_id="T-1",
+            task_type=TaskType.FORMAT,
+            assigned_to="formatter",
+            priority="normal",
+            iteration=5,
+            body="Format.",
+        )
         ctx = agent.build_context(task, iteration=5)
         assert "<problem-statement>" in ctx
         assert "<established-results>" in ctx
@@ -228,8 +243,14 @@ class TestFormatterBuildContext:
     def test_build_context_includes_answer_template(self, state_with_er_and_wh):
         template = "T_H = FILL IN"
         agent = self._make_agent(state_with_er_and_wh, answer_template=template)
-        task = Task(task_id="T-1", task_type=TaskType.FORMAT, assigned_to="formatter",
-                    priority="normal", iteration=5, body="Format.")
+        task = Task(
+            task_id="T-1",
+            task_type=TaskType.FORMAT,
+            assigned_to="formatter",
+            priority="normal",
+            iteration=5,
+            body="Format.",
+        )
         ctx = agent.build_context(task, iteration=5)
         assert "<answer-template>" in ctx
         assert "T_H = FILL IN" in ctx
@@ -237,8 +258,14 @@ class TestFormatterBuildContext:
 
     def test_build_context_no_answer_template(self, state_with_er_and_wh):
         agent = self._make_agent(state_with_er_and_wh, answer_template="")
-        task = Task(task_id="T-1", task_type=TaskType.FORMAT, assigned_to="formatter",
-                    priority="normal", iteration=5, body="Format.")
+        task = Task(
+            task_id="T-1",
+            task_type=TaskType.FORMAT,
+            assigned_to="formatter",
+            priority="normal",
+            iteration=5,
+            body="Format.",
+        )
         ctx = agent.build_context(task, iteration=5)
         assert "<answer-template>" not in ctx
 
@@ -260,13 +287,15 @@ def answer(x, y):
     return result, choice
 """
 
-class TestProcessResponseRejection:
 
+class TestProcessResponseRejection:
     def _make_agent(self, answer_template=""):
         config = MagicMock()
         workspace = MagicMock()
         metrics = MagicMock()
-        return FormatterAgent(config, workspace, metrics, answer_template=answer_template)
+        return FormatterAgent(
+            config, workspace, metrics, answer_template=answer_template
+        )
 
     def _make_response(self, text):
         return LLMResponse(
@@ -279,8 +308,10 @@ class TestProcessResponseRejection:
 
     def _make_task(self):
         return Task(
-            task_id="FORMAT-001", task_type=TaskType.FORMAT,
-            assigned_to="formatter", iteration=1,
+            task_id="FORMAT-001",
+            task_type=TaskType.FORMAT,
+            assigned_to="formatter",
+            iteration=1,
         )
 
     def test_llm_rejection_marker_sets_reason(self):

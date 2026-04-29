@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import yaml
@@ -49,7 +50,8 @@ def make_provider(model_key: str):
         sys.exit(1)
 
     provider = create_provider(
-        info["provider"], api_key=api_key, **info.get("reasoning", {}))
+        info["provider"], api_key=api_key, **info.get("reasoning", {})
+    )
     model_id = info["model_id"]
     max_tokens = info.get("max_output_tokens", 8192)
     return provider, model_id, max_tokens, info
@@ -91,7 +93,9 @@ class Measurement:
         self.tokens_per_sec = output_tokens / elapsed_s if elapsed_s > 0 else 0.0
 
 
-def test_reasoning(provider, model_id, max_tokens) -> tuple[list[Check], list[Measurement]]:
+def test_reasoning(
+    provider, model_id, max_tokens
+) -> tuple[list[Check], list[Measurement]]:
     """Turn 1: simple reasoning prompt, no tools."""
     checks = []
     console.print("\n[bold]Turn 1: Reasoning (no tools)[/]")
@@ -106,7 +110,9 @@ def test_reasoning(provider, model_id, max_tokens) -> tuple[list[Check], list[Me
     elapsed = time.perf_counter() - t0
     m = Measurement("reasoning", elapsed, resp.output_tokens)
 
-    console.print(f"  text:              {repr(resp.text[:120])}{'...' if len(resp.text) > 120 else ''}")
+    console.print(
+        f"  text:              {repr(resp.text[:120])}{'...' if len(resp.text) > 120 else ''}"
+    )
     console.print(f"  input_tokens:      {resp.input_tokens}")
     console.print(f"  output_tokens:     {resp.output_tokens}")
     console.print(f"  reasoning_tokens:  {resp.reasoning_tokens}")
@@ -116,50 +122,58 @@ def test_reasoning(provider, model_id, max_tokens) -> tuple[list[Check], list[Me
     console.print(f"  [cyan]elapsed:           {elapsed:.2f}s[/]")
     console.print(f"  [cyan]throughput:         {m.tokens_per_sec:.1f} tok/s[/]")
 
-    checks.append(Check(
-        "text non-empty",
-        bool(resp.text.strip()),
-        f"{len(resp.text)} chars"))
+    checks.append(
+        Check("text non-empty", bool(resp.text.strip()), f"{len(resp.text)} chars")
+    )
 
-    checks.append(Check(
-        "output_tokens > 0",
-        resp.output_tokens > 0,
-        str(resp.output_tokens)))
+    checks.append(
+        Check("output_tokens > 0", resp.output_tokens > 0, str(resp.output_tokens))
+    )
 
-    checks.append(Check(
-        "input_tokens > 0",
-        resp.input_tokens > 0,
-        str(resp.input_tokens)))
+    checks.append(
+        Check("input_tokens > 0", resp.input_tokens > 0, str(resp.input_tokens))
+    )
 
-    checks.append(Check(
-        "invariant: output = reasoning + answer",
-        resp.output_tokens == resp.reasoning_tokens + resp.answer_tokens,
-        f"{resp.output_tokens} == {resp.reasoning_tokens} + {resp.answer_tokens}"))
+    checks.append(
+        Check(
+            "invariant: output = reasoning + answer",
+            resp.output_tokens == resp.reasoning_tokens + resp.answer_tokens,
+            f"{resp.output_tokens} == {resp.reasoning_tokens} + {resp.answer_tokens}",
+        )
+    )
 
-    checks.append(Check(
-        "reasoning_tokens > 0",
-        resp.reasoning_tokens > 0,
-        str(resp.reasoning_tokens)))
+    checks.append(
+        Check(
+            "reasoning_tokens > 0",
+            resp.reasoning_tokens > 0,
+            str(resp.reasoning_tokens),
+        )
+    )
 
-    checks.append(Check(
-        "answer_tokens > 0",
-        resp.answer_tokens > 0,
-        str(resp.answer_tokens)))
+    checks.append(
+        Check("answer_tokens > 0", resp.answer_tokens > 0, str(resp.answer_tokens))
+    )
 
-    checks.append(Check(
-        "reasoning_content captured",
-        len(resp.reasoning_content) > 0,
-        f"{len(resp.reasoning_content)} chars"))
+    checks.append(
+        Check(
+            "reasoning_content captured",
+            len(resp.reasoning_content) > 0,
+            f"{len(resp.reasoning_content)} chars",
+        )
+    )
 
-    checks.append(Check(
-        "stop_reason is end_turn",
-        resp.stop_reason == "end_turn",
-        resp.stop_reason))
+    checks.append(
+        Check(
+            "stop_reason is end_turn", resp.stop_reason == "end_turn", resp.stop_reason
+        )
+    )
 
     return checks, [m]
 
 
-def test_tool_call(provider, model_id, max_tokens) -> tuple[list[Check], list[Measurement]]:
+def test_tool_call(
+    provider, model_id, max_tokens
+) -> tuple[list[Check], list[Measurement]]:
     """Turn 2: prompt that should trigger a tool call."""
     checks = []
     console.print("\n[bold]Turn 2: Tool call[/]")
@@ -169,7 +183,12 @@ def test_tool_call(provider, model_id, max_tokens) -> tuple[list[Check], list[Me
         model=model_id,
         max_tokens=min(max_tokens, 4096),
         system="You are a helpful assistant. Use the calculate tool to evaluate math expressions.",
-        messages=[{"role": "user", "content": "Please use the calculate tool to compute 7 * 13."}],
+        messages=[
+            {
+                "role": "user",
+                "content": "Please use the calculate tool to compute 7 * 13.",
+            }
+        ],
         tools=[TOOL_DEF],
     )
     elapsed = time.perf_counter() - t0
@@ -188,33 +207,45 @@ def test_tool_call(provider, model_id, max_tokens) -> tuple[list[Check], list[Me
     console.print(f"  [cyan]elapsed:           {elapsed:.2f}s[/]")
     console.print(f"  [cyan]throughput:         {m.tokens_per_sec:.1f} tok/s[/]")
 
-    checks.append(Check(
-        "tool_calls present",
-        resp.tool_calls is not None and len(resp.tool_calls) > 0,
-        tc_summary))
+    checks.append(
+        Check(
+            "tool_calls present",
+            resp.tool_calls is not None and len(resp.tool_calls) > 0,
+            tc_summary,
+        )
+    )
 
-    checks.append(Check(
-        "stop_reason is tool_use",
-        resp.stop_reason == "tool_use",
-        resp.stop_reason))
+    checks.append(
+        Check(
+            "stop_reason is tool_use", resp.stop_reason == "tool_use", resp.stop_reason
+        )
+    )
 
-    checks.append(Check(
-        "invariant: output = reasoning + answer",
-        resp.output_tokens == resp.reasoning_tokens + resp.answer_tokens,
-        f"{resp.output_tokens} == {resp.reasoning_tokens} + {resp.answer_tokens}"))
+    checks.append(
+        Check(
+            "invariant: output = reasoning + answer",
+            resp.output_tokens == resp.reasoning_tokens + resp.answer_tokens,
+            f"{resp.output_tokens} == {resp.reasoning_tokens} + {resp.answer_tokens}",
+        )
+    )
 
     # When tool calls are present and text is empty, answer_tokens should
     # still be nonzero (tool args contribute)
     if resp.tool_calls and not resp.text.strip():
-        checks.append(Check(
-            "answer_tokens > 0 (tool args counted)",
-            resp.answer_tokens > 0,
-            str(resp.answer_tokens)))
+        checks.append(
+            Check(
+                "answer_tokens > 0 (tool args counted)",
+                resp.answer_tokens > 0,
+                str(resp.answer_tokens),
+            )
+        )
 
     return checks, [m]
 
 
-def test_tool_round_trip(provider, model_id, max_tokens) -> tuple[list[Check], list[Measurement]]:
+def test_tool_round_trip(
+    provider, model_id, max_tokens
+) -> tuple[list[Check], list[Measurement]]:
     """Turn 3: complete tool round-trip — call tool, then get final answer."""
     checks = []
     measurements = []
@@ -232,7 +263,9 @@ def test_tool_round_trip(provider, model_id, max_tokens) -> tuple[list[Check], l
     elapsed1 = time.perf_counter() - t0
     m1 = Measurement("round_trip_call", elapsed1, resp1.output_tokens)
     measurements.append(m1)
-    console.print(f"  [cyan]call elapsed:      {elapsed1:.2f}s ({m1.tokens_per_sec:.1f} tok/s)[/]")
+    console.print(
+        f"  [cyan]call elapsed:      {elapsed1:.2f}s ({m1.tokens_per_sec:.1f} tok/s)[/]"
+    )
 
     if not resp1.tool_calls:
         checks.append(Check("tool call obtained", False, "no tool call in response"))
@@ -245,12 +278,18 @@ def test_tool_round_trip(provider, model_id, max_tokens) -> tuple[list[Check], l
         {"role": "user", "content": "Use calculate to compute 17 + 25."},
         provider.format_assistant_message(resp1.raw_content),
     ]
-    messages.extend(provider.build_tool_result_messages([{
-        "tool_call_id": resp1.tool_calls[0]["id"],
-        "name": resp1.tool_calls[0]["name"],
-        "output": "42",
-        "is_error": False,
-    }]))
+    messages.extend(
+        provider.build_tool_result_messages(
+            [
+                {
+                    "tool_call_id": resp1.tool_calls[0]["id"],
+                    "name": resp1.tool_calls[0]["name"],
+                    "output": "42",
+                    "is_error": False,
+                }
+            ]
+        )
+    )
 
     # Second: get final answer using tool result
     t1 = time.perf_counter()
@@ -269,22 +308,27 @@ def test_tool_round_trip(provider, model_id, max_tokens) -> tuple[list[Check], l
     console.print(f"  output_tokens:     {resp2.output_tokens}")
     console.print(f"  reasoning_tokens:  {resp2.reasoning_tokens}")
     console.print(f"  answer_tokens:     {resp2.answer_tokens}")
-    console.print(f"  [cyan]answer elapsed:     {elapsed2:.2f}s ({m2.tokens_per_sec:.1f} tok/s)[/]")
+    console.print(
+        f"  [cyan]answer elapsed:     {elapsed2:.2f}s ({m2.tokens_per_sec:.1f} tok/s)[/]"
+    )
 
-    checks.append(Check(
-        "final answer non-empty",
-        bool(resp2.text.strip()),
-        f"{len(resp2.text)} chars"))
+    checks.append(
+        Check(
+            "final answer non-empty",
+            bool(resp2.text.strip()),
+            f"{len(resp2.text)} chars",
+        )
+    )
 
-    checks.append(Check(
-        "invariant: output = reasoning + answer",
-        resp2.output_tokens == resp2.reasoning_tokens + resp2.answer_tokens,
-        f"{resp2.output_tokens} == {resp2.reasoning_tokens} + {resp2.answer_tokens}"))
+    checks.append(
+        Check(
+            "invariant: output = reasoning + answer",
+            resp2.output_tokens == resp2.reasoning_tokens + resp2.answer_tokens,
+            f"{resp2.output_tokens} == {resp2.reasoning_tokens} + {resp2.answer_tokens}",
+        )
+    )
 
-    checks.append(Check(
-        "answer mentions 42",
-        "42" in resp2.text,
-        resp2.text[:80]))
+    checks.append(Check("answer mentions 42", "42" in resp2.text, resp2.text[:80]))
 
     return checks, measurements
 
@@ -298,7 +342,9 @@ momentum conservation from rotational symmetry). \
 Be thorough — aim for at least 800 words."""
 
 
-def test_throughput(provider, model_id, max_tokens) -> tuple[list[Check], list[Measurement]]:
+def test_throughput(
+    provider, model_id, max_tokens
+) -> tuple[list[Check], list[Measurement]]:
     """Extended generation to get a reliable throughput measurement."""
     checks = []
     console.print("\n[bold]Throughput: Extended generation[/]")
@@ -322,27 +368,39 @@ def test_throughput(provider, model_id, max_tokens) -> tuple[list[Check], list[M
     console.print(f"  [cyan]elapsed:           {elapsed:.2f}s[/]")
     console.print(f"  [cyan]throughput:         {m.tokens_per_sec:.1f} tok/s[/]")
 
-    checks.append(Check(
-        "extended: output_tokens > 200",
-        resp.output_tokens > 200,
-        str(resp.output_tokens)))
+    checks.append(
+        Check(
+            "extended: output_tokens > 200",
+            resp.output_tokens > 200,
+            str(resp.output_tokens),
+        )
+    )
 
-    checks.append(Check(
-        "extended: invariant output = reasoning + answer",
-        resp.output_tokens == resp.reasoning_tokens + resp.answer_tokens,
-        f"{resp.output_tokens} == {resp.reasoning_tokens} + {resp.answer_tokens}"))
+    checks.append(
+        Check(
+            "extended: invariant output = reasoning + answer",
+            resp.output_tokens == resp.reasoning_tokens + resp.answer_tokens,
+            f"{resp.output_tokens} == {resp.reasoning_tokens} + {resp.answer_tokens}",
+        )
+    )
 
     return checks, [m]
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Test a model's reasoning and token tracking.")
+    parser = argparse.ArgumentParser(
+        description="Test a model's reasoning and token tracking."
+    )
     parser.add_argument("model_key", nargs="?", help="Model key from models.yaml")
     parser.add_argument("--list", action="store_true", help="List available models")
-    parser.add_argument("--skip-tools", action="store_true",
-                        help="Skip tool call tests (for models that don't support tools)")
+    parser.add_argument(
+        "--skip-tools",
+        action="store_true",
+        help="Skip tool call tests (for models that don't support tools)",
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -354,7 +412,12 @@ def main():
         table.add_column("Reasoning")
         for key, entry in registry.items():
             reasoning = ""
-            for rk in ("reasoning_format", "thinking", "thinking_level", "reasoning_effort"):
+            for rk in (
+                "reasoning_format",
+                "thinking",
+                "thinking_level",
+                "reasoning_effort",
+            ):
                 if rk in entry:
                     reasoning = f"{rk}={entry[rk]}"
                     break

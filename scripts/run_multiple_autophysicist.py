@@ -37,6 +37,7 @@ DEFAULT_WORKSPACE_BASE = PROJECT_ROOT / "workspaces"
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RunResult:
     run_index: int
@@ -52,6 +53,7 @@ class RunResult:
 # ---------------------------------------------------------------------------
 # Workspace result parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_workspace_results(workspace_dir: Path) -> tuple[str, bool, dict | None]:
     """Read results from a completed workspace.
@@ -120,9 +122,12 @@ async def run_one(
 ) -> RunResult:
     """Run a single open_dirac_autophysicist subprocess, streaming iteration progress."""
     cmd = [
-        "uv", "run", "open_dirac_autophysicist",
+        "uv",
+        "run",
+        "open_dirac_autophysicist",
         str(problem_path),
-        "--workspace-dir", str(workspace_dir),
+        "--workspace-dir",
+        str(workspace_dir),
     ]
     if model_key:
         cmd.extend(["--model", model_key])
@@ -249,6 +254,7 @@ async def run_one(
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
+
 async def run_multiple(args: argparse.Namespace) -> int:
     """Run N autophysicist instances and report results."""
     n = args.runs
@@ -288,13 +294,20 @@ async def run_multiple(args: argparse.Namespace) -> int:
     async def worker(run_index: int) -> RunResult:
         nonlocal completed
         result = await run_one(
-            run_index, args.problem, args.model,
-            args.max_iterations, args.config,
-            args.token_budget, args.tool_call_cap,
-            args.max_rounds, args.scratchpad_window,
+            run_index,
+            args.problem,
+            args.model,
+            args.max_iterations,
+            args.config,
+            args.token_budget,
+            args.tool_call_cap,
+            args.max_rounds,
+            args.scratchpad_window,
             args.sandbox_timeout,
             workspace_dirs[run_index],
-            args.timeout, semaphore, print_lock,
+            args.timeout,
+            semaphore,
+            print_lock,
         )
         async with lock:
             completed += 1
@@ -403,38 +416,78 @@ async def run_multiple(args: argparse.Namespace) -> int:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run open_dirac_autophysicist N times on a single problem with concurrency.",
     )
     parser.add_argument("problem", type=Path, help="Path to problem YAML file")
-    parser.add_argument("--model", type=str, default=None,
-                        help=f"Model key from models.yaml (default: {DEFAULTS['model']})")
-    parser.add_argument("--max-iterations", type=int, default=None,
-                        help="Max iterations per run")
-    parser.add_argument("--config", type=Path, default=None,
-                        help="Config YAML file to pass through")
-    parser.add_argument("--token-budget", type=int, default=None,
-                        help="Token budget per iteration (default: autophysicist default 64000)")
-    parser.add_argument("--tool-call-cap", type=int, default=None,
-                        help="Max tool calls per iteration (default: autophysicist default 15)")
-    parser.add_argument("--max-rounds", type=int, default=None,
-                        help="Max LLM rounds per iteration (default: autophysicist default 30)")
-    parser.add_argument("--scratchpad-window", type=int, default=None,
-                        help="Number of recent scratchpad entries to show (default: 5)")
-    parser.add_argument("--sandbox-timeout", type=int, default=None,
-                        help="Code execution timeout in seconds (default: 60)")
-    parser.add_argument("--runs", type=int, required=True,
-                        help="Number of independent runs")
-    parser.add_argument("--concurrency", type=int, default=10,
-                        help="Max parallel runs (default: 10)")
-    parser.add_argument("--timeout", type=int, default=3600,
-                        help="Per-run timeout in seconds (default: 3600)")
-    parser.add_argument("--workspace-base", type=Path, default=DEFAULT_WORKSPACE_BASE,
-                        help="Base directory for workspaces")
-    parser.add_argument("--output-dir", type=Path,
-                        default=PROJECT_ROOT / "results" / "multiple_autophysicist",
-                        help="Output directory for results JSON")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
+    )
+    parser.add_argument(
+        "--max-iterations", type=int, default=None, help="Max iterations per run"
+    )
+    parser.add_argument(
+        "--config", type=Path, default=None, help="Config YAML file to pass through"
+    )
+    parser.add_argument(
+        "--token-budget",
+        type=int,
+        default=None,
+        help="Token budget per iteration (default: autophysicist default 64000)",
+    )
+    parser.add_argument(
+        "--tool-call-cap",
+        type=int,
+        default=None,
+        help="Max tool calls per iteration (default: autophysicist default 15)",
+    )
+    parser.add_argument(
+        "--max-rounds",
+        type=int,
+        default=None,
+        help="Max LLM rounds per iteration (default: autophysicist default 30)",
+    )
+    parser.add_argument(
+        "--scratchpad-window",
+        type=int,
+        default=None,
+        help="Number of recent scratchpad entries to show (default: 5)",
+    )
+    parser.add_argument(
+        "--sandbox-timeout",
+        type=int,
+        default=None,
+        help="Code execution timeout in seconds (default: 60)",
+    )
+    parser.add_argument(
+        "--runs", type=int, required=True, help="Number of independent runs"
+    )
+    parser.add_argument(
+        "--concurrency", type=int, default=10, help="Max parallel runs (default: 10)"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=3600,
+        help="Per-run timeout in seconds (default: 3600)",
+    )
+    parser.add_argument(
+        "--workspace-base",
+        type=Path,
+        default=DEFAULT_WORKSPACE_BASE,
+        help="Base directory for workspaces",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "multiple_autophysicist",
+        help="Output directory for results JSON",
+    )
     args = parser.parse_args()
 
     if args.runs < 1:

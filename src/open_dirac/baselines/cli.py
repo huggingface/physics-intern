@@ -4,6 +4,7 @@ Centralises argparse registration, problem YAML loading + validation,
 workspace directory setup, and provider instantiation. Each baseline's
 ``main()`` stays in its own ``runner.py`` but reuses these helpers.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,19 +27,28 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     """
     parser.add_argument("problem", type=Path, help="Path to problem YAML file")
     parser.add_argument(
-        "--model", type=str, default=None,
+        "--model",
+        type=str,
+        default=None,
         help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
     )
     parser.add_argument(
-        "--config", type=Path, default=None,
+        "--config",
+        type=Path,
+        default=None,
         help="Path to config YAML file (overrides defaults)",
     )
     parser.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="Save response text to a Markdown file",
     )
     parser.add_argument(
-        "--workspace-dir", type=str, default=None,
+        "--workspace-dir",
+        type=str,
+        default=None,
         help="Workspace directory (default: auto-generated)",
     )
 

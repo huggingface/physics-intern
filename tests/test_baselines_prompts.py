@@ -4,7 +4,6 @@ from open_dirac.baselines.prompts import SYSTEM_PROMPT, build_user_message
 
 
 class TestSystemPrompt:
-
     def test_nonempty(self):
         assert SYSTEM_PROMPT.strip()
 
@@ -15,7 +14,6 @@ class TestSystemPrompt:
 
 
 class TestBuildUserMessage:
-
     def test_plain_problem(self):
         msg = build_user_message("Derive the Hawking temperature.")
         assert msg == "Derive the Hawking temperature."

@@ -89,11 +89,17 @@ class ReviewerAgent(BaseAgent):
 
     def _auto_review_description(self, target_id: str) -> str:
         """Generate a review task description from the WH and its evidence."""
-        h = self.research_state.hypotheses.get(target_id) if self.research_state else None
+        h = (
+            self.research_state.hypotheses.get(target_id)
+            if self.research_state
+            else None
+        )
         if not h:
             return f"Review {target_id}."
 
-        ev_types = sorted(set(ev.type for ev in h.evidence)) if h.evidence else ["research"]
+        ev_types = (
+            sorted(set(ev.type for ev in h.evidence)) if h.evidence else ["research"]
+        )
         ev_type = "+".join(ev_types) if len(ev_types) > 1 else ev_types[0]
 
         # Find originating RQ
@@ -144,18 +150,28 @@ class ReviewerAgent(BaseAgent):
         if self.research_state:
             rs_parts: list[str] = []
             if self.research_state.conventions:
-                rs_parts.append(f"<conventions>\n{self.research_state.conventions}\n</conventions>")
+                rs_parts.append(
+                    f"<conventions>\n{self.research_state.conventions}\n</conventions>"
+                )
             ers = self.research_state.established_hypotheses()
             if ers:
                 er_lines = [f"- **{er.id}**: {er.statement}" for er in ers]
-                rs_parts.append("<established-results>\n" + "\n".join(er_lines) + "\n</established-results>")
+                rs_parts.append(
+                    "<established-results>\n"
+                    + "\n".join(er_lines)
+                    + "\n</established-results>"
+                )
             if self.research_state.sanity_checks:
-                rs_parts.append(_render_sanity_checks(
-                    self.research_state.sanity_checks,
-                    tag="suggested-sanity-checks",
-                ))
+                rs_parts.append(
+                    _render_sanity_checks(
+                        self.research_state.sanity_checks,
+                        tag="suggested-sanity-checks",
+                    )
+                )
             if rs_parts:
-                parts.append("<research-state>\n" + "\n".join(rs_parts) + "\n</research-state>")
+                parts.append(
+                    "<research-state>\n" + "\n".join(rs_parts) + "\n</research-state>"
+                )
 
         # 4. Original question (before claim, for context)
         if self.research_state and task.target_claim:
@@ -163,7 +179,9 @@ class ReviewerAgent(BaseAgent):
             for rq in self.research_state.research_questions.values():
                 if target_id in rq.resolved_to:
                     rq_content = f"{rq.id}: {rq.question}"
-                    parts.append(f'<original-question id="{rq.id}">\n{rq_content}\n</original-question>')
+                    parts.append(
+                        f'<original-question id="{rq.id}">\n{rq_content}\n</original-question>'
+                    )
                     break
 
         # 5. Claim + evidence
@@ -174,7 +192,11 @@ class ReviewerAgent(BaseAgent):
                 claim_parts: list[str] = [f"Statement: {h.statement}"]
                 if h.derivation:
                     claim_parts.append(f"<derivation>\n{h.derivation}\n</derivation>")
-                parts.append(f'<claim id="{target_id}">\n' + "\n".join(claim_parts) + "\n</claim>")
+                parts.append(
+                    f'<claim id="{target_id}">\n'
+                    + "\n".join(claim_parts)
+                    + "\n</claim>"
+                )
 
                 # Evidence (iterate over all items)
                 if h.evidence:
@@ -182,7 +204,9 @@ class ReviewerAgent(BaseAgent):
                     for ev_idx, ev in enumerate(h.evidence, 1):
                         ev_parts: list[str] = []
                         if ev.description:
-                            ev_parts.append(f"<description>{ev.description}</description>")
+                            ev_parts.append(
+                                f"<description>{ev.description}</description>"
+                            )
                         if ev.summary:
                             ev_parts.append(f"<summary>{ev.summary}</summary>")
                         if ev.approach:
@@ -196,7 +220,9 @@ class ReviewerAgent(BaseAgent):
                                 purpose = ev.script_purposes.get(script_name, "")
                                 try:
                                     code = _truncate(
-                                        self.workspace.read_file(f"computations/{script_name}"),
+                                        self.workspace.read_file(
+                                            f"computations/{script_name}"
+                                        ),
                                         _CODE_CHAR_LIMIT,
                                     )
                                 except Exception:
@@ -204,7 +230,9 @@ class ReviewerAgent(BaseAgent):
                                 stem = Path(script_name).stem
                                 try:
                                     output = _truncate(
-                                        self.workspace.read_file(f"computations/{stem}.output"),
+                                        self.workspace.read_file(
+                                            f"computations/{stem}.output"
+                                        ),
                                         _OUTPUT_CHAR_LIMIT,
                                     )
                                 except Exception:
@@ -212,7 +240,9 @@ class ReviewerAgent(BaseAgent):
                                 comp_parts = []
                                 if purpose:
                                     comp_parts.append(f"  <purpose>{purpose}</purpose>")
-                                comp_parts.append(f'  <code language="python">\n{code}\n  </code>')
+                                comp_parts.append(
+                                    f'  <code language="python">\n{code}\n  </code>'
+                                )
                                 comp_parts.append(f"  <output>\n{output}\n  </output>")
                                 ev_parts.append(
                                     f'<computation name="{script_name}">\n'
@@ -222,7 +252,9 @@ class ReviewerAgent(BaseAgent):
                         if ev.derivation_file:
                             try:
                                 content = _truncate(
-                                    self.workspace.read_file(f"derivations/{ev.derivation_file}"),
+                                    self.workspace.read_file(
+                                        f"derivations/{ev.derivation_file}"
+                                    ),
                                     _OUTPUT_CHAR_LIMIT,
                                 )
                             except Exception:
@@ -232,13 +264,19 @@ class ReviewerAgent(BaseAgent):
                                 f"{content or ev.reasoning}\n</derivation>"
                             )
                         elif ev.reasoning:
-                            ev_parts.append(f"<reasoning>\n{ev.reasoning}\n</reasoning>")
+                            ev_parts.append(
+                                f"<reasoning>\n{ev.reasoning}\n</reasoning>"
+                            )
                         if ev.notes:
                             ev_parts.append(f"<notes>{ev.notes}</notes>")
                         if ev.confidence:
                             ev_parts.append(f"<confidence>{ev.confidence}</confidence>")
                         label = f' n="{ev_idx}/{len(h.evidence)}"' if multi else ""
-                        parts.append(f'<evidence type="{ev.type}"{label}>\n' + "\n".join(ev_parts) + "\n</evidence>")
+                        parts.append(
+                            f'<evidence type="{ev.type}"{label}>\n'
+                            + "\n".join(ev_parts)
+                            + "\n</evidence>"
+                        )
 
         # 6. Instructions (task description, at the end)
         if self.research_state and task.target_claim:

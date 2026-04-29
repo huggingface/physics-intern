@@ -137,7 +137,9 @@ class Task:
                 parts.append(f"<relevant-results>\n{items}\n</relevant-results>")
             if self.recommended_sanity_checks:
                 items = "\n".join(f"- {c}" for c in self.recommended_sanity_checks)
-                parts.append(f"<recommended-sanity-checks>\n{items}\n</recommended-sanity-checks>")
+                parts.append(
+                    f"<recommended-sanity-checks>\n{items}\n</recommended-sanity-checks>"
+                )
         else:
             # Reviewer: include background only (orchestrator doubt context)
             if self.background:

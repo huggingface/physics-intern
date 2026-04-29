@@ -1,6 +1,5 @@
 """Tests for markdown parsing utilities."""
 
-import pytest
 from pathlib import Path
 from open_dirac.utils.markdown import (
     parse_frontmatter,
@@ -23,7 +22,6 @@ from open_dirac.utils.markdown import (
     flatten_unverified_brackets,
     detect_zero_output_stalls,
     count_withdrawn_critiques,
-    CRIT_WITHDRAWN_RE,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -489,8 +487,7 @@ class TestFindPriorFailures:
     def test_find_prior_failures_by_er_id(self):
         """Match via WH-002 in task body."""
         results = find_prior_failures_for_claim(
-            SAMPLE_COMP_LOG,
-            "Verify WH-002 partition function using numerical methods"
+            SAMPLE_COMP_LOG, "Verify WH-002 partition function using numerical methods"
         )
         assert len(results) == 3  # COMP-002, COMP-003, COMP-004
         # Most recent first
@@ -500,16 +497,14 @@ class TestFindPriorFailures:
     def test_find_prior_failures_none(self):
         """No matching failures -> empty list."""
         results = find_prior_failures_for_claim(
-            SAMPLE_COMP_LOG,
-            "Verify WH-099 something totally unrelated"
+            SAMPLE_COMP_LOG, "Verify WH-099 something totally unrelated"
         )
         assert results == []
 
     def test_find_prior_failures_skips_verified(self):
         """VERIFIED entries for the same claim are not returned."""
         results = find_prior_failures_for_claim(
-            SAMPLE_COMP_LOG,
-            "Check WH-001 ground state energy"
+            SAMPLE_COMP_LOG, "Check WH-001 ground state energy"
         )
         # COMP-001 is VERIFIED, should not appear
         assert results == []
@@ -722,6 +717,7 @@ class TestWithdrawnStatus:
         """WITHDRAWN critiques should count in total_critiques."""
         text = "## CRIT-020 [MEDIUM] [WITHDRAWN]\n- **Target:** WH-005\n"
         from open_dirac.utils.markdown import recount_critique_metadata
+
         meta = recount_critique_metadata(text)
         assert meta["total_critiques"] == 1
         assert meta["withdrawn_critiques"] == 1
@@ -907,8 +903,7 @@ Consider larger integration domain.
     def test_find_prior_failures_includes_method(self):
         """find_prior_failures_for_claim returns excerpts containing METHOD text."""
         results = find_prior_failures_for_claim(
-            self.COMP_LOG_WITH_METHOD_NOTES,
-            "Verify WH-001 ground state energy"
+            self.COMP_LOG_WITH_METHOD_NOTES, "Verify WH-001 ground state energy"
         )
         assert len(results) == 1
         assert "numerical integration" in results[0]
@@ -917,8 +912,7 @@ Consider larger integration domain.
     def test_find_prior_failures_includes_notes(self):
         """find_prior_failures_for_claim returns excerpts containing NOTES text."""
         results = find_prior_failures_for_claim(
-            self.COMP_LOG_WITH_METHOD_NOTES,
-            "Verify WH-001 ground state energy"
+            self.COMP_LOG_WITH_METHOD_NOTES, "Verify WH-001 ground state energy"
         )
         assert len(results) == 1
         assert "boundary effects" in results[0]
@@ -953,7 +947,12 @@ Taylor expansion to 50 terms at beta=0.1.
 
     def test_format_failure_excerpt_partial_fields(self):
         """_format_failure_excerpt works with only some fields populated."""
-        entry = {"verdict": "INCONCLUSIVE", "method": "", "result": "Failed", "notes": ""}
+        entry = {
+            "verdict": "INCONCLUSIVE",
+            "method": "",
+            "result": "Failed",
+            "notes": "",
+        }
         excerpt = _format_failure_excerpt(entry)
         assert "INCONCLUSIVE" in excerpt
         assert "Failed" in excerpt

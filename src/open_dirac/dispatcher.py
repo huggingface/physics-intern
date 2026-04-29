@@ -51,6 +51,7 @@ def is_recoverable(exc: Exception) -> bool:
 # Dispatch
 # ---------------------------------------------------------------------------
 
+
 def dispatch(
     task: Task,
     iteration: int,
@@ -107,13 +108,13 @@ def dispatch(
             crits = list(research_state.critiques.values())
             recent = [c for c in crits if c.iteration_filed == iteration]
             if recent:
-                console.print(
-                    f"[red]Critic filed {len(recent)} critique(s)[/red]"
-                )
+                console.print(f"[red]Critic filed {len(recent)} critique(s)[/red]")
         return "deep_critic", response
 
     else:
-        console.print(f"[yellow]Unknown task type '{tt}', defaulting to researcher[/yellow]")
+        console.print(
+            f"[yellow]Unknown task type '{tt}', defaulting to researcher[/yellow]"
+        )
         researcher.research_state = research_state
         result = researcher.run(task, iteration)
         return "researcher", result
@@ -122,6 +123,7 @@ def dispatch(
 # ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
+
 
 def handle_context_too_long(
     task: Task,
@@ -137,21 +139,26 @@ def handle_context_too_long(
         f"Context too long for {task.task_id}: {exc.input_tokens} input tokens "
         f"(model limit {exc.max_context})",
     )
-    loop_state.agent_failures.append({
-        "task_id": task.task_id, "agent": task.task_type.value,
-        "event": "context_too_long",
-        "detail": (
-            f"Context exceeded model limit (~{exc.input_tokens} input tokens, "
-            f"limit {exc.max_context}). Simplify or decompose the task."
-        ),
-        "iteration": iteration,
-    })
+    loop_state.agent_failures.append(
+        {
+            "task_id": task.task_id,
+            "agent": task.task_type.value,
+            "event": "context_too_long",
+            "detail": (
+                f"Context exceeded model limit (~{exc.input_tokens} input tokens, "
+                f"limit {exc.max_context}). Simplify or decompose the task."
+            ),
+            "iteration": iteration,
+        }
+    )
     console.print(
         f"[yellow]Context too long for {task.task_id} — skipping "
         f"(~{exc.input_tokens} input tokens, limit {exc.max_context})[/yellow]"
     )
     log_scaffold_event(
-        workspace.root, iteration, CC.LOOP_CONTROL,
+        workspace.root,
+        iteration,
+        CC.LOOP_CONTROL,
         "context_too_long",
         f"task={task.task_id}, input_tokens={exc.input_tokens}, "
         f"max_context={exc.max_context}",
@@ -181,11 +188,14 @@ def handle_dispatch_error(
             ),
         )
     )
-    console.print(
-        f"[yellow]Dispatch failed (transient), skipping: {exc}[/yellow]"
+    console.print(f"[yellow]Dispatch failed (transient), skipping: {exc}[/yellow]")
+    log_scaffold_event(
+        workspace.root,
+        iteration,
+        CC.LOOP_CONTROL,
+        "dispatch_failure",
+        f"{type(exc).__name__}: {str(exc)[:200]}",
     )
-    log_scaffold_event(workspace.root, iteration, CC.LOOP_CONTROL, "dispatch_failure",
-                       f"{type(exc).__name__}: {str(exc)[:200]}")
 
 
 def handle_parse_failure(
@@ -205,23 +215,27 @@ def handle_parse_failure(
         iteration,
         f"Parse failure on {exc.agent_name}: {exc.detail}",
     )
-    loop_state.agent_failures.append({
-        "task_id": task.task_id,
-        "agent": exc.agent_name,
-        "event": "parse_failure",
-        "detail": (
-            f"Agent {exc.agent_name} failed to produce valid structured "
-            f"output after retries. No evidence was stored. "
-            f"Consider re-dispatching or decomposing the task."
-        ),
-        "iteration": iteration,
-    })
+    loop_state.agent_failures.append(
+        {
+            "task_id": task.task_id,
+            "agent": exc.agent_name,
+            "event": "parse_failure",
+            "detail": (
+                f"Agent {exc.agent_name} failed to produce valid structured "
+                f"output after retries. No evidence was stored. "
+                f"Consider re-dispatching or decomposing the task."
+            ),
+            "iteration": iteration,
+        }
+    )
     console.print(
         f"[yellow]{exc.agent_name}: parse failure — no evidence stored. "
         f"Reporting to orchestrator.[/yellow]"
     )
     log_scaffold_event(
-        workspace.root, iteration, CC.OUTPUT_NORMALIZATION,
+        workspace.root,
+        iteration,
+        CC.OUTPUT_NORMALIZATION,
         "parse_failure_no_evidence",
         f"agent={exc.agent_name}, task={task.task_id}, {exc.detail[:200]}",
     )
@@ -240,29 +254,47 @@ def record_agent_failures(
 
     # max_tokens truncation (one-shot or agentic)
     if stop == "max_tokens":
-        out_tok = getattr(result, "output_tokens", None) or getattr(result, "total_output_tokens", None) or 0
-        loop_state.agent_failures.append({
-            "task_id": task.task_id, "agent": agent_name,
-            "event": "max_tokens_truncation",
-            "detail": (
-                f"Output hit token limit ({out_tok} tokens). "
-                f"Decompose into smaller subtasks, each targeting a single "
-                f"derivation step or sub-claim."
-            ),
-            "iteration": iteration,
-        })
-        log_scaffold_event(workspace.root, iteration, CC.LOOP_CONTROL,
-                           "agent_failure_max_tokens",
-                           f"task={task.task_id}, agent={agent_name}")
+        out_tok = (
+            getattr(result, "output_tokens", None)
+            or getattr(result, "total_output_tokens", None)
+            or 0
+        )
+        loop_state.agent_failures.append(
+            {
+                "task_id": task.task_id,
+                "agent": agent_name,
+                "event": "max_tokens_truncation",
+                "detail": (
+                    f"Output hit token limit ({out_tok} tokens). "
+                    f"Decompose into smaller subtasks, each targeting a single "
+                    f"derivation step or sub-claim."
+                ),
+                "iteration": iteration,
+            }
+        )
+        log_scaffold_event(
+            workspace.root,
+            iteration,
+            CC.LOOP_CONTROL,
+            "agent_failure_max_tokens",
+            f"task={task.task_id}, agent={agent_name}",
+        )
 
     # max_rounds exhaustion (agentic only)
     if stop == "max_rounds_forced" and isinstance(result, AgentResult):
-        loop_state.agent_failures.append({
-            "task_id": task.task_id, "agent": agent_name,
-            "event": "max_rounds_exhaustion",
-            "detail": f"Exhausted {result.rounds} tool-use rounds without completing.",
-            "iteration": iteration,
-        })
-        log_scaffold_event(workspace.root, iteration, CC.LOOP_CONTROL,
-                           "agent_failure_max_rounds",
-                           f"task={task.task_id}, agent={agent_name}, rounds={result.rounds}")
+        loop_state.agent_failures.append(
+            {
+                "task_id": task.task_id,
+                "agent": agent_name,
+                "event": "max_rounds_exhaustion",
+                "detail": f"Exhausted {result.rounds} tool-use rounds without completing.",
+                "iteration": iteration,
+            }
+        )
+        log_scaffold_event(
+            workspace.root,
+            iteration,
+            CC.LOOP_CONTROL,
+            "agent_failure_max_rounds",
+            f"task={task.task_id}, agent={agent_name}, rounds={result.rounds}",
+        )

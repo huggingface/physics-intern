@@ -10,7 +10,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from open_dirac.config import Config, DEFAULTS, _YAML_CONFIG_FIELDS, load_config_yaml, build_config
+from open_dirac.config import (
+    Config,
+    DEFAULTS,
+    _YAML_CONFIG_FIELDS,
+    load_config_yaml,
+    build_config,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODELS_YAML = PROJECT_ROOT / "src" / "open_dirac" / "models.yaml"
@@ -21,13 +27,20 @@ RESOLVE_SERVE_CONFIG = PROJECT_ROOT / "serve" / "resolve_serve_config.py"
 # DEFAULTS loaded from config.default.yaml
 # ---------------------------------------------------------------------------
 
+
 class TestDefaults:
     def test_defaults_has_required_keys(self):
         # max_tokens is intentionally absent — it's sourced from models.yaml
-        required = {"model", "verify_model", "max_iterations",
-                     "critic_every_n",
-                     "sympy_timeout_seconds",
-                     "max_tool_rounds", "tool_output_limit", "min_er_for_completion"}
+        required = {
+            "model",
+            "verify_model",
+            "max_iterations",
+            "critic_every_n",
+            "sympy_timeout_seconds",
+            "max_tool_rounds",
+            "tool_output_limit",
+            "min_er_for_completion",
+        }
         assert required.issubset(DEFAULTS.keys())
 
     def test_max_tokens_not_in_defaults(self):
@@ -54,6 +67,7 @@ class TestDefaults:
 # ---------------------------------------------------------------------------
 # load_config_yaml
 # ---------------------------------------------------------------------------
+
 
 class TestLoadConfigYaml:
     def test_valid_file(self, tmp_path):
@@ -99,11 +113,15 @@ class TestLoadConfigYaml:
 # build_config
 # ---------------------------------------------------------------------------
 
+
 class TestBuildConfig:
     def test_defaults_only(self):
-        args = Namespace(config=None, model=None,
-                         max_iterations=None, workspace_dir=None,
-)
+        args = Namespace(
+            config=None,
+            model=None,
+            max_iterations=None,
+            workspace_dir=None,
+        )
         cfg = build_config(args)
         assert cfg.model == DEFAULTS["model"]
         assert cfg.verify_model == DEFAULTS["verify_model"]
@@ -112,10 +130,14 @@ class TestBuildConfig:
         assert cfg.max_tokens > 0
 
     def test_cli_overrides_defaults(self):
-        args = Namespace(config=None, model="claude-4.6-opus",
-                         max_iterations=5,
-                         workspace_dir=None, critic_every_n=None,
-                         sympy_timeout_seconds=None)
+        args = Namespace(
+            config=None,
+            model="claude-4.6-opus",
+            max_iterations=5,
+            workspace_dir=None,
+            critic_every_n=None,
+            sympy_timeout_seconds=None,
+        )
         cfg = build_config(args)
         assert cfg.model == "claude-4.6-opus"
         assert cfg.max_iterations == 5
@@ -124,10 +146,15 @@ class TestBuildConfig:
 
     def test_yaml_overrides_defaults(self, tmp_path):
         cfg_file = tmp_path / "config.yaml"
-        cfg_file.write_text(yaml.dump({"model": "claude-4.6-sonnet", "max_iterations": 50}))
-        args = Namespace(config=str(cfg_file), model=None,
-                         max_iterations=None, workspace_dir=None,
-)
+        cfg_file.write_text(
+            yaml.dump({"model": "claude-4.6-sonnet", "max_iterations": 50})
+        )
+        args = Namespace(
+            config=str(cfg_file),
+            model=None,
+            max_iterations=None,
+            workspace_dir=None,
+        )
         cfg = build_config(args)
         assert cfg.model == "claude-4.6-sonnet"
         assert cfg.max_iterations == 50
@@ -135,10 +162,15 @@ class TestBuildConfig:
 
     def test_cli_overrides_yaml(self, tmp_path):
         cfg_file = tmp_path / "config.yaml"
-        cfg_file.write_text(yaml.dump({"model": "claude-4.6-sonnet", "max_iterations": 50}))
-        args = Namespace(config=str(cfg_file), model="claude-4.6-opus",
-                         max_iterations=None, workspace_dir=None,
-)
+        cfg_file.write_text(
+            yaml.dump({"model": "claude-4.6-sonnet", "max_iterations": 50})
+        )
+        args = Namespace(
+            config=str(cfg_file),
+            model="claude-4.6-opus",
+            max_iterations=None,
+            workspace_dir=None,
+        )
         cfg = build_config(args)
         assert cfg.model == "claude-4.6-opus"
         assert cfg.max_iterations == 50  # from YAML
@@ -147,12 +179,15 @@ class TestBuildConfig:
     def test_max_tokens_not_settable_via_yaml(self, tmp_path):
         """max_tokens is ignored in config YAML (models.yaml is the source)."""
         cfg_file = tmp_path / "config.yaml"
-        cfg_file.write_text(yaml.dump(
-            {"model": "claude-4.6-sonnet", "max_tokens": 8192}
-        ))
-        args = Namespace(config=str(cfg_file), model=None,
-                         max_iterations=10, workspace_dir=None,
-)
+        cfg_file.write_text(
+            yaml.dump({"model": "claude-4.6-sonnet", "max_tokens": 8192})
+        )
+        args = Namespace(
+            config=str(cfg_file),
+            model=None,
+            max_iterations=10,
+            workspace_dir=None,
+        )
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
             cfg = build_config(args)
@@ -164,6 +199,7 @@ class TestBuildConfig:
 # ---------------------------------------------------------------------------
 # Model registry resolution
 # ---------------------------------------------------------------------------
+
 
 class TestModelRegistryResolution:
     def test_glm_5_1_local_vllm_key_resolves(self):
@@ -186,6 +222,7 @@ class TestModelRegistryResolution:
 # ---------------------------------------------------------------------------
 # models.yaml `serve` block — consumed by serve/serve.slurm
 # ---------------------------------------------------------------------------
+
 
 class TestServeConfig:
     """The serve.slurm script reads `serve.{nodes,gpus_per_node,vllm_args}` for
@@ -225,11 +262,14 @@ class TestServeConfig:
 # serve/resolve_serve_config.py — bridges models.yaml → serve.slurm shell vars
 # ---------------------------------------------------------------------------
 
+
 def _run_resolver(model: str) -> dict[str, str]:
     """Invoke resolve_serve_config.py and parse its KEY=value output."""
     result = subprocess.run(
         [sys.executable, str(RESOLVE_SERVE_CONFIG), model],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     out: dict[str, str] = {}
     for line in result.stdout.splitlines():
@@ -278,12 +318,15 @@ class TestResolveServeConfig:
 # main.py parser
 # ---------------------------------------------------------------------------
 
+
 class TestMainParser:
     def test_basic_args(self):
         from open_dirac.main import build_parser
+
         parser = build_parser()
-        args = parser.parse_args(["problems/test.yaml", "--max-iterations", "5",
-                                  "--model", "my-model"])
+        args = parser.parse_args(
+            ["problems/test.yaml", "--max-iterations", "5", "--model", "my-model"]
+        )
         assert args.problem == Path("problems/test.yaml")
         assert args.max_iterations == 5
         assert args.model == "my-model"
@@ -291,30 +334,42 @@ class TestMainParser:
 
     def test_all_args(self):
         from open_dirac.main import build_parser
+
         parser = build_parser()
-        args = parser.parse_args([
-            "p.yaml", "--config", "c.yaml", "--model", "m",
-            "--max-iterations", "3",
-            "--workspace-dir", "/tmp/ws",
-        ])
+        args = parser.parse_args(
+            [
+                "p.yaml",
+                "--config",
+                "c.yaml",
+                "--model",
+                "m",
+                "--max-iterations",
+                "3",
+                "--workspace-dir",
+                "/tmp/ws",
+            ]
+        )
         assert args.config == Path("c.yaml")
         assert args.workspace_dir == Path("/tmp/ws")
 
     def test_max_tokens_flag_removed(self):
         """--max-tokens is no longer a valid CLI flag."""
         from open_dirac.main import build_parser
+
         parser = build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["p.yaml", "--max-tokens", "1024"])
 
     def test_bad_int_exits(self):
         from open_dirac.main import build_parser
+
         parser = build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["p.yaml", "--max-iterations", "abc"])
 
     def test_defaults_are_none(self):
         from open_dirac.main import build_parser
+
         parser = build_parser()
         args = parser.parse_args(["p.yaml"])
         assert args.model is None
@@ -326,9 +381,11 @@ class TestMainParser:
 # verify.py parser
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyParser:
     def test_basic_args(self):
         from open_dirac.verification.cli import build_verify_parser
+
         parser = build_verify_parser()
         args = parser.parse_args(["workspaces/run1"])
         assert args.workspace_dir == Path("workspaces/run1")
@@ -336,12 +393,14 @@ class TestVerifyParser:
 
     def test_custom_model(self):
         from open_dirac.verification.cli import build_verify_parser
+
         parser = build_verify_parser()
         args = parser.parse_args(["ws", "--model", "opus"])
         assert args.model == "opus"
 
     def test_max_tokens_flag_removed(self):
         from open_dirac.verification.cli import build_verify_parser
+
         parser = build_verify_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["ws", "--max-tokens", "8192"])

@@ -36,6 +36,7 @@ from open_dirac.task import Task, TaskType
 # Shared fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def populated_state():
     """ResearchState with representative entities for concise tests.
@@ -63,13 +64,15 @@ def populated_state():
         derivation="Surface gravity kappa = 1/(4M), then T = kappa/(2 pi).",
         iteration_created=1,
         iteration_modified=3,
-        evidence=[Evidence(
-            type="compute",
-            method="Symbolic computation with sympy",
-            result="T = 1/(8*pi*M)",
-            confidence="exact",
-            iteration=3,
-        )],
+        evidence=[
+            Evidence(
+                type="compute",
+                method="Symbolic computation with sympy",
+                result="T = 1/(8*pi*M)",
+                confidence="exact",
+                iteration=3,
+            )
+        ],
         review=ReviewResult(
             verdict=Verdict.VERIFIED,
             summary="Symbolic computation confirms the formula.",
@@ -83,13 +86,15 @@ def populated_state():
         derivation="From integration of dS = dM/T.",
         iteration_created=2,
         iteration_modified=4,
-        evidence=[Evidence(
-            type="compute",
-            method="Numerical integration",
-            result="S ~ 4*pi*M**2 to 1e-10",
-            confidence="approximate",
-            iteration=4,
-        )],
+        evidence=[
+            Evidence(
+                type="compute",
+                method="Numerical integration",
+                result="S ~ 4*pi*M**2 to 1e-10",
+                confidence="approximate",
+                iteration=4,
+            )
+        ],
     )
     state.hypotheses["WH-003"] = Hypothesis(
         id="WH-003",
@@ -119,13 +124,15 @@ def populated_state():
         iteration_resolved=4,
     )
 
-    state.failed_approaches.append(FailedApproach(
-        description="Direct Euclidean path integral approach",
-        reason="Requires regularization scheme not yet implemented",
-        related_entities=["ER-001"],
-        iteration=2,
-        derivation_excerpt="Euclidean continuation t -> -i tau, period beta = 1/T.",
-    ))
+    state.failed_approaches.append(
+        FailedApproach(
+            description="Direct Euclidean path integral approach",
+            reason="Requires regularization scheme not yet implemented",
+            related_entities=["ER-001"],
+            iteration=2,
+            derivation_excerpt="Euclidean continuation t -> -i tau, period beta = 1/T.",
+        )
+    )
 
     return state
 
@@ -170,8 +177,8 @@ def resolve_task():
 # render_research_state_md
 # ===========================================================================
 
-class TestRenderResearchStateMd:
 
+class TestRenderResearchStateMd:
     def test_frontmatter_fields(self, populated_state):
         md = render_research_state_md(populated_state)
         meta, _ = parse_frontmatter(md)
@@ -250,7 +257,9 @@ class TestRenderResearchStateMd:
         assert "To be populated by the orchestrator" in md
 
     def test_strategy_section_rendered(self):
-        state = ResearchState(problem_statement="Test", strategy="Focus on surface gravity.")
+        state = ResearchState(
+            problem_statement="Test", strategy="Focus on surface gravity."
+        )
         md = render_research_state_md(state)
         assert "# Strategy" in md
         assert "Focus on surface gravity." in md
@@ -275,7 +284,8 @@ class TestRenderResearchStateMd:
     def test_depends_on_rendered(self):
         state = ResearchState(problem_statement="Test")
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Depends on ER-001",
+            id="WH-001",
+            statement="Depends on ER-001",
             depends_on=["ER-001", "WH-003"],
         )
         md = render_research_state_md(state)
@@ -287,14 +297,19 @@ class TestRenderResearchStateMd:
 
     def test_research_questions_section_rendered(self):
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         state = ResearchState(problem_statement="Test")
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is F(p)?",
-            context="Needed for verification", status=RQStatus.OPEN,
+            id="RQ-001",
+            question="What is F(p)?",
+            context="Needed for verification",
+            status=RQStatus.OPEN,
         )
         state.research_questions["RQ-002"] = ResearchQuestion(
-            id="RQ-002", question="Resolved question",
-            status=RQStatus.RESOLVED, resolved_to=["WH-003"],
+            id="RQ-002",
+            question="Resolved question",
+            status=RQStatus.RESOLVED,
+            resolved_to=["WH-003"],
         )
         md = render_research_state_md(state)
         assert "# Research Questions" in md
@@ -326,8 +341,8 @@ class TestRenderResearchStateMd:
 # render_evidence_log_md
 # ===========================================================================
 
-class TestRenderEvidenceLogMd:
 
+class TestRenderEvidenceLogMd:
     def test_frontmatter_total_entries(self, populated_state):
         md = render_evidence_log_md(populated_state)
         meta, _ = parse_frontmatter(md)
@@ -365,14 +380,20 @@ class TestRenderEvidenceLogMd:
 
     def test_rq_evidence_rendered(self):
         """Evidence on research questions appears in evidence log."""
-        from open_dirac.research_state import ResearchQuestion, RQStatus
+        from open_dirac.research_state import ResearchQuestion
+
         state = ResearchState()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is F?",
-            evidence=[Evidence(
-                type="research", method="analysis",
-                result="F = pi/4", iteration=2,
-            )],
+            id="RQ-001",
+            question="What is F?",
+            evidence=[
+                Evidence(
+                    type="research",
+                    method="analysis",
+                    result="F = pi/4",
+                    iteration=2,
+                )
+            ],
         )
         md = render_evidence_log_md(state)
         assert "RQ-001: Evidence (research)" in md
@@ -383,12 +404,18 @@ class TestRenderEvidenceLogMd:
         long_approach = "x" * 1800
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Test",
+            id="WH-001",
+            statement="Test",
             status=HypothesisStatus.WORKING,
-            evidence=[Evidence(
-                type="compute", method="test",
-                result="ok", approach=long_approach, iteration=1,
-            )],
+            evidence=[
+                Evidence(
+                    type="compute",
+                    method="test",
+                    result="ok",
+                    approach=long_approach,
+                    iteration=1,
+                )
+            ],
         )
         md = render_evidence_log_md(state)
         assert long_approach in md
@@ -398,12 +425,18 @@ class TestRenderEvidenceLogMd:
         long_reasoning = "y" * 1800
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Test",
+            id="WH-001",
+            statement="Test",
             status=HypothesisStatus.WORKING,
-            evidence=[Evidence(
-                type="research", method="test",
-                result="ok", reasoning=long_reasoning, iteration=1,
-            )],
+            evidence=[
+                Evidence(
+                    type="research",
+                    method="test",
+                    result="ok",
+                    reasoning=long_reasoning,
+                    iteration=1,
+                )
+            ],
         )
         md = render_evidence_log_md(state)
         assert long_reasoning in md
@@ -413,11 +446,13 @@ class TestRenderEvidenceLogMd:
         long_reasoning = "z" * 1800
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Test",
+            id="WH-001",
+            statement="Test",
             status=HypothesisStatus.WORKING,
             review=ReviewResult(
                 verdict=Verdict.VERIFIED,
-                summary=long_reasoning, iteration=2,
+                summary=long_reasoning,
+                iteration=2,
             ),
         )
         md = render_evidence_log_md(state)
@@ -426,18 +461,26 @@ class TestRenderEvidenceLogMd:
     def test_promoted_rq_shows_cross_reference(self):
         """When RQ evidence was copied to a WH, the RQ entry should be a short cross-reference."""
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         ev = Evidence(
-            type="compute", method="symbolic", approach="Long approach text " * 50,
-            result="T = 1/(8*pi*M)", reasoning="Full reasoning " * 50, iteration=2,
+            type="compute",
+            method="symbolic",
+            approach="Long approach text " * 50,
+            result="T = 1/(8*pi*M)",
+            reasoning="Full reasoning " * 50,
+            iteration=2,
         )
         state = ResearchState()
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is T?",
-            resolved_to=["WH-001"], status=RQStatus.RESOLVED,
+            id="RQ-001",
+            question="What is T?",
+            resolved_to=["WH-001"],
+            status=RQStatus.RESOLVED,
             evidence=[ev],
         )
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="T = 1/(8*pi*M)",
+            id="WH-001",
+            statement="T = 1/(8*pi*M)",
             status=HypothesisStatus.WORKING,
             evidence=[ev],  # same evidence, deep-copied in real code
         )
@@ -458,8 +501,8 @@ class TestRenderEvidenceLogMd:
 # render_critique_log_md
 # ===========================================================================
 
-class TestRenderCritiqueLogMd:
 
+class TestRenderCritiqueLogMd:
     def test_active_under_active_section(self, populated_state):
         md = render_critique_log_md(populated_state)
         active_start = md.index("# Active Critiques")
@@ -554,8 +597,8 @@ class TestRenderCritiqueLogMd:
 # render_critic_previous_critiques
 # ===========================================================================
 
-class TestRenderCriticPreviousCritiques:
 
+class TestRenderCriticPreviousCritiques:
     def test_empty_returns_empty(self, empty_state):
         text = render_critic_previous_critiques(empty_state)
         assert text == ""
@@ -631,6 +674,7 @@ class TestRenderCriticPreviousCritiques:
 # Snapshot regression: helpers don't break existing renderers
 # ===========================================================================
 
+
 class TestSnapshotRegression:
     """Guard against helper extraction breaking snapshot renderers."""
 
@@ -666,8 +710,8 @@ class TestSnapshotRegression:
 # render_background_survey
 # ===========================================================================
 
-class TestRenderBackgroundSurvey:
 
+class TestRenderBackgroundSurvey:
     def _make_survey_state(self):
         state = ResearchState(problem_statement="Test problem")
         state.survey_background = "## Background\n\nDerive Hawking temperature via surface gravity.\n\n## Key Insights\n\nUse Killing vector method first."
@@ -697,16 +741,20 @@ class TestRenderBackgroundSurvey:
 # Collapsed resolved RQs in orchestrator slim state
 # ===========================================================================
 
-class TestCollapsedResolvedRQs:
 
+class TestCollapsedResolvedRQs:
     def test_resolved_rq_to_er_omitted(self):
         """Resolved RQ pointing to an ER is omitted (already in established-results)."""
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         state = ResearchState(problem_statement="Test")
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="What is X?",
-            status=RQStatus.RESOLVED, resolved_to=["ER-001"],
-            iteration_created=1, iteration_resolved=2,
+            id="RQ-001",
+            question="What is X?",
+            status=RQStatus.RESOLVED,
+            resolved_to=["ER-001"],
+            iteration_created=1,
+            iteration_resolved=2,
         )
         text = render_orchestrator_slim_state(state)
         assert "RQ-001" not in text
@@ -718,17 +766,29 @@ class TestCollapsedResolvedRQs:
 # Enriched planner revision context
 # ---------------------------------------------------------------------------
 
+
 class TestPlannerReviseEnrichedContext:
     def test_enriched_er_shows_deps_evidence_review(self):
-        from open_dirac.research_state import ResearchQuestion, RQStatus
+
         state = ResearchState(problem_statement="Test problem")
         state.hypotheses["ER-001"] = Hypothesis(
             id="ER-001",
             statement="F(p) is a rational function",
             status=HypothesisStatus.ESTABLISHED,
             depends_on=[],
-            evidence=[Evidence(id="E-001", type="compute", summary="Markov chain yields degree-5 poly", iteration=2)],
-            review=ReviewResult(verdict="VERIFIED", summary="Independent derivation confirms", iteration=3),
+            evidence=[
+                Evidence(
+                    id="E-001",
+                    type="compute",
+                    summary="Markov chain yields degree-5 poly",
+                    iteration=2,
+                )
+            ],
+            review=ReviewResult(
+                verdict="VERIFIED",
+                summary="Independent derivation confirms",
+                iteration=3,
+            ),
         )
         text = render_planner_revise_context(state, "ER-002 was overturned")
         # ERs are now in <established-results> inside <research-state>
@@ -755,12 +815,20 @@ class TestPlannerReviseEnrichedContext:
 
     def test_rq_not_shown_in_revise_context(self):
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         state = ResearchState(problem_statement="Test")
         state.research_questions["RQ-001"] = ResearchQuestion(
             id="RQ-001",
             question="What is the leading term?",
             status=RQStatus.OPEN,
-            evidence=[Evidence(id="E-005", type="research", summary="Leading term is O(p^2)", iteration=4)],
+            evidence=[
+                Evidence(
+                    id="E-005",
+                    type="research",
+                    summary="Leading term is O(p^2)",
+                    iteration=4,
+                )
+            ],
         )
         text = render_planner_revise_context(state, "trigger")
         # RQs are no longer shown in revise context
@@ -774,7 +842,11 @@ class TestPlannerReviseEnrichedContext:
             status=HypothesisStatus.ABANDONED,
         )
         text = render_planner_revise_context(state, "trigger")
-        assert "WH-003" not in text.split("<entities>")[0] if "<entities>" in text else True
+        assert (
+            "WH-003" not in text.split("<entities>")[0]
+            if "<entities>" in text
+            else True
+        )
 
     def test_critic_clean_reviews_not_in_revise_context(self):
         state = ResearchState(problem_statement="Test")
@@ -793,18 +865,23 @@ class TestPlannerReviseEnrichedContext:
 
     def test_only_ers_in_research_state(self):
         from open_dirac.research_state import ResearchQuestion, RQStatus
+
         state = ResearchState(problem_statement="Test")
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", statement="Established claim",
+            id="ER-001",
+            statement="Established claim",
             status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(verdict="VERIFIED", summary="OK", iteration=2),
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", statement="Working claim",
+            id="WH-002",
+            statement="Working claim",
             status=HypothesisStatus.WORKING,
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Open question", status=RQStatus.OPEN,
+            id="RQ-001",
+            question="Open question",
+            status=RQStatus.OPEN,
         )
         text = render_planner_revise_context(state, "trigger")
         # ERs shown in <established-results> inside <research-state>
@@ -819,7 +896,8 @@ class TestPlannerReviseEnrichedContext:
         state = ResearchState(problem_statement="Test")
         derivation_text = "Starting from the Einstein field equations, we contract with g^{mu nu} to obtain the trace R = -8 pi G T."
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", statement="Trace relation",
+            id="ER-001",
+            statement="Trace relation",
             status=HypothesisStatus.ESTABLISHED,
             derivation=derivation_text,
             review=ReviewResult(verdict="VERIFIED", summary="Confirmed", iteration=2),
@@ -832,9 +910,12 @@ class TestPlannerReviseEnrichedContext:
         state = ResearchState(problem_statement="Test")
         long_summary = "A" * 250
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", statement="Claim",
+            id="ER-001",
+            statement="Claim",
             status=HypothesisStatus.ESTABLISHED,
-            evidence=[Evidence(id="E-001", type="compute", summary=long_summary, iteration=2)],
+            evidence=[
+                Evidence(id="E-001", type="compute", summary=long_summary, iteration=2)
+            ],
             review=ReviewResult(verdict="VERIFIED", summary="OK", iteration=3),
         )
         text = render_planner_revise_context(state, "trigger")
@@ -845,9 +926,12 @@ class TestPlannerReviseEnrichedContext:
         state = ResearchState(problem_statement="Test")
         long_summary = "B" * 200
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Working claim",
+            id="WH-001",
+            statement="Working claim",
             status=HypothesisStatus.WORKING,
-            evidence=[Evidence(id="E-002", type="research", summary=long_summary, iteration=2)],
+            evidence=[
+                Evidence(id="E-002", type="research", summary=long_summary, iteration=2)
+            ],
         )
         text = render_planner_revise_context(state, "trigger")
         # WHs are no longer shown in revise context
@@ -856,7 +940,8 @@ class TestPlannerReviseEnrichedContext:
     def test_wh_has_no_derivation_excerpt(self):
         state = ResearchState(problem_statement="Test")
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", statement="Working claim",
+            id="WH-001",
+            statement="Working claim",
             status=HypothesisStatus.WORKING,
             derivation="Some derivation that should not appear",
         )
@@ -868,11 +953,14 @@ class TestPlannerReviseEnrichedContext:
 # render_critic_context — sanity checks
 # ===========================================================================
 
-class TestRenderCriticContextSanityChecks:
 
+class TestRenderCriticContextSanityChecks:
     def test_sanity_checks_included(self):
         state = ResearchState(problem_statement="Test", strategy="Do X")
-        state.sanity_checks = [SanityCheck(id="SC-001", predicate="T -> 0 as M -> inf"), SanityCheck(id="SC-002", predicate="Result must be positive")]
+        state.sanity_checks = [
+            SanityCheck(id="SC-001", predicate="T -> 0 as M -> inf"),
+            SanityCheck(id="SC-002", predicate="Result must be positive"),
+        ]
         text = render_critic_context(state, iteration=3)
         assert "<sanity-checks>" in text
         assert "T -> 0 as M -> inf" in text
@@ -888,8 +976,8 @@ class TestRenderCriticContextSanityChecks:
 # render_orchestrator_slim_state — sanity checks + known pitfalls
 # ===========================================================================
 
-class TestRenderOrchestratorSlimState:
 
+class TestRenderOrchestratorSlimState:
     def test_sanity_checks_included(self):
         state = ResearchState(conventions="Natural units")
         state.sanity_checks = [SanityCheck(id="SC-001", predicate="T -> 0 as M -> inf")]
@@ -910,7 +998,9 @@ class TestRenderOrchestratorSlimState:
         assert "<sanity-checks>" not in text
 
     def test_ordering_strategy_before_sanity_checks(self):
-        state = ResearchState(conventions="Natural units", strategy="Use surface gravity")
+        state = ResearchState(
+            conventions="Natural units", strategy="Use surface gravity"
+        )
         state.sanity_checks = [SanityCheck(id="SC-001", predicate="T > 0")]
         text = render_orchestrator_slim_state(state)
         assert text.index("<strategy>") < text.index("<sanity-checks>")
@@ -938,7 +1028,9 @@ class TestRenderOrchestratorSlimState:
         """Long dead-end reasons are truncated in slim state."""
         long_reason = "R" * 200
         state = ResearchState(conventions="c=1")
-        state.failed_approaches = [FailedApproach(description="WH-001", reason=long_reason)]
+        state.failed_approaches = [
+            FailedApproach(description="WH-001", reason=long_reason)
+        ]
         text = render_orchestrator_slim_state(state)
         assert long_reason not in text
         assert long_reason[:100] in text
@@ -946,7 +1038,9 @@ class TestRenderOrchestratorSlimState:
     def test_dead_end_short_strings_not_truncated(self):
         """Short dead-end entries appear in full without ellipsis."""
         state = ResearchState(conventions="c=1")
-        state.failed_approaches = [FailedApproach(description="Abandoned WH-001 — short", reason="nope")]
+        state.failed_approaches = [
+            FailedApproach(description="Abandoned WH-001 — short", reason="nope")
+        ]
         text = render_orchestrator_slim_state(state)
         assert "Abandoned WH-001 — short" in text
         assert "(nope)" in text
@@ -970,11 +1064,13 @@ class TestRenderOrchestratorSlimState:
 # render_formatter_context — sanity checks
 # ===========================================================================
 
-class TestRenderFormatterContextSanityChecks:
 
+class TestRenderFormatterContextSanityChecks:
     def test_sanity_checks_included(self):
         state = ResearchState(problem_statement="Test", conventions="Natural units")
-        state.sanity_checks = [SanityCheck(id="SC-001", predicate="Result must be dimensionless")]
+        state.sanity_checks = [
+            SanityCheck(id="SC-001", predicate="Result must be dimensionless")
+        ]
         text = render_formatter_context(state)
         assert "<sanity-checks>" in text
         assert "Result must be dimensionless" in text

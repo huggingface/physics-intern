@@ -87,17 +87,25 @@ class AdjudicatorAgent(BaseAgent):
         # 3. Research state — conventions, established results, sanity checks
         rs_parts: list[str] = []
         if self.research_state.conventions:
-            rs_parts.append(f"<conventions>\n{self.research_state.conventions}\n</conventions>")
+            rs_parts.append(
+                f"<conventions>\n{self.research_state.conventions}\n</conventions>"
+            )
         ers = self.research_state.established_hypotheses()
         other_ers = [er for er in ers if er.id != target_id]
         if other_ers:
             er_lines = [f"- **{er.id}**: {er.statement}" for er in other_ers]
-            rs_parts.append("<established-results>\n" + "\n".join(er_lines) + "\n</established-results>")
+            rs_parts.append(
+                "<established-results>\n"
+                + "\n".join(er_lines)
+                + "\n</established-results>"
+            )
         if self.research_state.sanity_checks:
             checks_text = "\n".join(f"- {c}" for c in self.research_state.sanity_checks)
             rs_parts.append(f"<sanity-checks>\n{checks_text}\n</sanity-checks>")
         if rs_parts:
-            parts.append("<research-state>\n" + "\n".join(rs_parts) + "\n</research-state>")
+            parts.append(
+                "<research-state>\n" + "\n".join(rs_parts) + "\n</research-state>"
+            )
 
         # 4. Claim being challenged — full details
         if target_id and target_id in self.research_state.hypotheses:
@@ -122,18 +130,24 @@ class AdjudicatorAgent(BaseAgent):
                         for script_name in ev.scripts:
                             purpose = ev.script_purposes.get(script_name, "")
                             try:
-                                code = self.workspace.read_file(f"computations/{script_name}")
+                                code = self.workspace.read_file(
+                                    f"computations/{script_name}"
+                                )
                             except Exception:
                                 code = "[not found]"
                             stem = Path(script_name).stem
                             try:
-                                output = self.workspace.read_file(f"computations/{stem}.output")
+                                output = self.workspace.read_file(
+                                    f"computations/{stem}.output"
+                                )
                             except Exception:
                                 output = "[not found]"
                             comp_parts = []
                             if purpose:
                                 comp_parts.append(f"  <purpose>{purpose}</purpose>")
-                            comp_parts.append(f'  <code language="python">\n{code}\n  </code>')
+                            comp_parts.append(
+                                f'  <code language="python">\n{code}\n  </code>'
+                            )
                             comp_parts.append(f"  <output>\n{output}\n  </output>")
                             ev_parts.append(
                                 f'<computation name="{script_name}">\n'
@@ -142,21 +156,31 @@ class AdjudicatorAgent(BaseAgent):
                             )
                     if ev.derivation_file:
                         try:
-                            content = self.workspace.read_file(f"derivations/{ev.derivation_file}")
+                            content = self.workspace.read_file(
+                                f"derivations/{ev.derivation_file}"
+                            )
                         except Exception:
                             content = ""
                         ev_parts.append(
                             f'<derivation file="{ev.derivation_file}">\n'
                             f"{content or ev.reasoning}\n</derivation>"
                         )
-                    label = f' n="{ev_idx}/{len(h.evidence)}"' if len(h.evidence) > 1 else ""
+                    label = (
+                        f' n="{ev_idx}/{len(h.evidence)}"'
+                        if len(h.evidence) > 1
+                        else ""
+                    )
                     ev_parts_str = "\n".join(ev_parts)
-                    claim_parts.append(f'<evidence type="{ev.type}"{label}>\n{ev_parts_str}\n</evidence>')
+                    claim_parts.append(
+                        f'<evidence type="{ev.type}"{label}>\n{ev_parts_str}\n</evidence>'
+                    )
             if h.review:
                 claim_parts.append(f"Original review verdict: {h.review.verdict}")
                 if h.review.summary:
                     claim_parts.append(f"Original review summary: {h.review.summary}")
-            parts.append(f'<claim id="{target_id}">\n' + "\n".join(claim_parts) + "\n</claim>")
+            parts.append(
+                f'<claim id="{target_id}">\n' + "\n".join(claim_parts) + "\n</claim>"
+            )
 
         # 5. Challenge (critique argument)
         if task.critique_argument:

@@ -29,20 +29,24 @@ from open_dirac.research_state import (
 # Mock helpers
 # ---------------------------------------------------------------------------
 
+
 class MockMetrics:
     """Minimal mock for MetricsTracker with last_critic_iteration."""
+
     def __init__(self, last_critic_iteration: int = 0):
         self.last_critic_iteration = last_critic_iteration
 
 
 class MockConfig:
     """Minimal mock for Config."""
+
     def __init__(self):
         self.min_er_for_completion = 1
 
 
 class MockWorkspace:
     """Minimal workspace mock for can_terminate (still takes workspace param)."""
+
     def __init__(self):
         self.root = None
 
@@ -51,10 +55,12 @@ class MockWorkspace:
 # Violation dataclass tests
 # ---------------------------------------------------------------------------
 
+
 class TestViolation:
     def test_creation(self):
         v = Violation(
-            check="test_check", severity=ViolationSeverity.ERROR,
+            check="test_check",
+            severity=ViolationSeverity.ERROR,
             message="test msg",
         )
         assert v.check == "test_check"
@@ -64,8 +70,10 @@ class TestViolation:
 
     def test_with_detail(self):
         v = Violation(
-            check="x", severity=ViolationSeverity.WARNING,
-            message="y", detail="d",
+            check="x",
+            severity=ViolationSeverity.WARNING,
+            message="y",
+            detail="d",
         )
         assert v.detail == "d"
 
@@ -74,14 +82,18 @@ class TestViolation:
 # check_er_demotion_safety
 # ---------------------------------------------------------------------------
 
+
 class TestErDemotionSafety:
     def test_demotes_er_with_refuted_verification(self):
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", statement="T = 1/(8piM)",
+            id="ER-001",
+            statement="T = 1/(8piM)",
             status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(
-                verdict=Verdict.REFUTED, summary="Calculation error", iteration=1,
+                verdict=Verdict.REFUTED,
+                summary="Calculation error",
+                iteration=1,
             ),
         )
         violations = check_er_demotion_safety(state)
@@ -94,10 +106,13 @@ class TestErDemotionSafety:
     def test_no_demotion_when_verified(self):
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", statement="T = 1/(8piM)",
+            id="ER-001",
+            statement="T = 1/(8piM)",
             status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=2,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=2,
             ),
         )
         violations = check_er_demotion_safety(state)
@@ -107,7 +122,8 @@ class TestErDemotionSafety:
     def test_no_demotion_when_no_verification(self):
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         violations = check_er_demotion_safety(state)
         assert len(violations) == 0
@@ -116,9 +132,12 @@ class TestErDemotionSafety:
         """WH hypotheses are not demoted — only ER."""
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(
-                verdict=Verdict.REFUTED, summary="Failed", iteration=1,
+                verdict=Verdict.REFUTED,
+                summary="Failed",
+                iteration=1,
             ),
         )
         violations = check_er_demotion_safety(state)
@@ -129,11 +148,13 @@ class TestErDemotionSafety:
 # check_phantom_labels
 # ---------------------------------------------------------------------------
 
+
 class TestPhantomLabels:
     def test_strips_unsubstantiated_verified(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", derivation="WH-001 is VERIFIED by computation.",
+            id="WH-001",
+            derivation="WH-001 is VERIFIED by computation.",
         )
         violations = check_phantom_labels(state)
         assert len(violations) == 1
@@ -142,9 +163,12 @@ class TestPhantomLabels:
     def test_keeps_backed_verified(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", derivation="WH-001 is VERIFIED by computation.",
+            id="WH-001",
+            derivation="WH-001 is VERIFIED by computation.",
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=1,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=1,
             ),
         )
         violations = check_phantom_labels(state)
@@ -154,7 +178,8 @@ class TestPhantomLabels:
     def test_no_action_without_verified(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", derivation="Some derivation text.",
+            id="WH-001",
+            derivation="Some derivation text.",
         )
         violations = check_phantom_labels(state)
         assert len(violations) == 0
@@ -164,13 +189,17 @@ class TestPhantomLabels:
 # check_stale_unverified_labels
 # ---------------------------------------------------------------------------
 
+
 class TestStaleUnverifiedLabels:
     def test_promotes_unverified_to_verified(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", derivation="WH-001 is [unverified] pending verification.",
+            id="WH-001",
+            derivation="WH-001 is [unverified] pending verification.",
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=1,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=1,
             ),
         )
         violations = check_stale_unverified_labels(state)
@@ -181,7 +210,8 @@ class TestStaleUnverifiedLabels:
     def test_no_change_without_verified_verification(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", derivation="WH-001 is [unverified] pending verification.",
+            id="WH-001",
+            derivation="WH-001 is [unverified] pending verification.",
         )
         check_stale_unverified_labels(state)
         assert "[unverified]" in state.hypotheses["WH-001"].derivation
@@ -191,11 +221,13 @@ class TestStaleUnverifiedLabels:
 # check_critique_resolution_consistency
 # ---------------------------------------------------------------------------
 
+
 class TestCritiqueResolutionConsistency:
     def test_flags_vanished_target(self):
         state = ResearchState()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-099"],
+            id="CRIT-001",
+            targets=["WH-099"],
             severity=Severity.HIGH,
             status=CritiqueStatus.RESOLVED,
         )
@@ -207,7 +239,8 @@ class TestCritiqueResolutionConsistency:
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"],
+            id="CRIT-001",
+            targets=["WH-001"],
             severity=Severity.HIGH,
             status=CritiqueStatus.RESOLVED,
         )
@@ -218,10 +251,12 @@ class TestCritiqueResolutionConsistency:
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(id="WH-001")
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"],
+            id="CRIT-001",
+            targets=["WH-001"],
             severity=Severity.HIGH,
             argument="Inconsistent label: WH-001 should be ER-001",
             status=CritiqueStatus.RESOLVED,
@@ -232,7 +267,8 @@ class TestCritiqueResolutionConsistency:
     def test_skips_active_critiques(self):
         state = ResearchState()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-099"],
+            id="CRIT-001",
+            targets=["WH-099"],
             severity=Severity.HIGH,
             status=CritiqueStatus.ACTIVE,
         )
@@ -243,10 +279,12 @@ class TestCritiqueResolutionConsistency:
         """If critique targets WH-001 but it was promoted to ER-001, no flag."""
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["WH-001"],
+            id="CRIT-001",
+            targets=["WH-001"],
             severity=Severity.HIGH,
             status=CritiqueStatus.RESOLVED,
         )
@@ -258,7 +296,8 @@ class TestCritiqueResolutionConsistency:
         """Resolved critique targeting STRATEGY should not generate a vanished-target violation."""
         state = ResearchState()
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["STRATEGY"],
+            id="CRIT-001",
+            targets=["STRATEGY"],
             severity=Severity.MEDIUM,
             argument="Strategy recommends refuted approach.",
             status=CritiqueStatus.RESOLVED,
@@ -274,19 +313,25 @@ class TestStrategyTerminationBlocking:
     def test_high_strategy_critique_does_not_block_termination(self):
         state = ResearchState()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=1,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=1,
             ),
         )
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", targets=["STRATEGY"],
+            id="CRIT-001",
+            targets=["STRATEGY"],
             severity=Severity.HIGH,
             status=CritiqueStatus.ACTIVE,
             argument="Strategy recommends a refuted approach.",
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert allowed
@@ -297,6 +342,7 @@ class TestStrategyTerminationBlocking:
 # validate_post_integration
 # ---------------------------------------------------------------------------
 
+
 class TestValidatePostIntegration:
     def test_returns_empty_for_clean_state(self):
         state = ResearchState()
@@ -306,7 +352,8 @@ class TestValidatePostIntegration:
     def test_aggregates_violations(self):
         state = ResearchState()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", derivation="WH-001 is VERIFIED.",
+            id="WH-001",
+            derivation="WH-001 is VERIFIED.",
         )
         violations = validate_post_integration(state)
         assert len(violations) >= 1
@@ -315,12 +362,14 @@ class TestValidatePostIntegration:
     def test_runs_four_checks(self):
         """Pipeline has exactly 4 checks."""
         from open_dirac.validation import _DEFAULT_CHECKS
+
         assert len(_DEFAULT_CHECKS) == 4
 
 
 # ---------------------------------------------------------------------------
 # can_terminate
 # ---------------------------------------------------------------------------
+
 
 class TestCanTerminate:
     def _make_state(self, **kwargs) -> ResearchState:
@@ -329,13 +378,18 @@ class TestCanTerminate:
     def test_allows_with_er_and_critic(self):
         state = self._make_state()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=1,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=1,
             ),
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert allowed
@@ -344,13 +398,18 @@ class TestCanTerminate:
     def test_blocks_without_critic(self):
         state = self._make_state()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=1,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=1,
             ),
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=0),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=0),
             research_state=state,
         )
         assert not allowed
@@ -360,14 +419,18 @@ class TestCanTerminate:
         """HIGH critiques no longer block termination (gate removed)."""
         state = self._make_state()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.critiques["CRIT-001"] = Critique(
-            id="CRIT-001", severity=Severity.HIGH,
+            id="CRIT-001",
+            severity=Severity.HIGH,
             status=CritiqueStatus.ACTIVE,
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert allowed
@@ -376,13 +439,18 @@ class TestCanTerminate:
     def test_blocks_with_open_rq(self):
         state = self._make_state()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.research_questions["RQ-001"] = ResearchQuestion(
-            id="RQ-001", question="Open question", status=RQStatus.OPEN,
+            id="RQ-001",
+            question="Open question",
+            status=RQStatus.OPEN,
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert not allowed
@@ -391,13 +459,17 @@ class TestCanTerminate:
     def test_blocks_with_working_hypothesis(self):
         state = self._make_state()
         state.hypotheses["ER-001"] = Hypothesis(
-            id="ER-001", status=HypothesisStatus.ESTABLISHED,
+            id="ER-001",
+            status=HypothesisStatus.ESTABLISHED,
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING,
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert not allowed
@@ -407,17 +479,23 @@ class TestCanTerminate:
         """WH with VERIFIED review + unestablished deps → blocker about deps."""
         state = self._make_state()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
             depends_on=["WH-002"],
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=1,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=1,
             ),
         )
         state.hypotheses["WH-002"] = Hypothesis(
-            id="WH-002", status=HypothesisStatus.WORKING,
+            id="WH-002",
+            status=HypothesisStatus.WORKING,
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert not allowed
@@ -429,13 +507,18 @@ class TestCanTerminate:
         """WH with VERIFIED review + no dep issues → unexpected blocker."""
         state = self._make_state()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
             review=ReviewResult(
-                verdict=Verdict.VERIFIED, summary="Confirmed", iteration=1,
+                verdict=Verdict.VERIFIED,
+                summary="Confirmed",
+                iteration=1,
             ),
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert not allowed
@@ -447,11 +530,16 @@ class TestCanTerminate:
         """WH without review result should say 'emit review', not 'promote'."""
         state = self._make_state()
         state.hypotheses["WH-001"] = Hypothesis(
-            id="WH-001", status=HypothesisStatus.WORKING,
-            evidence=[Evidence(type="research", reasoning="Some analysis", iteration=1)],
+            id="WH-001",
+            status=HypothesisStatus.WORKING,
+            evidence=[
+                Evidence(type="research", reasoning="Some analysis", iteration=1)
+            ],
         )
         allowed, blockers = can_terminate(
-            MockWorkspace(), MockConfig(), MockMetrics(last_critic_iteration=1),
+            MockWorkspace(),
+            MockConfig(),
+            MockMetrics(last_critic_iteration=1),
             research_state=state,
         )
         assert not allowed

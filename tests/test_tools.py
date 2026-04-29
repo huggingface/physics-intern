@@ -8,7 +8,6 @@ from open_dirac.config import Config
 from open_dirac.llm import AgentResult, run_agent_loop
 from open_dirac.providers.base import ProviderResponse
 from open_dirac.agents.computer.tools import ToolExecutor
-from open_dirac.tool_call import ToolCall
 
 
 def _make_executor(timeout: int = 60) -> ToolExecutor:
@@ -108,44 +107,74 @@ class TestFilenameHandling:
 
     def test_named_script_with_counter(self):
         executor = _make_executor()
-        executor.execute("execute_python", {
-            "code": "print(1)", "purpose": "test", "filename": "verify_enum.py",
-        })
+        executor.execute(
+            "execute_python",
+            {
+                "code": "print(1)",
+                "purpose": "test",
+                "filename": "verify_enum.py",
+            },
+        )
         assert (executor._computations_dir / "001_verify_enum.py").exists()
 
     def test_agent_counter_prefix_stripped(self):
         """Agent-provided filenames like '002_verify_exact.py' should not get double-prefixed."""
         executor = _make_executor()
-        executor.execute("execute_python", {
-            "code": "print(1)", "purpose": "test", "filename": "002_verify_exact.py",
-        })
+        executor.execute(
+            "execute_python",
+            {
+                "code": "print(1)",
+                "purpose": "test",
+                "filename": "002_verify_exact.py",
+            },
+        )
         assert (executor._computations_dir / "001_verify_exact.py").exists()
         assert not (executor._computations_dir / "001_002_verify_exact.py").exists()
 
     def test_agent_counter_prefix_stripped_various(self):
         """Multiple counter-prefix patterns are handled."""
         executor = _make_executor()
-        executor.execute("execute_python", {
-            "code": "print(1)", "purpose": "a", "filename": "01_foo.py",
-        })
-        executor.execute("execute_python", {
-            "code": "print(2)", "purpose": "b", "filename": "0003_bar.py",
-        })
+        executor.execute(
+            "execute_python",
+            {
+                "code": "print(1)",
+                "purpose": "a",
+                "filename": "01_foo.py",
+            },
+        )
+        executor.execute(
+            "execute_python",
+            {
+                "code": "print(2)",
+                "purpose": "b",
+                "filename": "0003_bar.py",
+            },
+        )
         assert executor._script_names == ["001_foo.py", "002_bar.py"]
 
     def test_script_names_tracking(self):
         executor = _make_executor()
         executor.execute("execute_python", {"code": "print(1)", "purpose": "a"})
-        executor.execute("execute_python", {
-            "code": "print(2)", "purpose": "b", "filename": "second.py",
-        })
+        executor.execute(
+            "execute_python",
+            {
+                "code": "print(2)",
+                "purpose": "b",
+                "filename": "second.py",
+            },
+        )
         assert executor._script_names == ["tool_exec_001.py", "002_second.py"]
 
     def test_structured_header_in_output(self):
         executor = _make_executor()
-        tc = executor.execute("execute_python", {
-            "code": "print('ok')", "purpose": "Check sanity", "filename": "sanity.py",
-        })
+        tc = executor.execute(
+            "execute_python",
+            {
+                "code": "print('ok')",
+                "purpose": "Check sanity",
+                "filename": "sanity.py",
+            },
+        )
         assert "=== 001_sanity.py ===" in tc.output
         assert "Purpose: Check sanity" in tc.output
         assert "Exit: success" in tc.output
@@ -153,14 +182,18 @@ class TestFilenameHandling:
 
     def test_output_file_created(self):
         executor = _make_executor()
-        executor.execute("execute_python", {"code": "print('hello world')", "purpose": "test"})
+        executor.execute(
+            "execute_python", {"code": "print('hello world')", "purpose": "test"}
+        )
         output_file = executor._computations_dir / "tool_exec_001.output"
         assert output_file.exists()
         assert "hello world" in output_file.read_text()
 
     def test_error_output_file_includes_stderr(self):
         executor = _make_executor()
-        executor.execute("execute_python", {"code": "import sys; sys.exit(1)", "purpose": "test"})
+        executor.execute(
+            "execute_python", {"code": "import sys; sys.exit(1)", "purpose": "test"}
+        )
         output_file = executor._computations_dir / "tool_exec_001.output"
         assert output_file.exists()
 
@@ -175,7 +208,11 @@ class TestToolDefinitions:
             assert d["type"] == "function"
 
     def test_execute_python_requires_purpose(self):
-        func = next(d["function"] for d in ToolExecutor.TOOL_DEFINITIONS if d["function"]["name"] == "execute_python")
+        func = next(
+            d["function"]
+            for d in ToolExecutor.TOOL_DEFINITIONS
+            if d["function"]["name"] == "execute_python"
+        )
         assert func["name"] == "execute_python"
         props = func["parameters"]["properties"]
         assert "purpose" in props
@@ -190,7 +227,11 @@ class TestToolDefinitions:
         assert "filename" not in func["parameters"]["required"]
 
     def test_document_approach_schema(self):
-        func = next(d["function"] for d in ToolExecutor.TOOL_DEFINITIONS if d["function"]["name"] == "document_approach")
+        func = next(
+            d["function"]
+            for d in ToolExecutor.TOOL_DEFINITIONS
+            if d["function"]["name"] == "document_approach"
+        )
         props = func["parameters"]["properties"]
         assert "approach" in props
         assert "assumptions" in props
@@ -200,9 +241,17 @@ class TestToolDefinitions:
         func = ToolExecutor._REPORT_PROGRESS_DEF["function"]
         assert func["name"] == "report_progress"
         props = func["parameters"]["properties"]
-        assert set(props.keys()) == {"findings_so_far", "remaining_questions", "ready_to_conclude"}
+        assert set(props.keys()) == {
+            "findings_so_far",
+            "remaining_questions",
+            "ready_to_conclude",
+        }
         assert props["ready_to_conclude"]["type"] == "boolean"
-        assert set(func["parameters"]["required"]) == {"findings_so_far", "remaining_questions", "ready_to_conclude"}
+        assert set(func["parameters"]["required"]) == {
+            "findings_so_far",
+            "remaining_questions",
+            "ready_to_conclude",
+        }
 
     def test_submit_result_has_evidence_scripts(self):
         func = ToolExecutor._SUBMIT_RESULT_DEF["function"]
@@ -229,16 +278,24 @@ class TestTruncation:
 class TestDocumentApproach:
     def test_stores_approach(self):
         executor = _make_executor()
-        params = {"approach": "Compute partition function via SymPy", "assumptions": "T > 0"}
+        params = {
+            "approach": "Compute partition function via SymPy",
+            "assumptions": "T > 0",
+        }
         tc = executor.execute("document_approach", params)
         assert not tc.is_error
         assert "documented" in tc.output.lower()
-        assert executor._documented_approach["approach"] == "Compute partition function via SymPy"
+        assert (
+            executor._documented_approach["approach"]
+            == "Compute partition function via SymPy"
+        )
 
     def test_does_not_stop(self):
         executor = _make_executor()
         tc = executor.execute("document_approach", {"approach": "test"})
-        assert not hasattr(executor, 'stop_after_round') or not executor.stop_after_round
+        assert (
+            not hasattr(executor, "stop_after_round") or not executor.stop_after_round
+        )
 
 
 class TestActiveToolsLifecycle:
@@ -247,6 +304,7 @@ class TestActiveToolsLifecycle:
     def test_initial_tools_before_approach(self):
         """Before approach, only document_approach and submit_result are available."""
         from open_dirac.task import TaskType
+
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
         tools = executor.active_tools
@@ -256,6 +314,7 @@ class TestActiveToolsLifecycle:
     def test_tools_after_approach(self):
         """After document_approach, execute_python replaces it."""
         from open_dirac.task import TaskType
+
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
         executor.execute("document_approach", {"approach": "test"})
@@ -266,6 +325,7 @@ class TestActiveToolsLifecycle:
     def test_progress_check_exposes_report_progress(self):
         """Setting _progress_check_pending adds report_progress to tools."""
         from open_dirac.task import TaskType
+
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
         executor._approach_documented = True
@@ -277,14 +337,19 @@ class TestActiveToolsLifecycle:
     def test_report_progress_clears_pending(self):
         """Calling report_progress removes it from next tool set."""
         from open_dirac.task import TaskType
+
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
         executor._approach_documented = True
         executor._progress_check_pending = True
-        executor.execute("report_progress", {
-            "findings_so_far": "done", "remaining_questions": "",
-            "ready_to_conclude": False,
-        })
+        executor.execute(
+            "report_progress",
+            {
+                "findings_so_far": "done",
+                "remaining_questions": "",
+                "ready_to_conclude": False,
+            },
+        )
         assert executor._progress_check_pending is False
         names = {t["function"]["name"] for t in executor.active_tools}
         assert "report_progress" not in names
@@ -292,6 +357,7 @@ class TestActiveToolsLifecycle:
     def test_non_compute_returns_initial(self):
         """Non-COMPUTE task type gets initial tool set (document_approach + submit_result)."""
         from open_dirac.task import TaskType
+
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.RESEARCH)
         tools = executor.active_tools
@@ -302,9 +368,14 @@ class TestActiveToolsLifecycle:
 class TestSubmitResult:
     def test_sets_stop_flag(self):
         executor = _make_executor()
-        params = {"target_id": "WH-001", "description": "Computed F(p)",
-                  "method": "numerical", "result": "F(p) = 0.99",
-                  "confidence": "approximate", "notes": "Convergent."}
+        params = {
+            "target_id": "WH-001",
+            "description": "Computed F(p)",
+            "method": "numerical",
+            "result": "F(p) = 0.99",
+            "confidence": "approximate",
+            "notes": "Convergent.",
+        }
         tc = executor.execute("submit_result", params)
         assert not tc.is_error
         assert "WH-001" in tc.output
@@ -312,18 +383,30 @@ class TestSubmitResult:
 
     def test_stores_last_result(self):
         executor = _make_executor()
-        params = {"target_id": "WH-002", "description": "Computed entropy",
-                  "method": "analytical", "result": "S = k ln(W)",
-                  "confidence": "exact", "notes": "Standard formula."}
+        params = {
+            "target_id": "WH-002",
+            "description": "Computed entropy",
+            "method": "analytical",
+            "result": "S = k ln(W)",
+            "confidence": "exact",
+            "notes": "Standard formula.",
+        }
         executor.execute("submit_result", params)
         assert executor._last_result == params
 
     def test_output_message(self):
         executor = _make_executor()
-        tc = executor.execute("submit_result", {"target_id": "WH-003",
-                                                 "description": "d", "method": "m",
-                                                 "result": "r", "confidence": "partial",
-                                                 "notes": "n"})
+        tc = executor.execute(
+            "submit_result",
+            {
+                "target_id": "WH-003",
+                "description": "d",
+                "method": "m",
+                "result": "r",
+                "confidence": "partial",
+                "notes": "n",
+            },
+        )
         assert "WH-003" in tc.output
         assert "partial" in tc.output
         assert tc.tool_name == "submit_result"
@@ -348,10 +431,16 @@ class TestSubmitResult:
         """Researcher-style output truncates long summaries to 80 chars."""
         executor = _make_executor()
         long_summary = "A" * 100
-        tc = executor.execute("submit_result", {
-            "reasoning": "...", "result": "...", "method": "m",
-            "confidence": "exact", "summary": long_summary,
-        })
+        tc = executor.execute(
+            "submit_result",
+            {
+                "reasoning": "...",
+                "result": "...",
+                "method": "m",
+                "confidence": "exact",
+                "summary": long_summary,
+            },
+        )
         # The label should be truncated
         assert len(tc.output) < len(long_summary) + 30  # "Result recorded: " + 80 chars
 
@@ -359,6 +448,7 @@ class TestSubmitResult:
 class TestToolSetsForTaskType:
     def test_computer_tools(self):
         from open_dirac.task import TaskType
+
         tools = ToolExecutor.tools_for_task_type(TaskType.COMPUTE)
         names = {t["function"]["name"] for t in tools}
         assert names == {"document_approach", "execute_python", "submit_result"}
@@ -374,25 +464,37 @@ class TestExitToolName:
 
     def test_orchestrator_exit_tools(self):
         from open_dirac.agents.orchestrator.tools import OrchestratorToolExecutor
-        expected = {"add_hypothesis", "dispatch_researcher", "dispatch_computer", "request_termination"}
+
+        expected = {
+            "add_hypothesis",
+            "dispatch_researcher",
+            "dispatch_computer",
+            "request_termination",
+        }
         assert OrchestratorToolExecutor.exit_tool_names == frozenset(expected)
 
     def test_report_progress_mentions_submit_result(self):
         from open_dirac.task import TaskType
+
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
-        tc = executor.execute("report_progress", {
-            "findings_so_far": "done", "remaining_questions": "",
-            "ready_to_conclude": True,
-        })
+        tc = executor.execute(
+            "report_progress",
+            {
+                "findings_so_far": "done",
+                "remaining_questions": "",
+                "ready_to_conclude": True,
+            },
+        )
         assert "submit_result" in tc.output
 
 
 # --- Agent loop tests ---
 
-def _mock_provider_response(text="", stop_reason="end_turn",
-                             input_tokens=100, output_tokens=50,
-                             tool_calls=None):
+
+def _mock_provider_response(
+    text="", stop_reason="end_turn", input_tokens=100, output_tokens=50, tool_calls=None
+):
     """Create a mock ProviderResponse."""
     return ProviderResponse(
         text=text,
@@ -407,33 +509,50 @@ def _mock_provider_response(text="", stop_reason="end_turn",
 class TestReportProgress:
     def test_report_progress_does_not_stop(self):
         executor = _make_executor()
-        params = {"findings_so_far": "42 found", "remaining_questions": "none",
-                  "ready_to_conclude": True}
+        params = {
+            "findings_so_far": "42 found",
+            "remaining_questions": "none",
+            "ready_to_conclude": True,
+        }
         tc = executor.execute("report_progress", params)
         assert not tc.is_error
-        assert not hasattr(executor, "stop_after_round") or not getattr(executor, "stop_after_round", False)
+        assert not hasattr(executor, "stop_after_round") or not getattr(
+            executor, "stop_after_round", False
+        )
 
     def test_report_progress_ready_message(self):
         executor = _make_executor()
-        tc = executor.execute("report_progress", {
-            "findings_so_far": "done", "remaining_questions": "",
-            "ready_to_conclude": True,
-        })
+        tc = executor.execute(
+            "report_progress",
+            {
+                "findings_so_far": "done",
+                "remaining_questions": "",
+                "ready_to_conclude": True,
+            },
+        )
         assert "submit_result" in tc.output
 
     def test_report_progress_not_ready_message(self):
         executor = _make_executor()
-        tc = executor.execute("report_progress", {
-            "findings_so_far": "partial", "remaining_questions": "need more data",
-            "ready_to_conclude": False,
-        })
+        tc = executor.execute(
+            "report_progress",
+            {
+                "findings_so_far": "partial",
+                "remaining_questions": "need more data",
+                "ready_to_conclude": False,
+            },
+        )
         assert "Continue" in tc.output
         assert "need more data" in tc.output
 
 
 def _make_config(**overrides) -> Config:
-    defaults = dict(api_key="test-key", logs_dir="", provider="anthropic",
-                    progress_check_interval=999)  # disable progress checks by default in tests
+    defaults = dict(
+        api_key="test-key",
+        logs_dir="",
+        provider="anthropic",
+        progress_check_interval=999,
+    )  # disable progress checks by default in tests
     defaults.update(overrides)
     return Config(**defaults)
 
@@ -441,7 +560,10 @@ def _make_config(**overrides) -> Config:
 def _mock_provider():
     """Create a mock provider with sensible defaults for format methods."""
     provider = MagicMock()
-    provider.format_assistant_message.return_value = {"role": "assistant", "content": "mock"}
+    provider.format_assistant_message.return_value = {
+        "role": "assistant",
+        "content": "mock",
+    }
     provider.build_tool_result_messages.return_value = [{"role": "user", "content": []}]
     provider.prepare_messages.side_effect = lambda msgs: msgs
     return provider
@@ -459,9 +581,12 @@ class TestAgentLoop:
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert isinstance(result, AgentResult)
@@ -479,26 +604,49 @@ class TestAgentLoop:
 
         # Round 1: tool_use
         round1 = _mock_provider_response(
-            "", "tool_use",  200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}
+            ],
         )
         # Round 2: end_turn with text → text_end_turn_recovery fires
-        round2 = _mock_provider_response("Done. VERDICT: VERIFIED", "end_turn", 300, 100)
+        round2 = _mock_provider_response(
+            "Done. VERDICT: VERIFIED", "end_turn", 300, 100
+        )
         # Round 3: after recovery, model calls submit_result
         round3 = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "verified",
-                                   "method": "numerical", "result": "ok",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "verified",
+                        "method": "numerical",
+                        "result": "ok",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2, round3]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.rounds == 3
@@ -514,22 +662,34 @@ class TestAgentLoop:
         mock_get_provider.return_value = provider
 
         tool_response = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         text_response = _mock_provider_response(
             "## COMP-001\n**VERDICT:** INCONCLUSIVE", "end_turn", 150, 80
         )
         provider.call.side_effect = [
-            tool_response, tool_response, tool_response,  # 3 tool-use rounds
-            text_response, text_response, text_response,  # 3 forced final retries
+            tool_response,
+            tool_response,
+            tool_response,  # 3 tool-use rounds
+            text_response,
+            text_response,
+            text_response,  # 3 forced final retries
         ]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=3,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=3,
         )
 
         assert result.rounds == 6  # 3 tool rounds + 3 forced retries
@@ -545,30 +705,56 @@ class TestAgentLoop:
         mock_get_provider.return_value = provider
 
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         round2 = _mock_provider_response(
-            "", "tool_use", 300, 90,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            300,
+            90,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         # Round 3: text end_turn → text_end_turn_recovery fires
         round3 = _mock_provider_response("Done.", "end_turn", 400, 100)
         # Round 4: after recovery, model calls submit_result
         round4 = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "done",
-                                   "method": "numerical", "result": "ok",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "done",
+                        "method": "numerical",
+                        "result": "ok",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2, round3, round4]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.total_input_tokens == 1050  # 200+300+400+150
@@ -586,9 +772,12 @@ class TestAgentLoop:
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.truncated
@@ -606,22 +795,33 @@ class TestForcedPartialOutput:
         mock_get_provider.return_value = provider
 
         tool_response = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         text_response = _mock_provider_response(
             "## COMP-001\n**VERDICT:** INCONCLUSIVE", "end_turn", 150, 80
         )
         provider.call.side_effect = [
-            tool_response, tool_response,  # 2 rounds of tool use
-            text_response, text_response, text_response,  # 3 forced final retries
+            tool_response,
+            tool_response,  # 2 rounds of tool use
+            text_response,
+            text_response,
+            text_response,  # 3 forced final retries
         ]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=2,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=2,
         )
 
         calls = provider.call.call_args_list
@@ -643,20 +843,32 @@ class TestForcedPartialOutput:
         mock_get_provider.return_value = provider
 
         tool_response = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         text_response = _mock_provider_response(
             "Forced partial output here", "end_turn", 150, 80
         )
-        provider.call.side_effect = [tool_response,
-                                     text_response, text_response, text_response]
+        provider.call.side_effect = [
+            tool_response,
+            text_response,
+            text_response,
+            text_response,
+        ]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=1,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=1,
         )
 
         assert result.text == "Forced partial output here"
@@ -669,18 +881,30 @@ class TestForcedPartialOutput:
         mock_get_provider.return_value = provider
 
         tool_response = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         text_response = _mock_provider_response("Final", "end_turn", 300, 120)
-        provider.call.side_effect = [tool_response,
-                                     text_response, text_response, text_response]
+        provider.call.side_effect = [
+            tool_response,
+            text_response,
+            text_response,
+            text_response,
+        ]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=1,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=1,
         )
 
         assert result.total_input_tokens == 1100  # 200 + 3*300
@@ -694,18 +918,30 @@ class TestForcedPartialOutput:
         mock_get_provider.return_value = provider
 
         tool_response = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         text_response = _mock_provider_response("Done", "end_turn", 100, 50)
-        provider.call.side_effect = [tool_response,
-                                     text_response, text_response, text_response]
+        provider.call.side_effect = [
+            tool_response,
+            text_response,
+            text_response,
+            text_response,
+        ]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=1,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=1,
         )
 
         assert result.stop_reason == "max_rounds_forced"
@@ -723,8 +959,13 @@ class TestEmptyTextFallthrough:
 
         # Round 1: tool_use with code execution
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}
+            ],
         )
         # Round 2: end_turn but empty text -> empty_end_turn_recovery injected
         round2 = _mock_provider_response("", "end_turn", 150, 0)
@@ -740,9 +981,12 @@ class TestEmptyTextFallthrough:
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=6,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=6,
         )
 
         assert "COMP-001" in result.text
@@ -757,8 +1001,13 @@ class TestEmptyTextFallthrough:
 
         # Round 1: tool_use
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}
+            ],
         )
         # Rounds 2-3: empty end_turns -> recovery injected each time
         round2 = _mock_provider_response("", "end_turn", 150, 0)
@@ -769,14 +1018,16 @@ class TestEmptyTextFallthrough:
         forced3 = _mock_provider_response(
             "## COMP-001: Forced result", "end_turn", 300, 100
         )
-        provider.call.side_effect = [round1, round2, round3,
-                                     forced1, forced2, forced3]
+        provider.call.side_effect = [round1, round2, round3, forced1, forced2, forced3]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=3,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=3,
         )
 
         assert "COMP-001" in result.text
@@ -795,31 +1046,53 @@ class TestEmptyTextFallthrough:
 
         # Round 1: tool_use
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         # Round 2: end_turn with real text → text_end_turn_recovery fires
-        round2 = _mock_provider_response("## COMP-001\n**VERDICT:** VERIFIED", "end_turn", 300, 100)
+        round2 = _mock_provider_response(
+            "## COMP-001\n**VERDICT:** VERIFIED", "end_turn", 300, 100
+        )
         # Round 3: after recovery, model calls submit_result
         round3 = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "verified",
-                                   "method": "numerical", "result": "ok",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "verified",
+                        "method": "numerical",
+                        "result": "ok",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2, round3]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.stop_reason == "executor_stop"
         assert provider.call.call_count == 3
-
 
 
 class TestProgressCheckInLoop:
@@ -832,32 +1105,70 @@ class TestProgressCheckInLoop:
         mock_get_provider.return_value = provider
 
         exec_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         # After 3 exec_python rounds, progress check is injected;
         # model calls report_progress then submit_result
         progress_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t2", "name": "report_progress",
-                         "input": {"findings_so_far": "42", "remaining_questions": "",
-                                   "ready_to_conclude": True}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "report_progress",
+                    "input": {
+                        "findings_so_far": "42",
+                        "remaining_questions": "",
+                        "ready_to_conclude": True,
+                    },
+                }
+            ],
         )
         result_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t3", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "computed",
-                                   "method": "num", "result": "ok",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {
+                    "id": "t3",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "computed",
+                        "method": "num",
+                        "result": "ok",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
-        provider.call.side_effect = [exec_resp, exec_resp, exec_resp, progress_resp, result_resp]
+        provider.call.side_effect = [
+            exec_resp,
+            exec_resp,
+            exec_resp,
+            progress_resp,
+            result_resp,
+        ]
 
         config = _make_config(progress_check_interval=3)
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="q",
-            config=config, tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=10,
+            system="sys",
+            user_content="q",
+            config=config,
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=10,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -869,7 +1180,9 @@ class TestProgressCheckInLoop:
             for msg in round4_messages
             if isinstance(msg, dict) and msg.get("role") == "user"
         )
-        assert progress_found, "Progress check message should be injected after 3 exec_python rounds"
+        assert progress_found, (
+            "Progress check message should be injected after 3 exec_python rounds"
+        )
 
     @patch("open_dirac.llm._get_provider")
     def test_no_progress_check_before_interval(self, mock_get_provider):
@@ -878,16 +1191,34 @@ class TestProgressCheckInLoop:
         mock_get_provider.return_value = provider
 
         exec_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         final_resp = _mock_provider_response("Done.", "end_turn", 100, 50)
         submit_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "done",
-                                   "method": "numerical", "result": "ok",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "done",
+                        "method": "numerical",
+                        "result": "ok",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
         # 2 exec → text end_turn → recovery → submit_result
         provider.call.side_effect = [exec_resp, exec_resp, final_resp, submit_resp]
@@ -895,9 +1226,12 @@ class TestProgressCheckInLoop:
         config = _make_config(progress_check_interval=3)
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="q",
-            config=config, tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=10,
+            system="sys",
+            user_content="q",
+            config=config,
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=10,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -915,32 +1249,71 @@ class TestProgressCheckInLoop:
         mock_get_provider.return_value = provider
 
         exec_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         progress_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t2", "name": "report_progress",
-                         "input": {"findings_so_far": "partial", "remaining_questions": "more",
-                                   "ready_to_conclude": False}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "report_progress",
+                    "input": {
+                        "findings_so_far": "partial",
+                        "remaining_questions": "more",
+                        "ready_to_conclude": False,
+                    },
+                }
+            ],
         )
         final_resp = _mock_provider_response("Done.", "end_turn", 100, 50)
         submit_resp = _mock_provider_response(
-            "", "tool_use", 100, 50,
-            tool_calls=[{"id": "t3", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "done",
-                                   "method": "numerical", "result": "ok",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            100,
+            50,
+            tool_calls=[
+                {
+                    "id": "t3",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "done",
+                        "method": "numerical",
+                        "result": "ok",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
         # 2 exec → progress → 1 exec → text end_turn → recovery → submit_result
-        provider.call.side_effect = [exec_resp, exec_resp, progress_resp, exec_resp, final_resp, submit_resp]
+        provider.call.side_effect = [
+            exec_resp,
+            exec_resp,
+            progress_resp,
+            exec_resp,
+            final_resp,
+            submit_resp,
+        ]
 
         config = _make_config(progress_check_interval=2)
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="q",
-            config=config, tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=10,
+            system="sys",
+            user_content="q",
+            config=config,
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=10,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -948,12 +1321,13 @@ class TestProgressCheckInLoop:
         # Count PROGRESS CHECK messages in the LAST call's messages (they accumulate).
         last_messages = provider.call.call_args_list[-1].kwargs["messages"]
         progress_count = sum(
-            1 for msg in last_messages
-            if isinstance(msg, dict) and isinstance(msg.get("content"), str)
+            1
+            for msg in last_messages
+            if isinstance(msg, dict)
+            and isinstance(msg.get("content"), str)
             and "PROGRESS CHECK" in msg["content"]
         )
         assert progress_count == 1
-
 
 
 class TestSubmitResultInLoop:
@@ -967,25 +1341,49 @@ class TestSubmitResultInLoop:
 
         # Round 1: tool_use with execute_python
         round1 = _mock_provider_response(
-            "Computing...", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python",
-                         "input": {"purpose": "Check result", "code": "print(1.0)"}}],
+            "Computing...",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {
+                    "id": "t1",
+                    "name": "execute_python",
+                    "input": {"purpose": "Check result", "code": "print(1.0)"},
+                }
+            ],
         )
         # Round 2: tool_use with submit_result
         round2 = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "computed value",
-                                   "method": "numerical", "result": "value=1.0",
-                                   "confidence": "exact", "notes": "Done."}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "computed value",
+                        "method": "numerical",
+                        "result": "value=1.0",
+                        "confidence": "exact",
+                        "notes": "Done.",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=10,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=10,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -1009,11 +1407,21 @@ class TestReadyToConcludeRecovery:
 
         # Round 1: report_progress with ready_to_conclude=True
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "report_progress",
-                         "input": {"findings_so_far": "Found the answer",
-                                   "remaining_questions": "",
-                                   "ready_to_conclude": True}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {
+                    "id": "t1",
+                    "name": "report_progress",
+                    "input": {
+                        "findings_so_far": "Found the answer",
+                        "remaining_questions": "",
+                        "ready_to_conclude": True,
+                    },
+                }
+            ],
         )
         # Round 2: end_turn with text (model wrote answer as markdown instead of calling exit tool)
         round2 = _mock_provider_response(
@@ -1021,20 +1429,36 @@ class TestReadyToConcludeRecovery:
         )
         # Round 3: after recovery re-prompt, model calls submit_result
         round3 = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "WH-001", "description": "Entropy formula",
-                                   "method": "analytical", "result": "S = k ln(W)",
-                                   "confidence": "exact", "notes": "Standard result."}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "WH-001",
+                        "description": "Entropy formula",
+                        "method": "analytical",
+                        "result": "S = k ln(W)",
+                        "confidence": "exact",
+                        "notes": "Standard result.",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2, round3]
 
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.COMPUTER_TOOLS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.COMPUTER_TOOLS,
+            max_rounds=5,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -1043,7 +1467,8 @@ class TestReadyToConcludeRecovery:
         calls = provider.call.call_args_list
         round3_messages = calls[2].kwargs["messages"]
         recovery_found = any(
-            isinstance(msg.get("content"), str) and "ready to conclude" in msg["content"]
+            isinstance(msg.get("content"), str)
+            and "ready to conclude" in msg["content"]
             for msg in round3_messages
             if isinstance(msg, dict) and msg.get("role") == "user"
         )
@@ -1057,31 +1482,55 @@ class TestReadyToConcludeRecovery:
 
         # Round 1: report_progress with ready_to_conclude=False
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "report_progress",
-                         "input": {"findings_so_far": "Still working",
-                                   "remaining_questions": "need more data",
-                                   "ready_to_conclude": False}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {
+                    "id": "t1",
+                    "name": "report_progress",
+                    "input": {
+                        "findings_so_far": "Still working",
+                        "remaining_questions": "need more data",
+                        "ready_to_conclude": False,
+                    },
+                }
+            ],
         )
         # Round 2: end_turn with text → text_end_turn_recovery fires
-        round2 = _mock_provider_response(
-            "Here is my conclusion.", "end_turn", 150, 60
-        )
+        round2 = _mock_provider_response("Here is my conclusion.", "end_turn", 150, 60)
         # Round 3: after recovery, model calls submit_result
         round3 = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "conclusion",
-                                   "method": "numerical", "result": "ok",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "conclusion",
+                        "method": "numerical",
+                        "result": "ok",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2, round3]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -1089,7 +1538,9 @@ class TestReadyToConcludeRecovery:
         assert provider.call.call_count == 3
 
     @patch("open_dirac.llm._get_provider")
-    def test_ready_conclude_recovery_second_end_turn_falls_through(self, mock_get_provider):
+    def test_ready_conclude_recovery_second_end_turn_falls_through(
+        self, mock_get_provider
+    ):
         """Recovery once → model again end_turn with text → falls through to normal end_turn."""
         from open_dirac.task import TaskType
 
@@ -1098,28 +1549,37 @@ class TestReadyToConcludeRecovery:
 
         # Round 1: report_progress with ready_to_conclude=True
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "report_progress",
-                         "input": {"findings_so_far": "Found answer",
-                                   "remaining_questions": "",
-                                   "ready_to_conclude": True}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {
+                    "id": "t1",
+                    "name": "report_progress",
+                    "input": {
+                        "findings_so_far": "Found answer",
+                        "remaining_questions": "",
+                        "ready_to_conclude": True,
+                    },
+                }
+            ],
         )
         # Round 2: end_turn with text → recovery injected
-        round2 = _mock_provider_response(
-            "The answer is 42.", "end_turn", 150, 60
-        )
+        round2 = _mock_provider_response("The answer is 42.", "end_turn", 150, 60)
         # Round 3: end_turn with text AGAIN → falls through (no second recovery)
-        round3 = _mock_provider_response(
-            "I already told you, 42.", "end_turn", 150, 60
-        )
+        round3 = _mock_provider_response("I already told you, 42.", "end_turn", 150, 60)
         provider.call.side_effect = [round1, round2, round3]
 
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.COMPUTER_TOOLS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.COMPUTER_TOOLS,
+            max_rounds=5,
         )
 
         # Second end_turn falls through to normal return
@@ -1139,28 +1599,52 @@ class TestTextEndTurnRecovery:
 
         # Round 1: tool_use with execute_python
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(42)"}}
+            ],
         )
         # Round 2: end_turn with text (model writes analysis instead of calling submit_result)
         round2 = _mock_provider_response(
-            "The result is 42, confirmed by numerical computation.", "end_turn", 300, 100
+            "The result is 42, confirmed by numerical computation.",
+            "end_turn",
+            300,
+            100,
         )
         # Round 3: after recovery, model calls submit_result
         round3 = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t2", "name": "submit_result",
-                         "input": {"target_id": "RQ-001", "description": "result is 42",
-                                   "method": "numerical", "result": "42",
-                                   "confidence": "exact", "notes": "done"}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "RQ-001",
+                        "description": "result is 42",
+                        "method": "numerical",
+                        "result": "42",
+                        "confidence": "exact",
+                        "notes": "done",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2, round3]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -1185,16 +1669,17 @@ class TestTextEndTurnRecovery:
         mock_get_provider.return_value = provider
 
         # Round 1: end_turn with text, no prior tool calls
-        round1 = _mock_provider_response(
-            "Here is my analysis.", "end_turn", 200, 80
-        )
+        round1 = _mock_provider_response("Here is my analysis.", "end_turn", 200, 80)
         provider.call.side_effect = [round1]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.stop_reason == "end_turn"
@@ -1209,24 +1694,28 @@ class TestTextEndTurnRecovery:
 
         # Round 1: tool_use
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {"id": "t1", "name": "execute_python", "input": {"code": "print(1)"}}
+            ],
         )
         # Round 2: text end_turn → recovery fires
-        round2 = _mock_provider_response(
-            "The answer is 42.", "end_turn", 150, 60
-        )
+        round2 = _mock_provider_response("The answer is 42.", "end_turn", 150, 60)
         # Round 3: text end_turn AGAIN → falls through (no second recovery)
-        round3 = _mock_provider_response(
-            "I already said 42.", "end_turn", 150, 60
-        )
+        round3 = _mock_provider_response("I already said 42.", "end_turn", 150, 60)
         provider.call.side_effect = [round1, round2, round3]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=5,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=5,
         )
 
         assert result.stop_reason == "end_turn"
@@ -1248,34 +1737,68 @@ class TestForcedFinalWithExitTool:
 
         # Round 1: report_progress with ready_to_conclude=True
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "report_progress",
-                         "input": {"findings_so_far": "Answer found",
-                                   "remaining_questions": "",
-                                   "ready_to_conclude": True}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {
+                    "id": "t1",
+                    "name": "report_progress",
+                    "input": {
+                        "findings_so_far": "Answer found",
+                        "remaining_questions": "",
+                        "ready_to_conclude": True,
+                    },
+                }
+            ],
         )
         # Round 2: execute_python (model ignores and keeps computing — hits max_rounds)
         round2 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t2", "name": "execute_python",
-                         "input": {"purpose": "Extra check", "code": "print(1)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {
+                    "id": "t2",
+                    "name": "execute_python",
+                    "input": {"purpose": "Extra check", "code": "print(1)"},
+                }
+            ],
         )
         # Forced final call: model calls submit_result via exit tool
         forced_resp = _mock_provider_response(
-            "", "tool_use", 150, 60,
-            tool_calls=[{"id": "t3", "name": "submit_result",
-                         "input": {"target_id": "WH-001", "description": "Entropy",
-                                   "method": "analytical", "result": "S = k ln(W)",
-                                   "confidence": "exact", "notes": "Done."}}],
+            "",
+            "tool_use",
+            150,
+            60,
+            tool_calls=[
+                {
+                    "id": "t3",
+                    "name": "submit_result",
+                    "input": {
+                        "target_id": "WH-001",
+                        "description": "Entropy",
+                        "method": "analytical",
+                        "result": "S = k ln(W)",
+                        "confidence": "exact",
+                        "notes": "Done.",
+                    },
+                }
+            ],
         )
         provider.call.side_effect = [round1, round2, forced_resp]
 
         root = Path(tempfile.mkdtemp())
         executor = ToolExecutor(workspace_root=root, task_type=TaskType.COMPUTE)
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.COMPUTER_TOOLS, max_rounds=2,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.COMPUTER_TOOLS,
+            max_rounds=2,
         )
 
         assert result.stop_reason == "executor_stop"
@@ -1296,23 +1819,32 @@ class TestForcedFinalWithExitTool:
 
         # Round 1: execute_python (no report_progress, no ready signal)
         round1 = _mock_provider_response(
-            "", "tool_use", 200, 80,
-            tool_calls=[{"id": "t1", "name": "execute_python",
-                         "input": {"purpose": "Check", "code": "print(1)"}}],
+            "",
+            "tool_use",
+            200,
+            80,
+            tool_calls=[
+                {
+                    "id": "t1",
+                    "name": "execute_python",
+                    "input": {"purpose": "Check", "code": "print(1)"},
+                }
+            ],
         )
         # Forced final calls: model returns text (doesn't call exit tool)
         forced1 = _mock_provider_response("Partial.", "end_turn", 150, 60)
         forced2 = _mock_provider_response("More.", "end_turn", 150, 60)
-        forced3 = _mock_provider_response(
-            "INCONCLUSIVE result.", "end_turn", 150, 60
-        )
+        forced3 = _mock_provider_response("INCONCLUSIVE result.", "end_turn", 150, 60)
         provider.call.side_effect = [round1, forced1, forced2, forced3]
 
         executor = _make_executor()
         result = run_agent_loop(
-            system="sys", user_content="question",
-            config=_make_config(), tool_executor=executor,
-            tools=ToolExecutor.TOOL_DEFINITIONS, max_rounds=1,
+            system="sys",
+            user_content="question",
+            config=_make_config(),
+            tool_executor=executor,
+            tools=ToolExecutor.TOOL_DEFINITIONS,
+            max_rounds=1,
         )
 
         assert result.stop_reason == "max_rounds_forced"

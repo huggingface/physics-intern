@@ -19,17 +19,22 @@ def _make_agent():
 
 def _make_task():
     return Task(
-        task_id="SURVEY-000", task_type=TaskType.SURVEY,
-        assigned_to="surveyor", iteration=0,
+        task_id="SURVEY-000",
+        task_type=TaskType.SURVEY,
+        assigned_to="surveyor",
+        iteration=0,
     )
 
 
 # ---------- build_context tests ----------
 
+
 def test_build_context_initial():
     """iteration=0 includes problem statement only, no 'Current Research State'."""
     agent = _make_agent()
-    agent.research_state = ResearchState(problem_statement="Derive the Hawking temperature.")
+    agent.research_state = ResearchState(
+        problem_statement="Derive the Hawking temperature."
+    )
 
     context = agent.build_context(_make_task(), iteration=0)
 
@@ -40,7 +45,9 @@ def test_build_context_initial():
 def test_build_context_replan():
     """iteration > 0 includes current research state section."""
     agent = _make_agent()
-    agent.research_state = ResearchState(problem_statement="Derive the Hawking temperature.")
+    agent.research_state = ResearchState(
+        problem_statement="Derive the Hawking temperature."
+    )
 
     context = agent.build_context(_make_task(), iteration=5)
 
@@ -69,8 +76,11 @@ def test_process_response_stores_survey():
     """process_response stores the raw text as a dict."""
     agent = _make_agent()
     response = LLMResponse(
-        text=STRATEGY_TEXT, input_tokens=100, output_tokens=200,
-        stop_reason="end_turn", duration=0.5,
+        text=STRATEGY_TEXT,
+        input_tokens=100,
+        output_tokens=200,
+        stop_reason="end_turn",
+        duration=0.5,
     )
     agent.process_response(response, _make_task(), iteration=0)
 
@@ -83,8 +93,11 @@ def test_process_response_empty_text():
     """Empty response still creates a survey (with empty notes)."""
     agent = _make_agent()
     response = LLMResponse(
-        text="", input_tokens=50, output_tokens=0,
-        stop_reason="end_turn", duration=0.1,
+        text="",
+        input_tokens=50,
+        output_tokens=0,
+        stop_reason="end_turn",
+        duration=0.1,
     )
     agent.process_response(response, _make_task(), iteration=0)
 
@@ -96,8 +109,11 @@ def test_process_response_strips_whitespace():
     """Leading/trailing whitespace is stripped from survey notes."""
     agent = _make_agent()
     response = LLMResponse(
-        text="  \n Some notes here. \n  ", input_tokens=50, output_tokens=50,
-        stop_reason="end_turn", duration=0.2,
+        text="  \n Some notes here. \n  ",
+        input_tokens=50,
+        output_tokens=50,
+        stop_reason="end_turn",
+        duration=0.2,
     )
     agent.process_response(response, _make_task(), iteration=0)
 
@@ -105,6 +121,7 @@ def test_process_response_strips_whitespace():
 
 
 # ---------- JSON parsing tests ----------
+
 
 def test_surveyor_parses_json_sections():
     """Surveyor extracts structured sections from JSON block."""
@@ -117,7 +134,10 @@ def test_surveyor_parses_json_sections():
 
     response = LLMResponse(
         text='Some prose analysis.\n\n```json\n{"background": "Physical context here", "known_pitfalls": "Watch for sign errors", "sanity_checks": "Result must be positive"}\n```',
-        stop_reason="end_turn", input_tokens=100, output_tokens=200, duration=0.5,
+        stop_reason="end_turn",
+        input_tokens=100,
+        output_tokens=200,
+        duration=0.5,
     )
     task = MagicMock()
     agent.process_response(response, task, iteration=0)
@@ -126,7 +146,9 @@ def test_surveyor_parses_json_sections():
     assert survey["raw_notes"].startswith("Some prose")
     assert survey["background"] == "Physical context here"
     assert survey["known_pitfalls"] == "Watch for sign errors"
-    assert survey["sanity_checks"] == [{"predicate": "Result must be positive"}]  # str fallback → list[dict]
+    assert survey["sanity_checks"] == [
+        {"predicate": "Result must be positive"}
+    ]  # str fallback → list[dict]
     assert "key_insights" not in survey  # not provided
 
 
@@ -141,7 +163,10 @@ def test_surveyor_fallback_on_no_json():
 
     response = LLMResponse(
         text="Just plain prose analysis with no JSON.",
-        stop_reason="end_turn", input_tokens=100, output_tokens=50, duration=0.1,
+        stop_reason="end_turn",
+        input_tokens=100,
+        output_tokens=50,
+        duration=0.1,
     )
     task = MagicMock()
     agent.process_response(response, task, iteration=0)
@@ -162,12 +187,18 @@ def test_surveyor_parses_problem_summary():
 
     response = LLMResponse(
         text='Analysis.\n\n```json\n{"background": "Context", "problem_summary": "Derive the Hawking temperature for a Schwarzschild black hole."}\n```',
-        stop_reason="end_turn", input_tokens=100, output_tokens=200, duration=0.5,
+        stop_reason="end_turn",
+        input_tokens=100,
+        output_tokens=200,
+        duration=0.5,
     )
     task = MagicMock()
     agent.process_response(response, task, iteration=0)
 
-    assert agent.parsed_survey["problem_summary"] == "Derive the Hawking temperature for a Schwarzschild black hole."
+    assert (
+        agent.parsed_survey["problem_summary"]
+        == "Derive the Hawking temperature for a Schwarzschild black hole."
+    )
 
 
 def test_build_context_replan_uses_slim_state():
@@ -198,8 +229,11 @@ def test_surveyor_fallback_on_malformed_json():
     agent.research_state = None
 
     response = LLMResponse(
-        text='Analysis.\n\n```json\n{broken json\n```',
-        stop_reason="end_turn", input_tokens=100, output_tokens=50, duration=0.1,
+        text="Analysis.\n\n```json\n{broken json\n```",
+        stop_reason="end_turn",
+        input_tokens=100,
+        output_tokens=50,
+        duration=0.1,
     )
     task = MagicMock()
     agent.process_response(response, task, iteration=0)

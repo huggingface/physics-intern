@@ -27,7 +27,8 @@ class ComputerAgent(EvidenceAgent):
         context: str,
         task: Task,
         iteration: int,
-        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None] | None = None,
+        on_round: Callable[[int, str, list[ToolCall], int, int, int, int, float], None]
+        | None = None,
     ) -> AgentResult:
         """Run the tool-use agent loop with the computer's ToolExecutor."""
         tool_executor = ToolExecutor(
@@ -67,14 +68,14 @@ class ComputerAgent(EvidenceAgent):
             self.metrics.alert(
                 iteration,
                 f"tool_loop_truncated on {self.name} "
-                f"(rounds={result.rounds}, stop={result.stop_reason})"
+                f"(rounds={result.rounds}, stop={result.stop_reason})",
             )
 
         if result.token_alert_fired:
             self.metrics.alert(
                 iteration,
                 f"computation_token_alert on {self.name} "
-                f"(input={result.total_input_tokens})"
+                f"(input={result.total_input_tokens})",
             )
 
         return result
@@ -134,7 +135,7 @@ class ComputerAgent(EvidenceAgent):
                 # Strip structured header (=== ... ===\nPurpose: ...\nExit: ...\n\n)
                 header_end = output.find("\n\n")
                 if header_end != -1 and output.startswith("==="):
-                    output = output[header_end + 2:]
+                    output = output[header_end + 2 :]
                 exec_outputs.append(output[:2000])
 
         if result_tc and isinstance(result_tc.tool_input, dict):
@@ -157,8 +158,8 @@ class ComputerAgent(EvidenceAgent):
             raise ParseFailureError(
                 agent_name=self.name,
                 detail=f"Agent produced no submit_result tool call"
-                       f" (rounds={getattr(response, 'rounds', '?')},"
-                       f" tool_calls={len(response.tool_calls)})",
+                f" (rounds={getattr(response, 'rounds', '?')},"
+                f" tool_calls={len(response.tool_calls)})",
             )
 
         # Store on target entity

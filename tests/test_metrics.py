@@ -57,11 +57,21 @@ def test_to_markdown_shows_all_calls():
 
 # --- Tool-use metrics tests ---
 
+
 def test_record_call_with_tool_fields():
     """record_call accepts rounds, tool_calls, truncated kwargs."""
     m = MetricsTracker()
-    m.record_call(1, "computationalist", 1000, 500, 3.0, False,
-                  rounds=3, tool_calls=2, truncated=False)
+    m.record_call(
+        1,
+        "computationalist",
+        1000,
+        500,
+        3.0,
+        False,
+        rounds=3,
+        tool_calls=2,
+        truncated=False,
+    )
     assert m.total_tool_calls == 2
     assert m.calls[0].rounds == 3
     assert m.calls[0].tool_calls == 2
@@ -80,8 +90,7 @@ def test_tool_columns_shown_when_tool_calls_present():
     """Rounds + Tool Calls columns appear when any record has tool_calls > 0."""
     m = MetricsTracker()
     m.record_call(1, "orchestrator", 1000, 500, 2.5, False)
-    m.record_call(2, "computationalist", 2000, 1000, 5.0, False,
-                  rounds=3, tool_calls=2)
+    m.record_call(2, "computationalist", 2000, 1000, 5.0, False, rounds=3, tool_calls=2)
     md = m.to_markdown()
     assert "Rounds" in md
     assert "Tool Calls" in md
@@ -110,13 +119,23 @@ def test_default_tool_fields():
 
 # --- Reasoning token metrics tests ---
 
+
 def test_reasoning_tokens_accumulate():
     """total_reasoning_tokens and total_answer_tokens accumulate correctly."""
     m = MetricsTracker()
-    m.record_call(1, "orchestrator", 1000, 500, 2.5, False,
-                  reasoning_tokens=300, answer_tokens=200)
-    m.record_call(2, "researcher", 2000, 800, 3.0, False,
-                  reasoning_tokens=500, answer_tokens=300)
+    m.record_call(
+        1,
+        "orchestrator",
+        1000,
+        500,
+        2.5,
+        False,
+        reasoning_tokens=300,
+        answer_tokens=200,
+    )
+    m.record_call(
+        2, "researcher", 2000, 800, 3.0, False, reasoning_tokens=500, answer_tokens=300
+    )
     assert m.total_reasoning_tokens == 800
     assert m.total_answer_tokens == 500
 
@@ -134,8 +153,16 @@ def test_reasoning_tokens_default_zero():
 def test_reasoning_tokens_in_markdown():
     """Reasoning token totals appear in YAML frontmatter when > 0."""
     m = MetricsTracker()
-    m.record_call(1, "orchestrator", 1000, 500, 2.5, False,
-                  reasoning_tokens=300, answer_tokens=200)
+    m.record_call(
+        1,
+        "orchestrator",
+        1000,
+        500,
+        2.5,
+        False,
+        reasoning_tokens=300,
+        answer_tokens=200,
+    )
     md = m.to_markdown()
     assert "total_reasoning_tokens: 300" in md
     assert "total_answer_tokens: 200" in md
@@ -152,6 +179,7 @@ def test_no_reasoning_tokens_in_markdown_when_zero():
 
 # --- MetricsTracker.load() — resume rehydration ---
 
+
 def _write_metrics(tmp_path: Path, tracker: MetricsTracker) -> Path:
     (tmp_path / "METRICS.md").write_text(tracker.to_markdown())
     return tmp_path
@@ -161,8 +189,18 @@ def test_load_round_trip_with_tool_calls(tmp_path):
     """Round-trip: tool-use tracker rehydrates aggregates, calls, alerts."""
     m = MetricsTracker()
     m.record_call(1, "orchestrator", 1000, 500, 2.5, False)
-    m.record_call(2, "computationalist", 2000, 1000, 5.0, True,
-                  rounds=3, tool_calls=2, reasoning_tokens=400, answer_tokens=600)
+    m.record_call(
+        2,
+        "computationalist",
+        2000,
+        1000,
+        5.0,
+        True,
+        rounds=3,
+        tool_calls=2,
+        reasoning_tokens=400,
+        answer_tokens=600,
+    )
     m.alert(2, "max_tokens hit")
     _write_metrics(tmp_path, m)
 
@@ -224,7 +262,9 @@ def test_load_then_append_accumulates(tmp_path):
     """After load(), additional record_call()s stack on top of rehydrated state."""
     m = MetricsTracker()
     m.record_call(1, "orchestrator", 1000, 500, 2.5, False)
-    m.record_call(2, "researcher", 2000, 800, 3.0, False, reasoning_tokens=100, answer_tokens=200)
+    m.record_call(
+        2, "researcher", 2000, 800, 3.0, False, reasoning_tokens=100, answer_tokens=200
+    )
     _write_metrics(tmp_path, m)
 
     loaded = MetricsTracker.load(tmp_path)

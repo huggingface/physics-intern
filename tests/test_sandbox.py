@@ -1,8 +1,6 @@
 """Tests for sandboxed Python execution."""
 
-import pytest
 import tempfile
-from pathlib import Path
 from open_dirac.utils.sandbox import execute_python
 
 

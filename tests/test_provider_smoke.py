@@ -43,6 +43,7 @@ def _assert_basic_response(resp):
 
 # ── Anthropic ───────────────────────────────────────────────────────────────
 
+
 @pytest.mark.skipif(
     not os.environ.get("ANTHROPIC_API_KEY"),
     reason="ANTHROPIC_API_KEY not set",
@@ -66,6 +67,7 @@ class TestAnthropicSmoke:
 
 
 # ── OpenAI ──────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY"),
@@ -94,6 +96,7 @@ class TestOpenAISmoke:
 
 # ── Google ──────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.skipif(
     not os.environ.get("GOOGLE_API_KEY"),
     reason="GOOGLE_API_KEY not set",
@@ -116,6 +119,7 @@ class TestGoogleSmoke:
 
 
 # ── HuggingFace ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.skipif(
     not os.environ.get("HF_TOKEN"),

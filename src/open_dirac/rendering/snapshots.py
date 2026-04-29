@@ -18,7 +18,13 @@ from .shared import _dedup_failed_approaches
 
 def render_background_survey(state: ResearchState) -> str:
     """Render background survey as a Markdown section (for git snapshots)."""
-    has_content = state.survey_background or state.key_insights or state.survey_methods or state.known_pitfalls or state.expected_answer_structure
+    has_content = (
+        state.survey_background
+        or state.key_insights
+        or state.survey_methods
+        or state.known_pitfalls
+        or state.expected_answer_structure
+    )
     if not has_content:
         return "(No background survey.)"
 
@@ -32,7 +38,9 @@ def render_background_survey(state: ResearchState) -> str:
     if state.known_pitfalls:
         parts.append(f"### Known Pitfalls\n\n{state.known_pitfalls}\n")
     if state.expected_answer_structure:
-        parts.append(f"### Expected Answer Structure\n\n{state.expected_answer_structure}\n")
+        parts.append(
+            f"### Expected Answer Structure\n\n{state.expected_answer_structure}\n"
+        )
     if state.conventions:
         parts.append(f"### Conventions and Definitions\n\n{state.conventions}\n")
     if state.sanity_checks:
@@ -62,7 +70,10 @@ def _research_state_body(state: ResearchState) -> str:
 
     # Conventions
     parts.append("# Conventions\n")
-    parts.append(state.conventions or "(To be populated by the orchestrator as conventions become clear.)")
+    parts.append(
+        state.conventions
+        or "(To be populated by the orchestrator as conventions become clear.)"
+    )
     parts.append("")
 
     # Strategy
@@ -71,8 +82,12 @@ def _research_state_body(state: ResearchState) -> str:
     parts.append("")
 
     # Research Questions
-    open_rqs = [rq for rq in state.research_questions.values() if rq.status == RQStatus.OPEN]
-    resolved_rqs = [rq for rq in state.research_questions.values() if rq.status != RQStatus.OPEN]
+    open_rqs = [
+        rq for rq in state.research_questions.values() if rq.status == RQStatus.OPEN
+    ]
+    resolved_rqs = [
+        rq for rq in state.research_questions.values() if rq.status != RQStatus.OPEN
+    ]
     if state.research_questions:
         parts.append("# Research Questions\n")
         for rq in sorted(open_rqs, key=lambda r: r.id):
@@ -81,8 +96,14 @@ def _research_state_body(state: ResearchState) -> str:
                 parts.append(f"  Context: {rq.context}")
             if rq.evidence:
                 for idx, ev in enumerate(rq.evidence):
-                    prefix = f"  Evidence {idx + 1}/{len(rq.evidence)} " if len(rq.evidence) > 1 else "  Evidence "
-                    parts.append(f"{prefix}({ev.type}): {ev.result[:500] if ev.result else 'pending'}")
+                    prefix = (
+                        f"  Evidence {idx + 1}/{len(rq.evidence)} "
+                        if len(rq.evidence) > 1
+                        else "  Evidence "
+                    )
+                    parts.append(
+                        f"{prefix}({ev.type}): {ev.result[:500] if ev.result else 'pending'}"
+                    )
             parts.append("")
         for rq in sorted(resolved_rqs, key=lambda r: r.id):
             status_tag = f"[{rq.status.upper()}]"
@@ -96,13 +117,19 @@ def _research_state_body(state: ResearchState) -> str:
                 resolution_parts.append(rq.resolution_reason)
             if resolution_parts:
                 parts.append(f"  Closed: {' — '.join(resolution_parts)}")
-            parts.append("  **This RQ is closed. Do not resolve it again or create a WH from it.**")
+            parts.append(
+                "  **This RQ is closed. Do not resolve it again or create a WH from it.**"
+            )
             parts.append("")
 
     # Established Results
     parts.append("# Established Results (ER)\n")
     ers = sorted(
-        [h for h in state.hypotheses.values() if h.status == HypothesisStatus.ESTABLISHED],
+        [
+            h
+            for h in state.hypotheses.values()
+            if h.status == HypothesisStatus.ESTABLISHED
+        ],
         key=lambda h: h.id,
     )
     for h in ers:
@@ -117,7 +144,11 @@ def _research_state_body(state: ResearchState) -> str:
             parts.append("")
         if h.evidence:
             for idx, ev in enumerate(h.evidence):
-                prefix = f"**Evidence {idx + 1}/{len(h.evidence)} " if len(h.evidence) > 1 else "**Evidence "
+                prefix = (
+                    f"**Evidence {idx + 1}/{len(h.evidence)} "
+                    if len(h.evidence) > 1
+                    else "**Evidence "
+                )
                 parts.append(f"{prefix}({ev.type}):** {ev.method or 'not specified'}")
                 if ev.summary:
                     parts.append(f"  Summary: {ev.summary}")
@@ -154,7 +185,11 @@ def _research_state_body(state: ResearchState) -> str:
         # Evidence summary
         if h.evidence:
             for idx, ev in enumerate(h.evidence):
-                prefix = f"**Evidence {idx + 1}/{len(h.evidence)} " if len(h.evidence) > 1 else "**Evidence "
+                prefix = (
+                    f"**Evidence {idx + 1}/{len(h.evidence)} "
+                    if len(h.evidence) > 1
+                    else "**Evidence "
+                )
                 parts.append(f"{prefix}({ev.type}):** {ev.method or 'not specified'}")
                 if ev.summary:
                     parts.append(f"  Summary: {ev.summary}")
@@ -203,10 +238,7 @@ def _research_state_body(state: ResearchState) -> str:
 
 def render_research_state_md(state: ResearchState) -> str:
     """Render RESEARCH_STATE.md from ResearchState."""
-    er_ids = sorted(
-        h.id for h in state.hypotheses.values()
-        if h.id.startswith("ER-")
-    )
+    er_ids = sorted(h.id for h in state.hypotheses.values() if h.id.startswith("ER-"))
     meta: dict = {
         "problem_id": "research-session",
         "title": state.title or state.problem_statement[:80],
@@ -231,7 +263,9 @@ def _evidence_log_body(state: ResearchState) -> str:
             for ev in h.evidence:
                 entries.append(("evidence", ev.iteration or h.iteration_created, h, ev))
         if h.review:
-            entries.append(("verification", h.review.iteration or h.iteration_modified, h, None))
+            entries.append(
+                ("verification", h.review.iteration or h.iteration_modified, h, None)
+            )
     # Also check RQs for evidence — deduplicate when RQ was promoted to a WH
     for rq in state.research_questions.values():
         if rq.evidence:
@@ -241,9 +275,13 @@ def _evidence_log_body(state: ResearchState) -> str:
             )
             for ev in rq.evidence:
                 if promoted:
-                    entries.append(("rq_promoted", ev.iteration or rq.iteration_created, rq, ev))
+                    entries.append(
+                        ("rq_promoted", ev.iteration or rq.iteration_created, rq, ev)
+                    )
                 else:
-                    entries.append(("rq_evidence", ev.iteration or rq.iteration_created, rq, ev))
+                    entries.append(
+                        ("rq_evidence", ev.iteration or rq.iteration_created, rq, ev)
+                    )
 
     entries.sort(key=lambda e: e[1])
 
@@ -310,12 +348,10 @@ def render_evidence_log_md(state: ResearchState) -> str:
     """Render EVIDENCE_LOG.md from ResearchState — evidence and verification on hypotheses."""
     body = _evidence_log_body(state)
     # Count entries for frontmatter
-    n_entries = sum(
-        len(h.evidence) for h in state.hypotheses.values()
-    ) + sum(
-        1 for h in state.hypotheses.values() if h.review
-    ) + sum(
-        len(rq.evidence) for rq in state.research_questions.values()
+    n_entries = (
+        sum(len(h.evidence) for h in state.hypotheses.values())
+        + sum(1 for h in state.hypotheses.values() if h.review)
+        + sum(len(rq.evidence) for rq in state.research_questions.values())
     )
     meta = {"total_entries": n_entries}
     return render_frontmatter(meta, body)
@@ -324,7 +360,11 @@ def render_evidence_log_md(state: ResearchState) -> str:
 def _critique_log_body(state: ResearchState) -> str:
     """Build the body text for a critique log rendering."""
     active = [c for c in state.critiques.values() if c.status == CritiqueStatus.ACTIVE]
-    resolved = [c for c in state.critiques.values() if c.status in (CritiqueStatus.RESOLVED, CritiqueStatus.WITHDRAWN)]
+    resolved = [
+        c
+        for c in state.critiques.values()
+        if c.status in (CritiqueStatus.RESOLVED, CritiqueStatus.WITHDRAWN)
+    ]
 
     parts: list[str] = ["# Active Critiques\n"]
 
@@ -353,8 +393,12 @@ def _critique_log_body(state: ResearchState) -> str:
 
     if state.critic_clean_reviews:
         parts.append("# Clean Reviews\n")
-        for rev in sorted(state.critic_clean_reviews, key=lambda r: r.get("iteration", 0)):
-            parts.append(f"**Iteration {rev.get('iteration', '?')}:** {rev.get('summary', '')}\n")
+        for rev in sorted(
+            state.critic_clean_reviews, key=lambda r: r.get("iteration", 0)
+        ):
+            parts.append(
+                f"**Iteration {rev.get('iteration', '?')}:** {rev.get('summary', '')}\n"
+            )
 
     return "\n".join(parts)
 

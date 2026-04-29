@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from open_dirac.config import Config
 from open_dirac.llm import (
@@ -21,7 +20,7 @@ from open_dirac.providers.base import ProviderResponse
 
 def _make_config(**overrides) -> Config:
     defaults = dict(
-        api_retry_max=0,              # no transient-error retries in unit tests
+        api_retry_max=0,  # no transient-error retries in unit tests
         api_retry_initial_delay=0.01,
         api_retry_max_delay=0.1,
         progress_check_interval=999,
@@ -35,10 +34,13 @@ def _truncated(text: str, **extra) -> ProviderResponse:
     """Build a ProviderResponse that looks like a max_tokens truncation."""
     kwargs = dict(
         text=text,
-        input_tokens=100, output_tokens=50,
+        input_tokens=100,
+        output_tokens=50,
         stop_reason="max_tokens",
-        reasoning_tokens=0, answer_tokens=50,
-        tool_calls=None, raw_content=None,
+        reasoning_tokens=0,
+        answer_tokens=50,
+        tool_calls=None,
+        raw_content=None,
     )
     kwargs.update(extra)
     return ProviderResponse(**kwargs)
@@ -47,10 +49,13 @@ def _truncated(text: str, **extra) -> ProviderResponse:
 def _ok(text: str, **extra) -> ProviderResponse:
     kwargs = dict(
         text=text,
-        input_tokens=20, output_tokens=10,
+        input_tokens=20,
+        output_tokens=10,
         stop_reason="end_turn",
-        reasoning_tokens=0, answer_tokens=10,
-        tool_calls=None, raw_content=None,
+        reasoning_tokens=0,
+        answer_tokens=10,
+        tool_calls=None,
+        raw_content=None,
     )
     kwargs.update(extra)
     return ProviderResponse(**kwargs)
@@ -60,6 +65,7 @@ def _ok(text: str, **extra) -> ProviderResponse:
 # Skip conditions
 # ---------------------------------------------------------------------------
 
+
 def test_skip_when_not_truncated():
     """Non-truncated response is returned unchanged, no provider calls made."""
     provider = MagicMock()
@@ -67,8 +73,12 @@ def test_skip_when_not_truncated():
     config = _make_config()
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -80,12 +90,18 @@ def test_skip_when_tool_calls_present():
     """Truncated response with (partial) tool_calls is not continued."""
     provider = MagicMock()
     provider.prepare_messages.side_effect = lambda m: m
-    resp = _truncated("reasoning...", tool_calls=[{"id": "1", "name": "foo", "input": {}}])
+    resp = _truncated(
+        "reasoning...", tool_calls=[{"id": "1", "name": "foo", "input": {}}]
+    )
     config = _make_config()
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -101,8 +117,12 @@ def test_skip_when_visible_text_empty():
     config = _make_config()
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -118,8 +138,12 @@ def test_skip_when_text_is_only_unclosed_think_tag():
     config = _make_config()
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -135,8 +159,12 @@ def test_skip_when_max_tokens_retries_is_zero():
     config = _make_config(max_tokens_retries=0)
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -148,6 +176,7 @@ def test_skip_when_max_tokens_retries_is_zero():
 # Successful continuation
 # ---------------------------------------------------------------------------
 
+
 def test_single_continuation_merges_text_and_tokens():
     """One continuation that ends cleanly produces a merged response."""
     provider = MagicMock()
@@ -158,8 +187,12 @@ def test_single_continuation_merges_text_and_tokens():
     config = _make_config(max_tokens_retries=2)
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -183,8 +216,12 @@ def test_continuation_sends_back_stripped_text_as_assistant():
     config = _make_config(max_tokens_retries=1)
 
     continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -214,8 +251,12 @@ def test_retries_exhausted_returns_merged_truncated():
     config = _make_config(max_tokens_retries=2)
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -234,18 +275,25 @@ def test_continuation_can_produce_tool_call():
     tc = [{"id": "tc1", "name": "compute", "input": {"x": 1}}]
     provider.call.return_value = ProviderResponse(
         text="",
-        input_tokens=20, output_tokens=5,
+        input_tokens=20,
+        output_tokens=5,
         stop_reason="tool_use",
-        reasoning_tokens=0, answer_tokens=5,
-        tool_calls=tc, raw_content=None,
+        reasoning_tokens=0,
+        answer_tokens=5,
+        tool_calls=tc,
+        raw_content=None,
     )
 
     resp = _truncated("Let me use the tool to compute this value,")
     config = _make_config(max_tokens_retries=1)
 
     result = continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -266,8 +314,12 @@ def test_continuation_call_uses_prepare_messages():
     config = _make_config(max_tokens_retries=1)
 
     continue_on_max_tokens(
-        provider, resp, config,
-        model="m", max_tokens=100, system="s",
+        provider,
+        resp,
+        config,
+        model="m",
+        max_tokens=100,
+        system="s",
         messages=[{"role": "user", "content": "q"}],
     )
 
@@ -280,6 +332,7 @@ def test_continuation_call_uses_prepare_messages():
 # ---------------------------------------------------------------------------
 # Wiring into call_llm
 # ---------------------------------------------------------------------------
+
 
 def test_call_llm_invokes_continuation_on_truncation():
     """call_llm should auto-continue when the first response is truncated."""
@@ -295,8 +348,7 @@ def test_call_llm_invokes_continuation_on_truncation():
     ]
 
     with patch.object(llm, "_get_provider", return_value=fake_provider):
-        result = llm.call_llm("sys", "user q", config,
-                               agent_name="t", iteration=0)
+        result = llm.call_llm("sys", "user q", config, agent_name="t", iteration=0)
 
     assert fake_provider.call.call_count == 2
     assert result.text == "First half, second half."
@@ -307,6 +359,7 @@ def test_call_llm_invokes_continuation_on_truncation():
 # Wiring into run_agent_loop
 # ---------------------------------------------------------------------------
 
+
 def test_run_agent_loop_continues_mid_round(tmp_path):
     """A truncated round that continues into a clean tool call should
     fold the continuation into the round and proceed normally."""
@@ -314,7 +367,8 @@ def test_run_agent_loop_continues_mid_round(tmp_path):
     from open_dirac.tool_call import ToolCall
 
     config = _make_config(
-        max_tokens_retries=1, max_tool_rounds=3,
+        max_tokens_retries=1,
+        max_tool_rounds=3,
         workspace_dir="",  # disable workspace logging
     )
 
@@ -327,22 +381,27 @@ def test_run_agent_loop_continues_mid_round(tmp_path):
     tool_executor._script_names = []
 
     def fake_execute(name, args):
-        tc = ToolCall(tool_name=name, tool_input=args, output="done",
-                      is_error=False, duration=0.0)
+        tc = ToolCall(
+            tool_name=name, tool_input=args, output="done", is_error=False, duration=0.0
+        )
         # After tool call, signal stop so the loop ends cleanly.
         tool_executor.stop_after_round = True
         return tc
+
     tool_executor.execute.side_effect = fake_execute
 
-    tools = [{
-        "type": "function",
-        "function": {"name": "submit_answer", "description": "", "parameters": {}},
-    }]
+    tools = [
+        {
+            "type": "function",
+            "function": {"name": "submit_answer", "description": "", "parameters": {}},
+        }
+    ]
 
     fake_provider = MagicMock()
     fake_provider.prepare_messages.side_effect = lambda m: m
     fake_provider.format_assistant_message.side_effect = lambda c: {
-        "role": "assistant", "content": str(c),
+        "role": "assistant",
+        "content": str(c),
     }
     fake_provider.build_tool_result_messages.side_effect = lambda results: [
         {"role": "user", "content": f"result: {r['output']}"} for r in results
@@ -354,18 +413,26 @@ def test_run_agent_loop_continues_mid_round(tmp_path):
         _truncated("Let me submit"),
         ProviderResponse(
             text="",
-            input_tokens=20, output_tokens=5,
+            input_tokens=20,
+            output_tokens=5,
             stop_reason="tool_use",
-            reasoning_tokens=0, answer_tokens=5,
-            tool_calls=tc_info, raw_content="raw",
+            reasoning_tokens=0,
+            answer_tokens=5,
+            tool_calls=tc_info,
+            raw_content="raw",
         ),
     ]
 
     with patch.object(llm, "_get_provider", return_value=fake_provider):
         result = llm.run_agent_loop(
-            system="s", user_content="q", config=config,
-            tool_executor=tool_executor, tools=tools,
-            max_rounds=3, agent_name="t", iteration=0,
+            system="s",
+            user_content="q",
+            config=config,
+            tool_executor=tool_executor,
+            tools=tools,
+            max_rounds=3,
+            agent_name="t",
+            iteration=0,
         )
 
     # Two provider calls: initial (truncated) + continuation (produced the tool call).
@@ -384,7 +451,8 @@ def test_run_agent_loop_exits_truncated_when_continuation_fails(tmp_path):
     from open_dirac import llm
 
     config = _make_config(
-        max_tokens_retries=1, max_tool_rounds=3,
+        max_tokens_retries=1,
+        max_tool_rounds=3,
         workspace_dir="",
     )
 
@@ -395,15 +463,18 @@ def test_run_agent_loop_exits_truncated_when_continuation_fails(tmp_path):
     tool_executor.stop_after_round = False
     tool_executor._script_names = []
 
-    tools = [{
-        "type": "function",
-        "function": {"name": "submit_answer", "description": "", "parameters": {}},
-    }]
+    tools = [
+        {
+            "type": "function",
+            "function": {"name": "submit_answer", "description": "", "parameters": {}},
+        }
+    ]
 
     fake_provider = MagicMock()
     fake_provider.prepare_messages.side_effect = lambda m: m
     fake_provider.format_assistant_message.side_effect = lambda c: {
-        "role": "assistant", "content": str(c),
+        "role": "assistant",
+        "content": str(c),
     }
     # Every call truncates — initial + continuation + (forced final).
     fake_provider.call.side_effect = [
@@ -413,9 +484,14 @@ def test_run_agent_loop_exits_truncated_when_continuation_fails(tmp_path):
 
     with patch.object(llm, "_get_provider", return_value=fake_provider):
         result = llm.run_agent_loop(
-            system="s", user_content="q", config=config,
-            tool_executor=tool_executor, tools=tools,
-            max_rounds=3, agent_name="t", iteration=0,
+            system="s",
+            user_content="q",
+            config=config,
+            tool_executor=tool_executor,
+            tools=tools,
+            max_rounds=3,
+            agent_name="t",
+            iteration=0,
         )
 
     # The round-level continuation fired once, both chunks merged, then the
@@ -429,6 +505,7 @@ def test_run_agent_loop_exits_truncated_when_continuation_fails(tmp_path):
 # ---------------------------------------------------------------------------
 # _merge_responses
 # ---------------------------------------------------------------------------
+
 
 def test_merge_responses_sums_tokens_and_concatenates_text():
     first = _truncated("AAA", reasoning_content="r1")

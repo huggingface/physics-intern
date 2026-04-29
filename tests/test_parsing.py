@@ -183,21 +183,14 @@ class TestExtractJsonWithError:
 
     def test_nemotron_string_concatenation_reports_error(self):
         r"""The \n    " pattern that breaks JSON array strings."""
-        text = (
-            '{"sanity_checks": ['
-            '"Check one.\\n    "Check two."'
-            ']}'
-        )
+        text = '{"sanity_checks": ["Check one.\\n    "Check two."]}'
         parsed, error = extract_json_with_error(text)
         assert parsed is None
         assert error is not None
         assert "JSON parse error" in error
 
     def test_fenced_preferred_over_bare(self):
-        text = (
-            '{"bare": true}\n\n'
-            '```json\n{"fenced": true}\n```'
-        )
+        text = '{"bare": true}\n\n```json\n{"fenced": true}\n```'
         parsed, error = extract_json_with_error(text)
         assert parsed == {"fenced": True}
         assert error is None

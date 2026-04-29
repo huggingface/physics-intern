@@ -4,6 +4,7 @@ This is the stable API consumed by the engine, RSA, and Autophysicist runners
 at the end of a research run. It wraps :mod:`open_dirac.verification.evaluate`
 with the workspace/problem-def conventions the scaffolding uses.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ from .workspace import load_reference_file
 @dataclass
 class FormalEvalResult:
     """Result of formal (symbolic/numerical) answer evaluation."""
+
     correct: bool | None = None  # True/False/None (errored)
     method: str = ""
     error: str | None = None
@@ -40,10 +42,14 @@ def run_formal_evaluation(
     3. ANSWER.md exists in the workspace
     """
     if not problem_def:
-        return FormalEvalResult(skipped=True, skip_reason="No problem definition or no answer field")
+        return FormalEvalResult(
+            skipped=True, skip_reason="No problem definition or no answer field"
+        )
 
     answer_val = problem_def.get("answer")
-    answer_empty = answer_val is None or (isinstance(answer_val, str) and not answer_val.strip())
+    answer_empty = answer_val is None or (
+        isinstance(answer_val, str) and not answer_val.strip()
+    )
 
     reference_code: str | None = None
     if answer_empty:
@@ -53,18 +59,26 @@ def run_formal_evaluation(
                 reference_code = ref_answer
                 console.print("  [dim]Using answer function from reference file[/]")
             else:
-                problem_def = dict(problem_def)  # shallow copy to avoid mutating caller's dict
+                problem_def = dict(
+                    problem_def
+                )  # shallow copy to avoid mutating caller's dict
                 problem_def["answer"] = ref_answer
                 console.print("  [dim]Using answer from reference file[/]")
         else:
-            return FormalEvalResult(skipped=True, skip_reason="No problem definition or no answer field")
+            return FormalEvalResult(
+                skipped=True, skip_reason="No problem definition or no answer field"
+            )
 
     if not problem_def.get("answer_template"):
-        return FormalEvalResult(skipped=True, skip_reason="No answer_template in problem definition")
+        return FormalEvalResult(
+            skipped=True, skip_reason="No answer_template in problem definition"
+        )
 
     answer_path = Path(workspace_dir) / "ANSWER.md"
     if not answer_path.exists():
-        return FormalEvalResult(skipped=True, skip_reason="ANSWER.md not found in workspace")
+        return FormalEvalResult(
+            skipped=True, skip_reason="ANSWER.md not found in workspace"
+        )
 
     raw_content = answer_path.read_text()
     if not raw_content.strip():
@@ -77,7 +91,9 @@ def run_formal_evaluation(
 
     try:
         eval_result = evaluate_response(
-            fenced_content, problem_def, reference_code=reference_code,
+            fenced_content,
+            problem_def,
+            reference_code=reference_code,
         )
     except Exception as exc:
         return FormalEvalResult(
@@ -179,4 +195,6 @@ def load_or_run_formal_eval(
         elif formal_answer == "skipped":
             return FormalEvalResult(skipped=True, skip_reason="from_report")
 
-    return run_formal_evaluation(workspace_dir, problem_def, problem_path=ref_lookup_path)
+    return run_formal_evaluation(
+        workspace_dir, problem_def, problem_path=ref_lookup_path
+    )

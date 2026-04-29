@@ -40,8 +40,13 @@ class FormatterAgent(BaseAgent):
     name = "formatter"
     prompt_file = "prompt.md"
 
-    def __init__(self, config: Config, workspace: WorkspaceManager,
-                 metrics: MetricsTracker, answer_template: str = ""):
+    def __init__(
+        self,
+        config: Config,
+        workspace: WorkspaceManager,
+        metrics: MetricsTracker,
+        answer_template: str = "",
+    ):
         super().__init__(config, workspace, metrics)
         self.answer_template = answer_template
         self.research_state: ResearchState | None = None
@@ -51,7 +56,11 @@ class FormatterAgent(BaseAgent):
     def build_context(self, task: Task, iteration: int) -> str:
         # If instance-level template override exists, temporarily set on research_state
         # so the renderer emits it (renderer reads state.answer_template)
-        if self.answer_template and self.research_state and not self.research_state.answer_template:
+        if (
+            self.answer_template
+            and self.research_state
+            and not self.research_state.answer_template
+        ):
             self.research_state.answer_template = self.answer_template
         ctx = render_formatter_context(
             self.research_state,
@@ -70,8 +79,7 @@ class FormatterAgent(BaseAgent):
         # Check for LLM-emitted rejection marker
         if text.lstrip().startswith(_REJECTION_PREFIX):
             self.rejection_reason = (
-                text.lstrip().split("\n", 1)[0]
-                .removeprefix(_REJECTION_PREFIX).strip()
+                text.lstrip().split("\n", 1)[0].removeprefix(_REJECTION_PREFIX).strip()
             )
 
         # Always write — circuit breaker may accept best-effort

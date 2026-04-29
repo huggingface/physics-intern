@@ -28,7 +28,9 @@ def render_formatter_context(
     parts: list[str] = []
 
     # Problem Statement
-    parts.append(f"<problem-statement>\n{state.problem_statement or '(No problem statement.)'}\n</problem-statement>")
+    parts.append(
+        f"<problem-statement>\n{state.problem_statement or '(No problem statement.)'}\n</problem-statement>"
+    )
 
     if state.answer_template:
         parts.append(f"<answer-template>\n{state.answer_template}\n</answer-template>")
@@ -56,7 +58,11 @@ def render_formatter_context(
 
     # Established Results
     ers = sorted(
-        [h for h in state.hypotheses.values() if h.status == HypothesisStatus.ESTABLISHED],
+        [
+            h
+            for h in state.hypotheses.values()
+            if h.status == HypothesisStatus.ESTABLISHED
+        ],
         key=lambda h: h.id,
     )
     if ers:
@@ -76,19 +82,31 @@ def render_formatter_context(
                         ev_parts.append(f"Result: {ev.result}")
                     if ev.confidence:
                         ev_parts.append(f"Confidence: {ev.confidence}")
-                    h_parts.append("<evidence>\n" + "\n".join(ev_parts) + "\n</evidence>")
+                    h_parts.append(
+                        "<evidence>\n" + "\n".join(ev_parts) + "\n</evidence>"
+                    )
             if h.review:
                 h_parts.append(f"Review verdict: {h.review.verdict}")
-            er_lines.append(f'<result id="{h.id}">\n' + "\n".join(h_parts) + "\n</result>")
-        parts.append("<established-results>\n" + "\n".join(er_lines) + "\n</established-results>")
+            er_lines.append(
+                f'<result id="{h.id}">\n' + "\n".join(h_parts) + "\n</result>"
+            )
+        parts.append(
+            "<established-results>\n" + "\n".join(er_lines) + "\n</established-results>"
+        )
     else:
-        parts.append("<established-results>\n(No established results.)\n</established-results>")
+        parts.append(
+            "<established-results>\n(No established results.)\n</established-results>"
+        )
 
     # Best-effort: include working hypotheses with full evidence so the
     # formatter can attempt an answer even without full ER coverage.
     if best_effort:
         working_whs_full = sorted(
-            [h for h in state.hypotheses.values() if h.status == HypothesisStatus.WORKING],
+            [
+                h
+                for h in state.hypotheses.values()
+                if h.status == HypothesisStatus.WORKING
+            ],
             key=lambda h: h.id,
         )
         if working_whs_full:
@@ -108,10 +126,16 @@ def render_formatter_context(
                             ev_parts_w.append(f"Result: {ev.result}")
                         if ev.confidence:
                             ev_parts_w.append(f"Confidence: {ev.confidence}")
-                        h_parts_w.append("<evidence>\n" + "\n".join(ev_parts_w) + "\n</evidence>")
+                        h_parts_w.append(
+                            "<evidence>\n" + "\n".join(ev_parts_w) + "\n</evidence>"
+                        )
                 if h.review:
                     h_parts_w.append(f"Review verdict: {h.review.verdict}")
-                wh_lines.append(f'<working-hypothesis id="{h.id}">\n' + "\n".join(h_parts_w) + "\n</working-hypothesis>")
+                wh_lines.append(
+                    f'<working-hypothesis id="{h.id}">\n'
+                    + "\n".join(h_parts_w)
+                    + "\n</working-hypothesis>"
+                )
             parts.append(
                 "<unverified-results>\n"
                 "The following working hypotheses have NOT been fully verified but may "
@@ -121,14 +145,20 @@ def render_formatter_context(
             )
 
     # Unresolved items warning
-    open_rqs = [rq for rq in state.research_questions.values() if rq.status == RQStatus.OPEN]
-    working_whs = [h for h in state.hypotheses.values() if h.status == HypothesisStatus.WORKING]
+    open_rqs = [
+        rq for rq in state.research_questions.values() if rq.status == RQStatus.OPEN
+    ]
+    working_whs = [
+        h for h in state.hypotheses.values() if h.status == HypothesisStatus.WORKING
+    ]
     if open_rqs or working_whs:
         warning_lines: list[str] = []
         for rq in sorted(open_rqs, key=lambda r: r.id):
             warning_lines.append(f"- {rq.id} [OPEN]: {rq.question}")
         for h in sorted(working_whs, key=lambda h: h.id):
             warning_lines.append(f"- {h.id} [WORKING]: {h.statement}")
-        parts.append("<unresolved-items>\n" + "\n".join(warning_lines) + "\n</unresolved-items>")
+        parts.append(
+            "<unresolved-items>\n" + "\n".join(warning_lines) + "\n</unresolved-items>"
+        )
 
     return "\n\n".join(parts)

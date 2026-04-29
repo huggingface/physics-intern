@@ -1,6 +1,5 @@
 """Tests for the RSA runner (open_dirac.rsa.runner)."""
 
-import pytest
 
 from open_dirac.rsa.runner import (
     _extract_answer_key,
@@ -13,8 +12,8 @@ from open_dirac.rsa.runner import (
 # _extract_answer_key
 # ---------------------------------------------------------------------------
 
-class TestExtractAnswerKey:
 
+class TestExtractAnswerKey:
     def test_final_answer_label(self):
         text = "Some derivation...\n\nFinal Answer: $T_H = 1/(8\\pi M)$"
         key = _extract_answer_key(text)
@@ -52,8 +51,8 @@ class TestExtractAnswerKey:
 # _majority_vote
 # ---------------------------------------------------------------------------
 
-class TestMajorityVote:
 
+class TestMajorityVote:
     def test_clear_winner(self):
         responses = [
             "Derivation A\n\nFinal Answer: 42",
@@ -104,8 +103,8 @@ class TestMajorityVote:
 # build_aggregation_message
 # ---------------------------------------------------------------------------
 
-class TestBuildAggregationMessage:
 
+class TestBuildAggregationMessage:
     def test_single_candidate(self):
         msg = build_aggregation_message("Problem X", "", ["Solution A"])
         assert "Problem X" in msg
@@ -122,7 +121,9 @@ class TestBuildAggregationMessage:
         assert "Sol C" in msg
 
     def test_with_answer_template(self):
-        msg = build_aggregation_message("Problem X", "def answer():\n    pass", ["Sol A"])
+        msg = build_aggregation_message(
+            "Problem X", "def answer():\n    pass", ["Sol A"]
+        )
         assert "```python" in msg
         assert "def answer():" in msg
 

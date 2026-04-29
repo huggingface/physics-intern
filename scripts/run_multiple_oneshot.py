@@ -36,6 +36,7 @@ DEFAULT_WORKSPACE_BASE = PROJECT_ROOT / "workspaces"
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RunResult:
     run_index: int
@@ -43,7 +44,7 @@ class RunResult:
     # write_formal_eval_report, plus "no_answer" and "error" for runner
     # outcomes that never produced a VERIFICATION.md.
     evaluation: str  # correct | incorrect | inconclusive | skipped |
-                     # no_verification | no_answer | error
+    # no_verification | no_answer | error
     duration_s: float
     input_tokens: int = 0
     output_tokens: int = 0
@@ -57,6 +58,7 @@ class RunResult:
 # ---------------------------------------------------------------------------
 # Stderr / workspace parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_oneshot_stderr(stderr_text: str) -> dict:
     """Parse token / duration / cost stats from open_dirac_oneshot stderr."""
@@ -118,6 +120,7 @@ def parse_workspace_eval(workspace_dir: Path) -> str:
 # Worker: run one instance
 # ---------------------------------------------------------------------------
 
+
 async def run_one(
     run_index: int,
     problem_path: Path,
@@ -129,8 +132,12 @@ async def run_one(
 ) -> RunResult:
     """Run a single open_dirac_oneshot subprocess."""
     cmd = [
-        "uv", "run", "open_dirac_oneshot", str(problem_path),
-        "--workspace-dir", str(workspace_dir),
+        "uv",
+        "run",
+        "open_dirac_oneshot",
+        str(problem_path),
+        "--workspace-dir",
+        str(workspace_dir),
     ]
     if model_key:
         cmd.extend(["--model", model_key])
@@ -148,7 +155,8 @@ async def run_one(
                 start_new_session=True,
             )
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout,
+                proc.communicate(),
+                timeout=timeout,
             )
             elapsed = time.monotonic() - start
 
@@ -203,6 +211,7 @@ async def run_one(
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
+
 async def run_multiple(args: argparse.Namespace) -> int:
     """Run N one-shot instances and report results."""
     n = args.runs
@@ -216,8 +225,7 @@ async def run_multiple(args: argparse.Namespace) -> int:
     workspace_base = args.workspace_base
 
     workspace_dirs = [
-        workspace_base
-        / f"{timestamp}_{problem_stem}_{safe_model}_oneshot_run{i:03d}"
+        workspace_base / f"{timestamp}_{problem_stem}_{safe_model}_oneshot_run{i:03d}"
         for i in range(n)
     ]
 
@@ -238,10 +246,13 @@ async def run_multiple(args: argparse.Namespace) -> int:
     async def worker(run_index: int) -> RunResult:
         nonlocal completed
         result = await run_one(
-            run_index, args.problem, args.model,
+            run_index,
+            args.problem,
+            args.model,
             args.config,
             workspace_dirs[run_index],
-            args.timeout, semaphore,
+            args.timeout,
+            semaphore,
         )
         async with lock:
             completed += 1
@@ -355,26 +366,45 @@ async def run_multiple(args: argparse.Namespace) -> int:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run open_dirac_oneshot N times on a single problem with concurrency.",
     )
     parser.add_argument("problem", type=Path, help="Path to problem YAML file")
-    parser.add_argument("--model", type=str, default=None,
-                        help=f"Model key from models.yaml (default: {DEFAULTS['model']})")
-    parser.add_argument("--config", type=Path, default=None,
-                        help="Config YAML file to pass through")
-    parser.add_argument("--runs", type=int, required=True,
-                        help="Number of independent runs")
-    parser.add_argument("--concurrency", type=int, default=10,
-                        help="Max parallel runs (default: 10)")
-    parser.add_argument("--timeout", type=int, default=1800,
-                        help="Per-run timeout in seconds (default: 1800)")
-    parser.add_argument("--workspace-base", type=Path, default=DEFAULT_WORKSPACE_BASE,
-                        help="Base directory for workspaces")
-    parser.add_argument("--output-dir", type=Path,
-                        default=PROJECT_ROOT / "results" / "multiple_oneshot",
-                        help="Output directory for results JSON")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=f"Model key from models.yaml (default: {DEFAULTS['model']})",
+    )
+    parser.add_argument(
+        "--config", type=Path, default=None, help="Config YAML file to pass through"
+    )
+    parser.add_argument(
+        "--runs", type=int, required=True, help="Number of independent runs"
+    )
+    parser.add_argument(
+        "--concurrency", type=int, default=10, help="Max parallel runs (default: 10)"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=1800,
+        help="Per-run timeout in seconds (default: 1800)",
+    )
+    parser.add_argument(
+        "--workspace-base",
+        type=Path,
+        default=DEFAULT_WORKSPACE_BASE,
+        help="Base directory for workspaces",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "multiple_oneshot",
+        help="Output directory for results JSON",
+    )
     args = parser.parse_args()
 
     if args.runs < 1:

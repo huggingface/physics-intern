@@ -115,7 +115,14 @@ class ToolExecutor:
                         ),
                     },
                 },
-                "required": ["target_id", "description", "method", "result", "confidence", "notes"],
+                "required": [
+                    "target_id",
+                    "description",
+                    "method",
+                    "result",
+                    "confidence",
+                    "notes",
+                ],
             },
         },
     }
@@ -146,7 +153,11 @@ class ToolExecutor:
                         "description": "True if you have enough evidence to call submit_result.",
                     },
                 },
-                "required": ["findings_so_far", "remaining_questions", "ready_to_conclude"],
+                "required": [
+                    "findings_so_far",
+                    "remaining_questions",
+                    "ready_to_conclude",
+                ],
             },
         },
     }
@@ -217,8 +228,13 @@ class ToolExecutor:
         _REPORT_PROGRESS_DEF,
     ]
 
-    def __init__(self, workspace_root: Path, timeout: int = 60, output_limit: int = 10_000,
-                 task_type: "TaskType | None" = None):
+    def __init__(
+        self,
+        workspace_root: Path,
+        timeout: int = 60,
+        output_limit: int = 10_000,
+        task_type: "TaskType | None" = None,
+    ):
         self.workspace_root = workspace_root
         self.timeout = timeout
         self._output_limit = output_limit
@@ -243,7 +259,7 @@ class ToolExecutor:
             cleaned += ".py"
         # Truncate (keep .py suffix)
         if len(cleaned) > max_len:
-            cleaned = cleaned[:max_len - 3] + ".py"
+            cleaned = cleaned[: max_len - 3] + ".py"
         return cleaned or "script.py"
 
     @property
@@ -360,7 +376,9 @@ class ToolExecutor:
         label = summary[:80] if summary else conf
         return f"Result recorded: {label}", False
 
-    def _execute_python(self, code: str, purpose: str = "", filename: str = "") -> tuple[str, bool]:
+    def _execute_python(
+        self, code: str, purpose: str = "", filename: str = ""
+    ) -> tuple[str, bool]:
         """Write code to file, execute via sandbox, return (output, is_error)."""
         self._counter += 1
         self._computations_dir.mkdir(parents=True, exist_ok=True)
@@ -414,7 +432,11 @@ class ToolExecutor:
 
         # Combine stdout/stderr for error cases
         if result.returncode != 0:
-            raw_output = result.stdout + "\n\nSTDERR:\n" + result.stderr if result.stdout else result.stderr
+            raw_output = (
+                result.stdout + "\n\nSTDERR:\n" + result.stderr
+                if result.stdout
+                else result.stderr
+            )
         else:
             raw_output = result.stdout
 
