@@ -1,0 +1,2 @@
+# Some prometheus exporters normalize colons to underscores
+vllm_request_success_total{finished_reason="stop",model_name="x"} 10
