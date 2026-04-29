@@ -49,6 +49,8 @@ Options:
   --idle-shutdown SECONDS          Auto-cancel the job if no requests AND
                                    head-node GPU util is 0 for SECONDS
                                    (default: 14400 = 4h; 0 disables).
+  --idle-poll SECONDS              Watchdog poll interval (default: 60;
+                                   use 10–30 for quick validation of shutdown).
   -h, --help                       Show this message.
   --                               Extra args passed through to vllm serve.
 
@@ -58,6 +60,8 @@ Notes:
     ranks join in --headless mode using vLLM's multiprocessing backend.
   - The idle watchdog only arms once /metrics is reachable, so model load
     time never counts against the idle window.
+  - Actual shutdown fires on the first poll *after* the idle window; use a
+    small --idle-poll when testing with short --idle-shutdown.
 USAGE
 }
 
@@ -164,7 +168,11 @@ start_idle_watchdog() {
   while sleep "$poll_interval"; do
     now=$(date +%s)
     total="$(curl -fsS --max-time 5 "$metrics_url" 2>/dev/null \
-      | awk '/^vllm:request_success_total[ {]/ { sum += $NF; ok = 1 } END { if (ok) print sum }')"
+      | awk '
+        /^vllm:request_success_total[ {]/ { sum += $NF; ok = 1 }
+        /^vllm_request_success_total[ {]/ { sum += $NF; ok = 1 }
+        END { if (ok) print sum }
+      ')"
     gpu="$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null \
       | awk 'BEGIN { m = 0 } { v = $1 + 0; if (v > m) m = v } END { print m + 0 }')"
 
@@ -295,6 +303,11 @@ while [[ $# -gt 0 ]]; do
     --idle-shutdown)
       require_value "$1" "${2:-}"
       IDLE_SHUTDOWN_SECONDS="$2"
+      shift 2
+      ;;
+    --idle-poll)
+      require_value "$1" "${2:-}"
+      IDLE_POLL_INTERVAL="$2"
       shift 2
       ;;
     -h|--help)

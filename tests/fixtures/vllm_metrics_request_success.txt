@@ -1,0 +1,4 @@
+# HELP vllm:request_success_total Count of successfully processed requests.
+# TYPE vllm:request_success_total counter
+vllm:request_success_total{finished_reason="stop",model_name="test"} 3
+vllm:request_success_total{finished_reason="length",model_name="test"} 2

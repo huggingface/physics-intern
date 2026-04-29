@@ -57,8 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Config YAML file to pass through to each run")
     p.add_argument("--concurrency", type=int, default=10,
                    help="Max parallel runs (default: 10)")
-    p.add_argument("--timeout", type=int, default=10800,
-                   help="Per-problem timeout in seconds (default: 10800)")
+    p.add_argument("--timeout", type=int, default=21600,
+                   help="Per-problem timeout in seconds (default: 21600)")
     p.add_argument("--output-dir", type=Path, default=None,
                    help="Output directory for submission JSONs")
     p.add_argument("--problems-dir", type=Path, default=DEFAULT_PROBLEMS_DIR,
