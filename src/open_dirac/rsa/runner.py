@@ -463,9 +463,11 @@ def main() -> None:
     )
 
     # --- Persist winning answer to workspace ---
-    (workspace_root / "ANSWER.md").write_text(
-        f"# Final Answer\n\n{result['response_text']}\n"
-    )
+    # Extract only the code block with `def answer` to keep ANSWER.md clean;
+    # fall back to the full response if no fenced block is found.
+    clean_code = extract_answer_code(result["response_text"])
+    answer_content = clean_code if clean_code else result["response_text"]
+    (workspace_root / "ANSWER.md").write_text(answer_content + "\n")
 
     # --- Formal evaluation (writes VERIFICATION.md with frontmatter) ---
     try:

@@ -34,6 +34,7 @@ from ..console import console  # noqa: E402
 from ..llm import run_agent_loop, AgentResult  # noqa: E402
 from ..metrics import MetricsTracker  # noqa: E402
 from ..verification import (  # noqa: E402
+    extract_answer_code,
     run_formal_evaluation,
     render_formal_evaluation,
     write_formal_eval_report,
@@ -490,9 +491,9 @@ def main() -> None:
             console.print(
                 "[bold green]Problem solved![/bold green] Final answer submitted."
             )
-            (workspace_root / "ANSWER.md").write_text(
-                f"# Final Answer\n\n{executor.final_answer}\n"
-            )
+            clean_code = extract_answer_code(executor.final_answer)
+            answer_content = clean_code if clean_code else executor.final_answer
+            (workspace_root / "ANSWER.md").write_text(answer_content + "\n")
             break
 
     # --- Formal evaluation ---

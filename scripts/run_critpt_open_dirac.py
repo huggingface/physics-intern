@@ -81,13 +81,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Config YAML file to pass through to each run",
     )
     p.add_argument(
-        "--concurrency", type=int, default=10, help="Max parallel runs (default: 10)"
+        "--concurrency", type=int, default=16, help="Max parallel runs (default: 16)"
     )
     p.add_argument(
         "--timeout",
         type=int,
-        default=21600,
-        help="Per-problem timeout in seconds (default: 21600)",
+        default=10800,
+        help="Per-problem timeout in seconds (default: 10800)",
     )
     p.add_argument(
         "--output-dir",
@@ -142,20 +142,29 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 
+# Suffixes used by other pipelines — must not be matched by multi-agent resume.
+_NON_AGENT_SUFFIXES = ("_oneshot", "_rsa", "_autophysicist")
+
+
 def find_existing_workspace(
     problem_id: str,
     model_key: str,
     workspace_base: Path,
 ) -> Path | None:
-    """Find the most recent workspace for a problem, if any."""
+    """Find the most recent *multi-agent* workspace for a problem, if any."""
     safe_model = model_key.replace("/", "-").replace(":", "-")
     # Workspace dirs look like: YYYYMMDD_HHMMSS_Challenge_N_main_model
     matches: list[Path] = []
     if not workspace_base.exists():
         return None
     for d in workspace_base.iterdir():
-        if d.is_dir() and problem_id in d.name and safe_model in d.name:
-            matches.append(d)
+        if not d.is_dir():
+            continue
+        if problem_id not in d.name or safe_model not in d.name:
+            continue
+        if d.name.endswith(_NON_AGENT_SUFFIXES):
+            continue
+        matches.append(d)
     if not matches:
         return None
     # Most recent by name (timestamp prefix)

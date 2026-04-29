@@ -32,7 +32,7 @@ from ..baselines import (
 )
 from ..config import Config, build_config
 from ..providers import LLMProvider
-from ..verification import run_formal_evaluation, write_formal_eval_report
+from ..verification import extract_answer_code, run_formal_evaluation, write_formal_eval_report
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +70,11 @@ def _run_single(
         print(f"Est. cost:     ${result['cost_usd']:.4f}", file=sys.stderr)
 
     # --- Persist answer to workspace ---
-    (workspace_root / "ANSWER.md").write_text(
-        f"# Final Answer\n\n{result['response_text']}\n"
-    )
+    # Extract only the code block with `def answer` to keep ANSWER.md clean;
+    # fall back to the full response if no fenced block is found.
+    clean_code = extract_answer_code(result["response_text"])
+    answer_content = clean_code if clean_code else result["response_text"]
+    (workspace_root / "ANSWER.md").write_text(answer_content + "\n")
 
     # --- Formal evaluation (writes VERIFICATION.md with frontmatter) ---
     # We deliberately do not call render_formal_evaluation: it writes to the
