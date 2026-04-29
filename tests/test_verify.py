@@ -482,7 +482,7 @@ established_results: 1
 
 def test_rerun_computations(tmp_path):
     """Re-run a trivial computation script via sandbox."""
-    ws_dir = _make_workspace(tmp_path)
+    _make_workspace(tmp_path)
     comp_dir = tmp_path / "computations"
     comp_dir.mkdir()
     (comp_dir / "trivial.py").write_text("print(2 + 2)")
@@ -954,7 +954,7 @@ def test_build_diagnosis_prompt_without_reference_content():
 
 def test_load_or_run_reads_existing_report(tmp_path):
     """If VERIFICATION.md has formal_answer, read it instead of re-running."""
-    ws_dir = _make_workspace(tmp_path)
+    _make_workspace(tmp_path)
     (tmp_path / "VERIFICATION.md").write_text(
         "---\nformal_answer: correct\n---\n\n# Report\n"
     )
@@ -967,7 +967,7 @@ def test_load_or_run_reads_existing_report(tmp_path):
 
 def test_load_or_run_falls_back_to_fresh(tmp_path):
     """If no VERIFICATION.md, run formal eval fresh."""
-    ws_dir = _make_workspace(tmp_path)
+    _make_workspace(tmp_path)
     (tmp_path / "ANSWER.md").write_text(CORRECT_ANSWER_MD)
 
     result = load_or_run_formal_eval(str(tmp_path), HAWKING_PROBLEM_DEF, None)

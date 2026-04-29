@@ -202,7 +202,7 @@ class TestStaleUnverifiedLabels:
                 iteration=1,
             ),
         )
-        violations = check_stale_unverified_labels(state)
+        check_stale_unverified_labels(state)
         # Note: the function returns [] (empty list) but mutates derivation
         assert "VERIFIED" in state.hypotheses["WH-001"].derivation
         assert "[unverified]" not in state.hypotheses["WH-001"].derivation

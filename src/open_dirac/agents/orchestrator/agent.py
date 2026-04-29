@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from open_dirac.llm import AgentResult, LLMResponse, run_agent_loop
+from open_dirac.research_state import ResearchState
 from open_dirac.rendering import (
     render_background_survey_xml,
     render_research_context_xml,

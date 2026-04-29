@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from open_dirac.agents.orchestrator.tools import OrchestratorToolExecutor
 from open_dirac.research_state import (
     ResearchState,
+    ResearchQuestion,
     Hypothesis,
     HypothesisStatus,
     Verdict,
@@ -213,8 +214,8 @@ class TestAddHypothesis:
 
 
 class TestRqEvidenceCap:
-    def _make_rq_with_evidence(self, rq_id: str, n_evidence: int) -> "ResearchQuestion":
-        from open_dirac.research_state import ResearchQuestion, Evidence
+    def _make_rq_with_evidence(self, rq_id: str, n_evidence: int) -> ResearchQuestion:
+        from open_dirac.research_state import Evidence
 
         rq = ResearchQuestion(id=rq_id, question="Q?", iteration_created=1)
         for i in range(n_evidence):
@@ -1247,8 +1248,8 @@ class TestStateInjection:
 # ---------------------------------------------------------------------------
 
 
-class TestTargetClaimValidation:
-    """Tests for target_claim validation in dispatch tools."""
+class TestTargetClaimValidationSuccess:
+    """Tests for valid target_claim values in dispatch tools."""
 
     def test_valid_wh_target_passes(self):
         ws = _make_workspace()

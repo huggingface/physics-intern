@@ -254,7 +254,7 @@ class OrchestratorToolExecutor:
             )
         try:
             output = handler(tool_input)
-            is_error = False
+            is_error = isinstance(output, str) and output.startswith("Error:")
         except Exception as e:
             output = f"Error: {type(e).__name__}: {e}"
             is_error = True

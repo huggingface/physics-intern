@@ -648,7 +648,7 @@ class TestPenultimateRoundMessage:
         config.progress_check_interval = 999
 
         with patch("open_dirac.llm._get_provider", return_value=provider):
-            result = run_agent_loop(
+            run_agent_loop(
                 system="test",
                 user_content="test",
                 config=config,
@@ -713,7 +713,7 @@ class TestPenultimateRoundMessage:
         config.progress_check_interval = 999
 
         with patch("open_dirac.llm._get_provider", return_value=provider):
-            result = run_agent_loop(
+            run_agent_loop(
                 system="test",
                 user_content="test",
                 config=config,

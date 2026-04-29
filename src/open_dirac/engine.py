@@ -26,7 +26,7 @@ from .dispatcher import (
     is_recoverable,
     record_agent_failures as _dispatcher_record_agent_failures,
 )
-from .llm import ParseFailureError
+from .llm import AgentResult, LLMResponse, ParseFailureError
 from .loop_state import (
     LoopState,
     append_dispatch_record,
@@ -795,7 +795,7 @@ class OpenDirac:
         """Render a summary of open RQs, working WHs, and dangling WHs."""
         return render_pending_work(self.research_state)
 
-    def _dispatch(self, task: Task) -> tuple[str, "LLMResponse | AgentResult"]:
+    def _dispatch(self, task: Task) -> tuple[str, LLMResponse | AgentResult]:
         """Route task to the correct agent. Returns (agent_name, result)."""
         return _dispatcher_dispatch(
             task,

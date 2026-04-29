@@ -641,14 +641,6 @@ class TestCritiqueResolutionRegex:
 
     def test_multiline_resolution_captured(self):
         """Resolution text spanning multiple lines is captured."""
-        from open_dirac.agents.orchestrator import OrchestratorAgent
-
-        config = MagicMock()
-        config.min_er_for_completion = 3
-        workspace = MagicMock()
-        metrics = MagicMock()
-        agent = OrchestratorAgent(config, workspace, metrics)
-
         response_text = (
             "CRIT-001: Corrected the sign error in Eq. 3.\n"
             "The minus sign was missing from the exponent,\n"

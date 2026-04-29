@@ -451,8 +451,8 @@ async def run_one_problem(
                 assert proc.stderr is not None
                 data = await proc.stderr.read()
                 text = data.decode(errors="replace")
-                for l in text.splitlines():
-                    stderr_tail.append(l)
+                for line in text.splitlines():
+                    stderr_tail.append(line)
                 if len(stderr_tail) > 50:
                     del stderr_tail[:-50]
 

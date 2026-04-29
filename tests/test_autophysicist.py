@@ -55,7 +55,7 @@ class TestPermanentMemory:
 
 class TestScratchpad:
     def test_creates_file(self, tmp_path):
-        sp = Scratchpad(tmp_path)
+        Scratchpad(tmp_path)
         assert (tmp_path / "SCRATCHPAD.md").exists()
 
     def test_append_and_window(self, tmp_path):

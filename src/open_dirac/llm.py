@@ -613,7 +613,6 @@ def run_agent_loop(
     token_alert_fired = False
     overall_start = time.time()
 
-    tool_call_failure = False
     empty_end_turn_count = 0
     ready_conclude_recovery_count = 0
     text_end_turn_recovery_count = 0
@@ -657,7 +656,6 @@ def run_agent_loop(
                 f"[yellow]Context too long (round {round_num}): {exc} "
                 f"— falling back to text-only response[/yellow]"
             )
-            tool_call_failure = True
             loop_exit_reason = "context_too_long"
             if config.workspace_dir:
                 log_scaffold_event(
@@ -675,7 +673,6 @@ def run_agent_loop(
                     f"(round {round_num}): {exc} — falling back to "
                     f"text-only response[/yellow]"
                 )
-                tool_call_failure = True
                 loop_exit_reason = "tool_call_failure"
                 if config.workspace_dir:
                     log_scaffold_event(
@@ -692,7 +689,6 @@ def run_agent_loop(
                     f"(round {round_num}): {exc} — falling back to "
                     f"text-only response[/yellow]"
                 )
-                tool_call_failure = True
                 loop_exit_reason = "provider_side_400"
                 if config.workspace_dir:
                     log_scaffold_event(

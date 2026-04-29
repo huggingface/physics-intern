@@ -292,7 +292,7 @@ class TestDocumentApproach:
 
     def test_does_not_stop(self):
         executor = _make_executor()
-        tc = executor.execute("document_approach", {"approach": "test"})
+        executor.execute("document_approach", {"approach": "test"})
         assert (
             not hasattr(executor, "stop_after_round") or not executor.stop_after_round
         )
@@ -815,7 +815,7 @@ class TestForcedPartialOutput:
         ]
 
         executor = _make_executor()
-        result = run_agent_loop(
+        run_agent_loop(
             system="sys",
             user_content="question",
             config=_make_config(),
