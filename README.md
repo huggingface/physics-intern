@@ -426,11 +426,14 @@ These scripts run OpenDirac against the [CritPt](https://github.com/CriticalPath
 | `scripts/run_critpt_open_dirac.py` | Batch-run all CritPt problems through the full multi-agent pipeline               |
 | `scripts/run_critpt_oneshot.py`    | Batch-run all CritPt problems through the one-shot baseline                       |
 | `scripts/run_critpt_rsa.py`        | Batch-run all CritPt problems through RSA                                         |
+| `serve/run_critpt_open_resume.slurm` | Slurm driver: wait for a local vLLM serve job, then `--resume` the multi-agent CritPt batch (`SERVE_JOB`, `RESUME_DIR` required; see script header) |
 | `scripts/analyze_batch.py`         | Analyze token usage and per-agent metrics across a batch run                      |
 | `scripts/fill_missing_critpt.py`   | Fill missing submission JSONs with template answers for a complete 70-problem set |
 
 
 All batch scripts support `--resume <output-dir>` to continue an interrupted run. On resume, all parameters (model, max_tokens, problem subset, RSA N/K/T, etc.) are recovered from the saved `batch_metadata.json` — no need to re-specify them. Completed submissions are automatically skipped.
+
+`serve/run_critpt_open_resume.slurm` can be smoke-tested without Slurm or CritPt: `uv run pytest tests/test_run_critpt_open_resume_slurm.py -v` (local `/health` stub and `CRITPT_RESUME_DRY_RUN=1`; see the script header).
 
 `run_critpt_open_dirac.py` uses a default **6 hour** per-problem wall clock (`--timeout 21600`); override if a model or harness needs more or less.
 
