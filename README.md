@@ -29,7 +29,6 @@ uv sync --extra all-providers   # all of the above
 # To serve local models on a Linux GPU cluster (no-op on macOS):
 uv sync --extra local
 
-
 # Run a research problem (requires model API key in .env or env var)
 uv run open_dirac problems/critpt/quantum_error_correction_main.yaml --model gemini-3-flash-preview
 ```
@@ -38,14 +37,12 @@ uv run open_dirac problems/critpt/quantum_error_correction_main.yaml --model gem
 
 Set API keys for the providers you want to use (in `.env` or as env vars):
 
-
 | Variable            | Provider                        |
 | ------------------- | ------------------------------- |
 | `ANTHROPIC_API_KEY` | Anthropic                       |
 | `OPENAI_API_KEY`    | OpenAI                          |
 | `GOOGLE_API_KEY`    | Google Gemini (default)         |
 | `HF_TOKEN`          | HuggingFace Inference Providers |
-
 
 ### CLI Options
 
@@ -244,8 +241,8 @@ CUDA 12.9 toolkit so GLM can run without `--enforce-eager`.
 - `uv sync --extra local`
 - `uv run hf auth whoami`
 - The `local` extra installs `vllm`, the required `transformers` floor, and the
-vendored `deep-gemm` wheel from `[tool.uv.sources]`; no manual DeepGEMM install
-is needed for `zai-org/GLM-5.1`.
+  vendored `deep-gemm` wheel from `[tool.uv.sources]`; no manual DeepGEMM install
+  is needed for `zai-org/GLM-5.1`.
 - vendored Nemotron parser plugins live in `serve/reasoning_parsers/`
 
 #### Step 1: Serve the model
@@ -303,12 +300,10 @@ Per-model `vllm_args` in `models.yaml` already encode the fastest configuration 
 
 Load times below are wall time of `default_loader.py` "Loading weights took N seconds" on the slowest worker. They depend heavily on whether the OS page cache is warm.
 
-
 | Model                  | Tput (single req) | Tput (8-way batch) | Tput (16-way batch) | Load (cold cache)                                         | Load (warm cache)                                                      | Notes                                                                                                                          |
 | ---------------------- | ----------------- | ------------------ | ------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `zai-org/GLM-5.1`      | ~46 tok/s         | ~202 tok/s         | ~333 tok/s          | ~2.5h projected without prefetch                          | ~18-22 min with prefetch in the final run; earlier warm run was ~2 min | DeepGEMM JIT cache/toolkit setup lets this run without `--enforce-eager`; BF16 beats FP8 on our stack.                         |
 | `moonshotai/Kimi-K2.6` | ~92 tok/s         | ~558 tok/s         | ~920 tok/s          | ~78 min without prefetch; prefetch on cold cache untested | ~6-11 min with warm cache                                              | CUDA graphs (no `--enforce-eager`) give the dominant 4× throughput win; `--enable-expert-parallel` remains the chosen default. |
-
 
 For an apples-to-apples 4-node comparison, GLM-5.1 with TP=8/PP=4 measured
 ~46 tok/s single-request, ~257 tok/s at 8-way concurrency, and ~383 tok/s at
@@ -318,13 +313,11 @@ cost, so the default stays at 3 nodes.
 
 Kimi-K2.6 also fits on fewer nodes. With the same canonical flags:
 
-
 | Kimi nodes | Tput (single req) | Tput (8-way batch) | Tput (16-way batch) | Full-context KV headroom | Notes                                                                       |
 | ---------- | ----------------- | ------------------ | ------------------- | ------------------------ | --------------------------------------------------------------------------- |
 | 2          | ~94 tok/s         | ~569 tok/s         | ~938 tok/s          | 3.83× at 262k context    | Best short-prompt cost/perf, but risky for full 8-way long-context sweeps.  |
 | 3          | ~92 tok/s         | ~547 tok/s         | ~920 tok/s          | 7.48× at 262k context    | Almost enough for 8-way full-context use, still less headroom than 4 nodes. |
 | 4          | ~92 tok/s         | ~558 tok/s         | ~920 tok/s          | 11.12× at 262k context   | Chosen default for robust 8-way CritPt runs.                                |
-
 
 Kimi's `max_output_tokens` is intentionally `200000`. The old 131k cap left
 five hard one-shot CritPt problems without parseable answer code; rerunning just
@@ -404,7 +397,6 @@ Submission JSONs land in `results/critpt_oneshot/<model_slug>/<timestamp>/`. To 
 
 ### General
 
-
 | Script                                  | Purpose                                                                                  |
 | --------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `scripts/run_and_verify.sh`             | Run a research session then verify results in one command                                |
@@ -415,11 +407,9 @@ Submission JSONs land in `results/critpt_oneshot/<model_slug>/<timestamp>/`. To 
 | `scripts/run_multiple_autophysicist.py` | Run N concurrent autophysicist instances for pass@k evaluation                           |
 | `scripts/test_model.py`                 | Smoke-test a model's reasoning and tool-call support (`--list` to show available models) |
 
-
 ### CritPt Benchmark
 
 These scripts run OpenDirac against the [CritPt](https://github.com/CriticalPathAI/benchmarks) benchmark suite (70 problems in `problems/critpt/yaml/`). They produce CritPt-format submission JSONs, support resume from interrupted runs, and handle rolling parallelism.
-
 
 | Script                             | Purpose                                                                           |
 | ---------------------------------- | --------------------------------------------------------------------------------- |
@@ -429,7 +419,6 @@ These scripts run OpenDirac against the [CritPt](https://github.com/CriticalPath
 | `serve/run_critpt_open_resume.slurm` | Slurm driver: wait for a local vLLM serve job, then `--resume` the multi-agent CritPt batch (`SERVE_JOB`, `RESUME_DIR` required; see script header) |
 | `scripts/analyze_batch.py`         | Analyze token usage and per-agent metrics across a batch run                      |
 | `scripts/fill_missing_critpt.py`   | Fill missing submission JSONs with template answers for a complete 70-problem set |
-
 
 All batch scripts support `--resume <output-dir>` to continue an interrupted run. On resume, all parameters (model, max_tokens, problem subset, RSA N/K/T, etc.) are recovered from the saved `batch_metadata.json` — no need to re-specify them. Completed submissions are automatically skipped.
 
@@ -452,7 +441,6 @@ uv run python scripts/run_critpt_rsa.py --resume results/rsa_run/ --concurrency 
 
 Models are registered in `models.yaml`. Use the friendly key with `--model`:
 
-
 | Key                      | Provider    | Model                   |
 | ------------------------ | ----------- | ----------------------- |
 | `claude-4.6-opus`        | Anthropic   | claude-opus-4-6         |
@@ -469,14 +457,13 @@ Models are registered in `models.yaml`. Use the friendly key with `--model`:
 | `minimax-m2.5`           | HuggingFace | MiniMax-M2.5            |
 | `qwen-3.5-397B-A17B`     | HuggingFace | Qwen3.5-397B-A17B       |
 
-
 ### Known limitations
 
 - **OpenAI `gpt-5.4` + tools + `reasoning_effort`**: not supported on `/v1/chat/completions`. The API returns a 400 error when both function tools and `reasoning_effort` are passed together for `gpt-5.4`, and suggests migrating to `/v1/responses`. As a result, agentic loops (which always attach tools) currently run these models at the API default reasoning effort; the `reasoning_effort` configured in `models.yaml` only takes effect for tool-free calls (e.g. one-shot baseline).
 
 ## Architecture
 
-Architecture diagram
+![Architecture diagram](opendirac.png)
 
 Nine agent roles collaborate in a loop. Each agent gets a fresh context per call (no conversation history). All research state lives in a structured `ResearchState` object (persisted as `RESEARCH_GRAPH.json`), with Markdown files rendered from it. The workspace is a separate git repo.
 
@@ -527,7 +514,6 @@ The orchestrator is the only agent that *decides* what to do — it reads Resear
 
 ### Agents
 
-
 | Agent            | Role                                                 | Mode                       | Context source                                             | Mutates                                            |
 | ---------------- | ---------------------------------------------------- | -------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
 | **Surveyor**     | Maps the research landscape before the main loop     | One-shot                   | Problem statement + ResearchState                          | `BackgroundSurvey` on ResearchState                |
@@ -539,7 +525,6 @@ The orchestrator is the only agent that *decides* what to do — it reads Resear
 | **Deep Critic**  | Strategic audit — research direction, coherence      | One-shot (structured JSON) | ResearchState via `render_critic_context()`                | Critique objects (typed: er/strategy/coordination) |
 | **Adjudicator**  | Independent evaluation of ER challenges from critic  | One-shot (structured JSON) | Claim + challenge + evidence + conventions + ERs           | ER demotion or critique dismissal                  |
 | **Formatter**    | Produces clean `ANSWER.md` from final research state | One-shot                   | ResearchState via renderers                                | `ANSWER.md`                                        |
-
 
 ### Research Lifecycle
 
@@ -569,17 +554,16 @@ Promotion from WH to ER is automatic: the engine's `_auto_promote` fires after a
 
 LLMs fail in predictable ways (hallucinating IDs, promoting unverified results, emitting malformed output, failing to terminate). The scaffolding compensates via ~40 mechanisms across four categories (defined in `categories.py` as `CompensationCategory`):
 
-- `**call_reliability`** — making each LLM call succeed: transport retry, tool-call fallback, agent loop bailouts, tool execution guards
-- `**state_invariants**` — keeping ResearchState consistent: post-integration validation pipeline (4 checks)
-- `**loop_control**` — steering the main loop: forced critic, dispatch guards, verdict tracking, compute enrichment, termination gates
-- `**output_normalization**` — cleaning agent output: per-agent response corrections, markdown parsing tolerance
+- **`call_reliability`** — making each LLM call succeed: transport retry, tool-call fallback, agent loop bailouts, tool execution guards
+- **`state_invariants`** — keeping ResearchState consistent: post-integration validation pipeline (4 checks)
+- **`loop_control`** — steering the main loop: forced critic, dispatch guards, verdict tracking, compute enrichment, termination gates
+- **`output_normalization`** — cleaning agent output: per-agent response corrections, markdown parsing tolerance
 
 All interventions are logged to `EVENT_LOG.jsonl` with category, event key, and detail.
 
 ### Workspace Files
 
 All research state is persisted under `workspaces/<run>/` (each run gets a timestamped subdirectory, gitignored from this repo, has its own git):
-
 
 | File                  | Purpose                                                                 |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -594,7 +578,6 @@ All research state is persisted under `workspaces/<run>/` (each run gets a times
 | `VERIFICATION.md`     | Independent verification report (written by `--write-report`)           |
 | `computations/`       | Saved Python scripts from computer agent                                |
 | `derivations/`        | Saved derivation files from researcher agent                            |
-
 
 ## Problem Definitions
 

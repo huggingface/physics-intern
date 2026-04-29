@@ -75,8 +75,13 @@ def _write_endpoint_env(job_id: str, port: int) -> Path:
     return log_dir
 
 
-def _run_resume_script(*, tmp_home: Path, extra_env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def _run_resume_script(
+    *, tmp_home: Path, extra_env: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
+    # Strip variables the script checks so tests control them explicitly.
+    for key in ("SERVE_JOB", "RESUME_DIR", "SLURM_SUBMIT_DIR"):
+        env.pop(key, None)
     env["HOME"] = str(tmp_home)
     env["CRITPT_SKIP_BASHRC"] = "1"
     env.update(extra_env)
@@ -140,3 +145,43 @@ def test_resume_slurm_health_timeout(isolated_home: Path) -> None:
 
     assert proc.returncode == 1
     assert "health timeout" in proc.stdout + proc.stderr
+
+
+def test_resume_slurm_missing_endpoint_env(isolated_home: Path) -> None:
+    """endpoint.env never appears → script exits 1 with 'missing' message."""
+    job_id = f"pytest_resume_no_ep_{uuid.uuid4().hex[:12]}"
+    proc = _run_resume_script(
+        tmp_home=isolated_home,
+        extra_env={
+            "SERVE_JOB": job_id,
+            "RESUME_DIR": str(isolated_home / "resume"),
+            "CRITPT_ENDPOINT_POLL_MAX": "1",
+            "CRITPT_ENDPOINT_POLL_SLEEP": "0",
+        },
+    )
+    assert proc.returncode == 1
+    assert "missing" in proc.stdout + proc.stderr
+
+
+def test_resume_slurm_missing_serve_job(isolated_home: Path) -> None:
+    """SERVE_JOB not set → script exits with error."""
+    proc = _run_resume_script(
+        tmp_home=isolated_home,
+        extra_env={
+            "RESUME_DIR": str(isolated_home / "resume"),
+        },
+    )
+    assert proc.returncode != 0
+    assert "SERVE_JOB" in proc.stderr
+
+
+def test_resume_slurm_missing_resume_dir(isolated_home: Path) -> None:
+    """RESUME_DIR not set → script exits with error."""
+    proc = _run_resume_script(
+        tmp_home=isolated_home,
+        extra_env={
+            "SERVE_JOB": "12345",
+        },
+    )
+    assert proc.returncode != 0
+    assert "RESUME_DIR" in proc.stderr
