@@ -32,7 +32,11 @@ from ..baselines import (
 )
 from ..config import Config, build_config
 from ..providers import LLMProvider
-from ..verification import extract_answer_code, run_formal_evaluation, write_formal_eval_report
+from ..verification import (
+    extract_answer_code,
+    run_formal_evaluation,
+    write_formal_eval_report,
+)
 
 
 # ---------------------------------------------------------------------------

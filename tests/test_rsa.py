@@ -1,6 +1,5 @@
 """Tests for the RSA runner (open_dirac.rsa.runner)."""
 
-
 from open_dirac.rsa.runner import (
     _extract_answer_key,
     _majority_vote,

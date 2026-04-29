@@ -1,7 +1,6 @@
 """Tests verifying agent module structure: imports, tool configurations, and basic process_response."""
 
 
-
 class TestNewAgentImports:
     """Verify the new agent modules exist and are importable."""
 
