@@ -22,7 +22,11 @@ import os
 import re
 from types import SimpleNamespace
 
-from ._openai_compat import build_raw_tool_call, strip_tool_messages
+from ._openai_compat import (
+    build_raw_tool_call,
+    canonical_tool_arguments_json_string,
+    strip_tool_messages,
+)
 from .base import (
     LLMProvider,
     ProviderResponse,
@@ -369,7 +373,9 @@ class VLLMProvider(LLMProvider):
                     "type": "function",
                     "function": {
                         "name": tc.function.name,
-                        "arguments": tc.function.arguments,
+                        "arguments": canonical_tool_arguments_json_string(
+                            tc.function.arguments
+                        ),
                     },
                 }
                 for tc in raw_content.tool_calls

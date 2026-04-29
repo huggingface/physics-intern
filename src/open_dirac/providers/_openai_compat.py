@@ -8,7 +8,52 @@ providers have subtle divergences (reasoning-delta dispatch, JSON-failure
 fallback) that make merging risky; see ``cleaning_plan.md`` Slice 1B.
 """
 
+from __future__ import annotations
+
+import json
+import logging
 from types import SimpleNamespace
+
+logger = logging.getLogger(__name__)
+
+
+def canonical_tool_arguments_json_string(arguments: str | None) -> str:
+    """Return JSON text valid for ``tool_calls[].function.arguments`` on the wire.
+
+    OpenAI-compatible servers (including vLLM) typically ``json.loads`` this
+    inner string when handling the next turn. Streaming accumulation can
+    produce **invalid JSON** (truncation, bad escapes); :mod:`vllm` then falls
+    back to ``{"raw": ...}`` for *local* tool execution but must not forward
+    the broken string in :meth:`format_assistant_message`, or the **following**
+    request fails with ``HTTP 400`` (e.g. ``Expecting ',' delimiter``,
+    ``Invalid \\escape``).
+
+    If *arguments* is valid JSON, it is re-serialized compactly. If not, a
+    small diagnostic object is emitted so the outbound request always carries
+    parseable tool JSON.
+    """
+    if arguments is None or not str(arguments).strip():
+        return "{}"
+    s = str(arguments).strip()
+    try:
+        parsed = json.loads(s)
+        return json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))
+    except json.JSONDecodeError as exc:
+        snippet = s[:4000]
+        logger.warning(
+            "Invalid tool-call arguments JSON from model; substituting "
+            "diagnostic payload for API resend (%s at char %s): %r...",
+            exc.msg,
+            exc.pos if exc.pos is not None else "?",
+            snippet[:120],
+        )
+        diagnostic: dict[str, bool | str | int | None] = {
+            "_open_dirac_tool_arguments_parse_error": True,
+            "parse_error_message": exc.msg,
+            "parse_error_pos": exc.pos,
+            "snippet": snippet,
+        }
+        return json.dumps(diagnostic, ensure_ascii=False, separators=(",", ":"))
 
 
 def strip_tool_messages(messages: list[dict]) -> list[dict]:
