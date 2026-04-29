@@ -25,6 +25,13 @@ from open_dirac.validation import (
 )
 
 
+def _safe_path_mock() -> MagicMock:
+    """MagicMock safe for ``ws.root.__truediv__`` — see test_engine.py."""
+    m = MagicMock()
+    m.return_value.exists.return_value = False
+    return m
+
+
 # ---------------------------------------------------------------------------
 # Shared test helpers
 # ---------------------------------------------------------------------------
@@ -733,7 +740,7 @@ class TestShouldTriggerCritic:
             ws = MockWS.return_value
             ws.init = MagicMock()
             ws.root = MagicMock()
-            ws.root.__truediv__ = MagicMock()
+            ws.root.__truediv__ = _safe_path_mock()
             ws.logs_dir = "/tmp/logs"
             ws.read_file = MagicMock(return_value="")
 
@@ -789,7 +796,7 @@ class TestShouldTriggerCritic:
             ws = MockWS.return_value
             ws.init = MagicMock()
             ws.root = MagicMock()
-            ws.root.__truediv__ = MagicMock()
+            ws.root.__truediv__ = _safe_path_mock()
             ws.logs_dir = "/tmp/logs"
             ws.read_file = MagicMock(return_value="")
 

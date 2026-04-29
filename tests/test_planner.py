@@ -19,6 +19,13 @@ from open_dirac.research_state import (
 from open_dirac.task import Task, TaskType
 
 
+def _safe_path_mock() -> MagicMock:
+    """MagicMock safe for ``ws.root.__truediv__`` — see test_engine.py."""
+    m = MagicMock()
+    m.return_value.exists.return_value = False
+    return m
+
+
 class TestPlannerBuildContext:
     """Test PlannerAgent.build_context produces correct XML-wrapped content."""
 
@@ -644,7 +651,7 @@ class TestEngineApplyStrategy:
             ws = MockWS.return_value
             ws.init = MagicMock()
             ws.root = MagicMock()
-            ws.root.__truediv__ = MagicMock()
+            ws.root.__truediv__ = _safe_path_mock()
             ws.logs_dir = "/tmp/logs"
             ws.write_file = MagicMock()
             ws.git_commit = MagicMock()
