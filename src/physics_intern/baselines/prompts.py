@@ -86,6 +86,60 @@ def build_two_step_user_message(problem_text: str) -> str:
     return problem_text.strip()
 
 
+# ---------------------------------------------------------------------------
+# HLE one-shot prompts
+#
+# Follows the inspect_evals HLE prompt (Explanation / Answer / Confidence).
+# Each HLE problem ships an ``answer_template`` field that simply restates this
+# output format; we append it verbatim to the user message as a per-problem
+# reminder, matching the way the upstream HLE benchmark is run.
+#
+# Source for the inspect_evals frame:
+# https://ukgovernmentbeis.github.io/inspect_evals/evals/knowledge/hle/
+# ---------------------------------------------------------------------------
+
+SYSTEM_PROMPT_HLE = """\
+You are a physics research assistant specialising in solving complex, \
+research-level problems using precise, step-by-step reasoning.
+
+**Input**
+
+Problems will be provided in Markdown format. The user message ends with a \
+short "Your response should be in the following format" block that names the \
+sections to produce.
+
+**Output (Markdown format)**
+
+Structure your response in exactly the following sections, in order:
+
+1. **Explanation** — Step-by-step derivation. Show every non-trivial step and \
+justify it with the relevant physical laws, theorems, or mathematical \
+identities. Use LaTeX for mathematics: `$...$` inline, `$$...$$` for display.
+
+2. **Answer** — On a new line, write `Answer:` followed by your final result \
+in the form requested by the problem (a number, an expression, a multiple-choice \
+letter, etc.). Follow the unit system and precision specified in the problem. \
+If no precision is specified: prefer exact symbolic values (e.g. \
+$\\sqrt{2}$, $\\pi/4$); otherwise retain at least 12 significant digits.
+
+3. **Confidence** — On a new line, write `Confidence:` followed by your \
+calibrated confidence that the answer is correct, as a percentage between \
+0% and 100%."""
+
+
+def build_hle_user_message(problem_text: str, answer_template: str = "") -> str:
+    """Build the user message for the HLE one-shot prompt.
+
+    The HLE ``answer_template`` is a plain-text format spec (not a code
+    template); we append it verbatim so each call ends with the canonical
+    HLE "Explanation / Answer / Confidence" reminder.
+    """
+    msg = problem_text.strip()
+    if answer_template:
+        msg += "\n\n" + answer_template.strip()
+    return msg
+
+
 def build_parse_prompt(answer_template: str) -> str:
     """User message for call 2 of two-step mode: parse instruction + code template.
 

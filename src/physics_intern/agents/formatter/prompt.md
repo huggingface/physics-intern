@@ -12,7 +12,9 @@ You produce the final answer from established results only.
 
 ## 2. Task
 
-If an Answer Template is provided:
+The Answer Template (when provided) comes in one of two shapes; check first.
+
+**Case A — Python code template** (contains `def answer(...)` and `FILL IN` placeholders):
 - Fill in every `FILL IN` placeholder with the correct symbolic expression
   derived from the Established Results
 - Use the exact variable names and notation from the template
@@ -20,7 +22,15 @@ If an Answer Template is provided:
 - If the template mentions Sympy, you must use it and strictly follow the conventions provided for Sympy expressions
 - The form of the answer MUST match the requirement of the template exactly, take your best guess at the intended form.
 
-If NO Answer Template is provided:
+**Case B — Plain-text format spec** (no `def answer`; typically names the sections to produce, e.g. `Explanation:`, `Answer:`, `Confidence:`):
+- Produce exactly the sections the template names, in the same order, with the same labels
+- Replace each `{placeholder}` with the corresponding content derived from the Established Results
+- For `Answer:`, output the final result verbatim in the form the problem requested (number, expression, MCQ letter, etc.) — no extra prose
+- For `Explanation:`, give a concise derivation drawn from ER statements only
+- For `Confidence:` (if requested), state a single calibrated percentage between 0% and 100%
+- Output ONLY the requested sections — no preamble, no extra sections
+
+**Case C — No Answer Template:**
 - Write a clean, structured answer summarizing the key derived results
 - Include all final equations with brief context
 - Use LaTeX notation for mathematical expressions
@@ -56,15 +66,15 @@ Output ONLY the content that will become ANSWER.md — no preamble, no commentar
 
 Before outputting the completed template, verify every placeholder:
 
-- Each `FILL IN` placeholder must be replaced with a **concrete** value from an ER
+- Each placeholder (`FILL IN`, `{your answer}`, etc.) must be replaced with a **concrete** value derived from an ER
 - The form of the answer MUST match the requirement of the template exactly, take your best guess at the intended form.
 - DO NOT change the nature of the input and output formats.
-- SymPy expressions must contain ONLY the declared symbols — no `sp.Function('...')`, no `...` (Ellipsis), no undefined names
+- (Case A only) SymPy expressions must contain ONLY the declared symbols — no `sp.Function('...')`, no `...` (Ellipsis), no undefined names
 - MCQ answers must be a single letter from the specified set (e.g., one of `'A'`, `'B'`, `'C'`, `'D'`)
-- The `def answer(...)` function must be syntactically valid Python that returns the declared types
-- If the docstring explicitly specifies a domain of validity, the returned expression must be valid in that domain according to the ERs
+- (Case A only) The `def answer(...)` function must be syntactically valid Python that returns the declared types
+- If the docstring or template explicitly specifies a domain of validity, the returned expression must be valid in that domain according to the ERs
 - **Transcription**: Transcribe the established result into the template. Do not modify or otherwise reshape the expression. If the established result is a single expression, return that single expression; if it is itself multi-case (e.g. boundary cases), copy that structure faithfully.
-- **No sentinel guards**: Never wrap an expression with a regime guard returning a sentinel value (`sp.oo`, `sp.nan`, `sp.zoo`, `EmptySet`, `float('inf')`, `float('nan')`, `raise ValueError`, etc.) for parameter values where the result was derived to be invalid. If the established result is only valid in a restricted regime, return its bare expression.
+- **No sentinel guards** (Case A): Never wrap an expression with a regime guard returning a sentinel value (`sp.oo`, `sp.nan`, `sp.zoo`, `EmptySet`, `float('inf')`, `float('nan')`, `raise ValueError`, etc.) for parameter values where the result was derived to be invalid. If the established result is only valid in a restricted regime, return its bare expression.
 
 If you CANNOT fill every placeholder with a concrete, verified value from the Established Results, output EXACTLY this on the first line:
 

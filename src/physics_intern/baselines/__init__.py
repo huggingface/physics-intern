@@ -9,7 +9,9 @@ from .cli import (
 )
 from .prompts import (
     SYSTEM_PROMPT,
+    SYSTEM_PROMPT_HLE,
     SYSTEM_PROMPT_TWO_STEP,
+    build_hle_user_message,
     build_parse_prompt,
     build_two_step_user_message,
     build_user_message,
@@ -17,8 +19,10 @@ from .prompts import (
 
 __all__ = [
     "SYSTEM_PROMPT",
+    "SYSTEM_PROMPT_HLE",
     "SYSTEM_PROMPT_TWO_STEP",
     "build_user_message",
+    "build_hle_user_message",
     "build_two_step_user_message",
     "build_parse_prompt",
     "run_baseline_call",

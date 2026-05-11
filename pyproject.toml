@@ -42,6 +42,7 @@ deep-gemm = { path = "deep_gemm-2.5.0+891d57b-cp313-cp313-linux_x86_64.whl" }
 [project.scripts]
 physics_intern = "physics_intern.main:main"
 physics_intern_oneshot = "physics_intern.one_shot.runner:main"
+physics_intern_hle_oneshot = "physics_intern.hle_one_shot.runner:main"
 physics_intern_rsa = "physics_intern.rsa.runner:main"
 physics_intern_autophysicist = "physics_intern.autophysicist.runner:main"
 
@@ -81,6 +82,7 @@ skip_covered = true
 "scripts/test_model.py" = ["E402"]
 "src/physics_intern/main.py" = ["E402"]
 "src/physics_intern/one_shot/runner.py" = ["E402"]
+"src/physics_intern/hle_one_shot/runner.py" = ["E402"]
 "src/physics_intern/rsa/runner.py" = ["E402"]
 "src/physics_intern/autophysicist/runner.py" = ["E402"]
 "src/physics_intern/two_steps/runner.py" = ["E402"]

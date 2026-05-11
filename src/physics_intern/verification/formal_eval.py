@@ -69,10 +69,20 @@ def run_formal_evaluation(
                 skipped=True, skip_reason="No problem definition or no answer field"
             )
 
-    if not problem_def.get("answer_template"):
+    answer_template = problem_def.get("answer_template")
+    if not answer_template:
         return FormalEvalResult(
             skipped=True, skip_reason="No answer_template in problem definition"
         )
+
+    # Dispatch on template shape: Python ``def answer(...)`` templates go
+    # through the symbolic/numerical comparator below; plain-text format
+    # specs (e.g. HLE's Explanation/Answer/Confidence) fall back to an LLM
+    # judge, which returns the same FormalEvalResult shape.
+    if "def answer" not in answer_template:
+        from .llm_judge import run_llm_judge
+
+        return run_llm_judge(workspace_dir, problem_def)
 
     answer_path = Path(workspace_dir) / "ANSWER.md"
     if not answer_path.exists():

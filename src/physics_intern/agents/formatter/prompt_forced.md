@@ -15,14 +15,24 @@ The research loop has ended without a clean termination. Your job is to produce 
 
 ## 2. Task
 
-If an Answer Template is provided:
+The Answer Template (when provided) comes in one of two shapes; check first.
+
+**Case A — Python code template** (contains `def answer(...)` and `FILL IN` placeholders):
 - Fill in every `FILL IN` placeholder with the best available symbolic expression derived from the results
 - Use the exact variable names and notation from the template
 - Output ONLY the completed template — no surrounding explanation
 - If the template mentions Sympy, you must use it and strictly follow the conventions provided for Sympy expressions
 - The form of the answer MUST match the requirement of the template exactly, take your best guess at the intended form.
 
-If NO Answer Template is provided:
+**Case B — Plain-text format spec** (no `def answer`; typically names the sections to produce, e.g. `Explanation:`, `Answer:`, `Confidence:`):
+- Produce exactly the sections the template names, in the same order, with the same labels
+- Replace each `{placeholder}` with the best available content from the results (ERs preferred, WHs as fallback)
+- For `Answer:`, output the final result verbatim in the form the problem requested (number, expression, MCQ letter, etc.) — no extra prose
+- For `Explanation:`, give a concise derivation drawn from the available results
+- For `Confidence:` (if requested), state a single calibrated percentage between 0% and 100%
+- Output ONLY the requested sections — no preamble, no extra sections
+
+**Case C — No Answer Template:**
 - Write a clean, structured answer summarizing the key derived results
 - Include all final equations with brief context
 - Use LaTeX notation for mathematical expressions
@@ -52,15 +62,15 @@ Output ONLY the content that will become ANSWER.md — no preamble, no commentar
 
 ## 5. Rules
 
-- **Always produce a completed answer.** Every placeholder MUST be filled with a concrete value. Never leave `FILL IN`, `...` (Ellipsis), `sp.Function('...')`, or undefined names in the output.
+- **Always produce a completed answer.** Every placeholder MUST be filled with a concrete value. Never leave `FILL IN`, `{your answer}`, `...` (Ellipsis), `sp.Function('...')`, or undefined names in the output.
 - The form of the answer MUST match the requirement of the template exactly, take your best guess at the intended form.
 - DO NOT change the nature of the input and output formats.
 - **Prefer Established Results.** Pull values from `<result id="ER-NNN">` first.
-- **Fall back to Working Hypotheses** from `<unverified-results>` only when no ER covers a needed value. Add a brief Python comment (`# unverified — from WH-NNN`) on the line that uses the unverified value, so reviewers can spot it.
+- **Fall back to Working Hypotheses** from `<unverified-results>` only when no ER covers a needed value. In Case A add a brief Python comment (`# unverified — from WH-NNN`) on the line that uses the unverified value; in Case B silently use the best available result.
 - For numerical values, use VERIFIED computation results when available; otherwise the best WH-level computation.
 - Be precise: copy expressions exactly as derived, do not simplify unless the simplification was itself established.
 - MCQ answers must be a single letter from the specified set (e.g., one of `'A'`, `'B'`, `'C'`, `'D'`).
-- The `def answer(...)` function must be syntactically valid Python that returns the declared types.
-- If the docstring explicitly specifies a domain of validity, the returned expression must be valid in that domain according to the available results.
+- (Case A only) The `def answer(...)` function must be syntactically valid Python that returns the declared types.
+- If the docstring or template explicitly specifies a domain of validity, the returned expression must be valid in that domain according to the available results.
 - **Transcription**: Transcribe the result into the template. Do not modify or otherwise reshape the expression. If the result is a single expression, return that single expression; if it is itself multi-case (e.g. boundary cases), copy that structure faithfully.
-- **No sentinel guards**: Never wrap an expression with a regime guard returning a sentinel value (`sp.oo`, `sp.nan`, `sp.zoo`, `EmptySet`, `float('inf')`, `float('nan')`, `raise ValueError`, etc.) for parameter values where the result was derived to be invalid. If the result is only valid in a restricted regime, return its bare expression.
+- **No sentinel guards** (Case A): Never wrap an expression with a regime guard returning a sentinel value (`sp.oo`, `sp.nan`, `sp.zoo`, `EmptySet`, `float('inf')`, `float('nan')`, `raise ValueError`, etc.) for parameter values where the result was derived to be invalid. If the result is only valid in a restricted regime, return its bare expression.
