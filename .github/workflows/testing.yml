@@ -37,19 +37,23 @@ on:
       - "serve/*.slurm"
   workflow_call:
 
+permissions: {}
+
 jobs:
   check_code_quality:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     env:
       UV_PYTHON: "3.12"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.1.0
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
       - name: Install dependencies
@@ -61,6 +65,8 @@ jobs:
           uv run ruff format --check tests src scripts serve
 
   test:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     env:
       UV_PYTHON: ${{ matrix.python-version }}
@@ -69,13 +75,13 @@ jobs:
         python-version: ["3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.1.0
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
       - name: Install dependencies
@@ -89,7 +95,7 @@ jobs:
           uv run python -m pytest ./tests/ --cov=physics_intern --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html:htmlcov
       - name: Upload coverage report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-python-${{ matrix.python-version }}
           path: |
